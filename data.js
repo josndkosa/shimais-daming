@@ -18,33 +18,33 @@ const SITE_DATA = {
     ctaTarget: "timeline",
   },
 
-  /* 首页轮播。文案为占位，待替换；img 指向 images/carousel/。
+  /* 首页轮播。img 指向 images/carousel/。
      02-taizu.jpg 为竖版御容，按黑墙挂轴陈列，其余全屏铺满。 */
   slides: [
     {
       img: "images/carousel/01-taihedian.jpg",
-      headline: "太和殿",
-      sub: "占位小字文案 · 待替换",
+      headline: "大明 · 1368—1644",
+      sub: "一个王朝的 276 年，从这里开始",
     },
     {
       img: "images/carousel/02-taizu.jpg",
-      headline: "太祖御容",
-      sub: "占位小字文案 · 待替换",
+      headline: "洪武定制",
+      sub: "他亲手定下的规矩，管了明朝 276 年",
     },
     {
       img: "images/carousel/03-greatwall.jpg",
-      headline: "长城暮色",
-      sub: "占位小字文案 · 待替换",
+      headline: "天子守国门",
+      sub: "迁都北京之后，边防就是帝国的日常",
     },
     {
       img: "images/carousel/04-treasure-ship.jpg",
       headline: "宝船出海",
-      sub: "占位小字文案 · 待替换",
+      sub: "郑和七下西洋：朝贡体系的巅峰，也是绝唱",
     },
     {
       img: "images/carousel/05-palace-snow-night.jpg",
-      headline: "紫禁城雪夜",
-      sub: "占位小字文案 · 待替换",
+      headline: "甲申之变",
+      sub: "1644，煤山自缢——抓得最紧的手，最后无处安放",
     },
   ],
   carouselLabel: "大明意象",
@@ -72,8 +72,8 @@ const SITE_DATA = {
       short: "决策",
       index: "贰",
       title: "决策模式",
-      tagline: "奏疏如何变成圣旨",
-      desc: "内阁票拟、司礼监批红、六科封驳——看一道命令在明代体制里走完的全程。",
+      tagline: "三个关口，亲手做三次选择",
+      desc: "1380 废相、1449 守京、1581 折银——先选，再看历史真实的选择与代价。",
       placeholder: "决策模式正在编写中：将以具体案例还原一份奏疏从递进到落地的每个环节。",
     },
     {
@@ -93,7 +93,7 @@ const SITE_DATA = {
       index: "肆",
       title: "小测",
       tagline: "检验你读懂了多少",
-      desc: "不是背年份，而是判断情境：如果你是当事人，制度会把你推向哪一步？",
+      desc: "十道题、三个维度：时间线感、人物洞察、制度理解。答完即时解析，成绩存入研读画像。",
       placeholder: "小测正在编写中：将以情境选择题为主，答完给出制度层面的解析。",
     },
     {
@@ -109,6 +109,382 @@ const SITE_DATA = {
   ],
 
   placeholderBadge: "占位 · 待建设",
+
+  /* 决策模式：三个场景。选定即锁定，后果与史实对照展开，完成记入 decisions.done。 */
+  decisionLabels: {
+    progressLabel: "已完成",
+    roleLabel: "你是谁",
+    lockHint: "三选一 · 选定即锁定，不可更改",
+    lockedHint: "此局已锁 · 选择不可更改",
+    consequenceLabel: "后果",
+    historyLabel: "史实对照",
+    doneBadge: "已决",
+    completeNote: "三局已决。你的选择与历史的选择，都留在本页。",
+  },
+  decisions: [
+    {
+      id: "d1380",
+      num: "壹",
+      year: "1380",
+      reign: "洪武十三年",
+      title: "废不废丞相",
+      background: [
+        "1380 年，左丞相胡惟庸案发，牵连甚广。",
+        "丞相上承皇命、下领百官，相权过大屡屡挑战皇权。",
+        "但皇帝一人精力有限，全国奏疏每日数百件。",
+      ],
+      role: "朱元璋",
+      roleNote: "洪武皇帝",
+      choices: [
+        {
+          key: "A",
+          label: "废除中书省，六部直对皇帝",
+          consequence:
+            "皇权空前集中，但政务全压皇帝一人，你日批奏疏数百件，为后世子孙埋下过劳与怠政的两极隐患。",
+          history:
+            "朱元璋正是这么选的，还立祖训不许复设丞相。隐患后来由内阁来补，但内阁始终「名不正」，这是本站主线问题的源头。",
+        },
+        {
+          key: "B",
+          label: "保留丞相，严刑峻法约束",
+          consequence:
+            "行政效率保住，但相权与皇权的矛盾只是推迟，下一任皇帝未必压得住权相。",
+          history: "朱元璋不愿把风险留给子孙，宁可自己累死。",
+        },
+        {
+          key: "C",
+          label: "废相，但设正式的宰相会议",
+          consequence: "分权分责，皇帝保留裁定权。",
+          history:
+            "这正是后世内阁实际运转的样子，只是明朝始终没给它正式名分——非不愿，是祖训不许。",
+        },
+      ],
+    },
+    {
+      id: "d1449",
+      num: "贰",
+      year: "1449",
+      reign: "正统十四年",
+      title: "守不守北京",
+      background: [
+        "1449 年，土木堡惨败，英宗被俘。",
+        "瓦剌大军压境，京营精锐尽丧，京城人心惶惶。",
+        "有大臣提议南迁南京。",
+      ],
+      role: "于谦",
+      roleNote: "兵部侍郎",
+      choices: [
+        {
+          key: "A",
+          label: "坚守北京，立新君迎战",
+          consequence:
+            "军心民心稳住，北京保卫战打赢，但新君已立、旧君将归，皇位继承的雷埋下了。",
+          history:
+            "于谦正是这么做的，保住了明朝国运；但八年后夺门之变，英宗复辟，于谦被杀——危机靠个人渡过，制度没有答案。",
+        },
+        {
+          key: "B",
+          label: "南迁南京，划江而治",
+          consequence:
+            "保住朝廷火种，但北方尽失，明朝可能提前变成「南明」。",
+          history: "南宋的先例就在眼前，于谦斥南迁为「言南迁者，可斩」。",
+        },
+        {
+          key: "C",
+          label: "送还金银，求和赎回英宗",
+          consequence:
+            "也先要的正是明朝低头，赎金无底洞，且皇帝在敌手，国本动摇。",
+          history:
+            "明廷最终不靠赎金，而是靠守住北京、也先内部生变，英宗一年后被放回。",
+        },
+      ],
+    },
+    {
+      id: "d1581",
+      num: "叁",
+      year: "1581",
+      reign: "万历九年",
+      title: "一条鞭法怎么推",
+      background: [
+        "各地赋役名目繁多、摊派随意，胥吏从中渔利。",
+        "海外白银正大量流入。",
+        "你要推一条鞭法：赋役合并、按亩折银。",
+      ],
+      role: "张居正",
+      roleNote: "内阁首辅",
+      choices: [
+        {
+          key: "A",
+          label: "全国一刀切，限期推行",
+          consequence:
+            "税制迅速简化，太仓充盈；但白银不足的地区折价吃亏，地方抵触暗长。",
+          history:
+            "张居正在考成法的强力督查下基本做到了全国推行，财政显著好转；但他死后人亡政息，改革无制度存续机制。",
+        },
+        {
+          key: "B",
+          label: "先富庶地区试点，再推广",
+          consequence:
+            "阻力小、经验足，但全国财政困局拖延，改革窗口稍纵即逝。",
+          history:
+            "一条鞭法其实源于嘉靖以来各地自发试点，张居正做的是把它推向全国——试点有，缺的是推手。",
+        },
+        {
+          key: "C",
+          label: "只清丈田亩，不改税制",
+          consequence: "隐田查出、税基扩大，但繁杂摊派与胥吏之弊仍在。",
+          history:
+            "清丈是张居正先做的第一步，但他判断只清丈不够，税制本身才是病根。",
+        },
+      ],
+    },
+  ],
+
+  /* 卡片墙：人物六张（传世画像）+ 制度三张（鎏金大字锚点）。 */
+  cardsLabels: {
+    peopleTitle: "人物",
+    peopleHint: "六个人，六种制度坐标",
+    institutionTitle: "制度",
+    institutionHint: "三种机制，三种权力命运",
+    factsLabel: "关键事实",
+    commentLabel: "制度点评",
+    sourceNote: "人物画像为传世古画（公有领域），源自 Wikimedia Commons。",
+  },
+  cards: [
+    {
+      id: "p1",
+      kind: "person",
+      img: "images/people/p1-zhu-yuanzhang.jpg",
+      name: "朱元璋",
+      role: "开国皇帝",
+      era: "洪武",
+      position: "制度的总设计师",
+      facts: ["废丞相、设锦衣卫", "立黄册里甲", "以祖训锁死后世改制空间"],
+      comment: "他设计的体制只适合他自己这样的劳模皇帝。",
+    },
+    {
+      id: "p2",
+      kind: "person",
+      img: "images/people/p2-zhu-di.jpg",
+      name: "朱棣",
+      role: "永乐帝",
+      era: "永乐",
+      position: "夺位者与再造者",
+      facts: ["靖难夺位、迁都北京", "遣郑和下西洋", "设东厂"],
+      comment: "他把父亲的体制推向极致，也添了新的监控工具。",
+    },
+    {
+      id: "p3",
+      kind: "person",
+      img: "images/people/p3-yu-qian.jpg",
+      name: "于谦",
+      role: "兵部尚书",
+      era: "景泰",
+      position: "危机中的孤臣",
+      facts: ["土木堡后力主守京、拥立景帝", "打赢北京保卫战", "夺门之变后被杀"],
+      comment: "他证明了明代危机靠人而非制度——人一死，清算就来。",
+    },
+    {
+      id: "p4",
+      kind: "person",
+      img: "images/people/p4-hai-rui.jpg",
+      name: "海瑞",
+      role: "户部主事等",
+      era: "嘉靖",
+      position: "以死谏君的清官",
+      facts: ["备棺上《治安疏》", "直斥嘉靖", "为官清廉、断案刚直"],
+      comment: "当纠错只能靠不要命，说明常规监察通道已经淤塞。",
+    },
+    {
+      id: "p5",
+      kind: "person",
+      img: "images/people/p5-zhang-juzheng.jpg",
+      name: "张居正",
+      role: "内阁首辅",
+      era: "万历",
+      position: "最成功的补锅匠",
+      facts: ["考成法、清丈田亩", "一条鞭法推向全国", "死后遭清算抄家"],
+      comment: "他证明了体制能被强人修好，也证明了修好不可持续。",
+    },
+    {
+      id: "p6",
+      kind: "person",
+      mode: "backdrop",
+      img: "images/carousel/05-palace-snow-night.jpg",
+      name: "崇祯",
+      role: "末代皇帝",
+      era: "崇祯",
+      position: "勤政而亡国",
+      note: "崇祯无御容传世，以雪夜宫阙代之。",
+      facts: ["除魏忠贤", "十七年换阁臣五十人、杀袁崇焕", "三饷加派下民变四起"],
+      comment: "他把权力抓得最紧，却发现无人可用、无饷可筹。",
+    },
+    {
+      id: "i1",
+      kind: "institution",
+      glyph: "阁",
+      name: "内阁与司礼监",
+      sub: "票拟与批红",
+      position: "没有名分的宰相与影子批红",
+      facts: ["内阁票拟建议", "皇帝批红裁定", "皇帝怠政时批红落入司礼监"],
+      comment: "权力不会真空，只会流向离皇帝最近的人。",
+    },
+    {
+      id: "i2",
+      kind: "institution",
+      glyph: "卫",
+      name: "厂卫",
+      sub: "锦衣卫与东厂西厂",
+      position: "绕过司法的皇权直通车",
+      facts: ["可不经刑部直接逮问官员", "掌诏狱", "锦衣卫、东厂、西厂相继而设，皆直属皇帝"],
+      comment: "它是皇权不信任官僚体系时的常备替代方案，开关都在皇帝一念。",
+    },
+    {
+      id: "i3",
+      kind: "institution",
+      glyph: "银",
+      name: "一条鞭法与白银财政",
+      sub: "赋役合并、按亩折银",
+      position: "把帝国财政绑上白银",
+      facts: ["赋役合并按亩折银", "白银靠海外贸易流入", "流入一收紧，银贵谷贱、负担反而加重"],
+      comment: "先进的货币化税制，遇上不可控的银源，就是晚明的财政死结。",
+    },
+  ],
+
+  /* 小测：十题三维。选后即时判定并锁定，全部答完提交，成绩入进度 quiz。 */
+  dimLabels: {
+    timeline: "时间线感",
+    person: "人物洞察",
+    institution: "制度理解",
+  },
+  quizUI: {
+    progressLabel: "已答",
+    submit: "提交成绩",
+    submitHint: "十题答完后方可提交",
+    submitReady: "十题已答完。提交后成绩存入研读画像。",
+    correctBadge: "答对",
+    wrongBadge: "答错",
+    answerLabel: "正确答案",
+    explainLabel: "解析",
+    resultTitle: "小测成绩",
+    submittedNote: "成绩已存入本机，可在研读画像中查看三维得分率。",
+    viewProfile: "查看我的研读画像",
+  },
+  quiz: [
+    {
+      id: "q1",
+      dim: "timeline",
+      stem: "朱元璋废除丞相是在哪一年？",
+      options: ["1368", "1380", "1402", "1421"],
+      answer: 1,
+      explain: "借胡惟庸案废中书省，主线问题由此开始。",
+    },
+    {
+      id: "q2",
+      dim: "timeline",
+      stem: "郑和第一次下西洋出发于哪一年？",
+      options: ["1402", "1405", "1421", "1449"],
+      answer: 1,
+      explain: "永乐三年自刘家港出发，此后七下西洋。",
+    },
+    {
+      id: "q3",
+      dim: "timeline",
+      stem: "隆庆开关开放的港口是？",
+      options: ["广州十三行", "上海", "福建月港", "宁波"],
+      answer: 2,
+      explain: "1567 年开放月港，海禁松动、白银流入。",
+    },
+    {
+      id: "q4",
+      dim: "timeline",
+      stem: "萨尔浒之战发生于哪一年？",
+      options: ["1592", "1619", "1627", "1644"],
+      answer: 1,
+      explain: "四路出师三路覆没，辽东攻守易势，辽饷加派自此无休。",
+    },
+    {
+      id: "q5",
+      dim: "person",
+      stem: "土木堡之变中被瓦剌俘获的皇帝是？",
+      options: ["英宗", "景帝", "武宗", "熹宗"],
+      answer: 0,
+      explain: "王振挟英宗亲征，皇帝被俘，京营精锐尽丧。",
+    },
+    {
+      id: "q6",
+      dim: "person",
+      stem: "北京保卫战的主要主持者是？",
+      options: ["徐有贞", "于谦", "杨士奇", "王振"],
+      answer: 1,
+      explain: "他拒南迁、立新君、整残军，保住了明朝国运。",
+    },
+    {
+      id: "q7",
+      dim: "person",
+      stem: "一条鞭法的主要推行者是？",
+      options: ["海瑞", "严嵩", "张居正", "徐阶"],
+      answer: 2,
+      explain: "万历九年推向全国，是他改革的财政落点。",
+    },
+    {
+      id: "q8",
+      dim: "institution",
+      stem: "废丞相后，实际分担皇帝政务的是哪组机制？",
+      options: ["内阁票拟＋司礼监批红", "六部合议", "科道言官", "藩王辅政"],
+      answer: 0,
+      explain: "内阁无宰相之名行辅政之实，批红本属皇帝，怠政时落入宦官之手。",
+    },
+    {
+      id: "q9",
+      dim: "institution",
+      stem: "「批红」在制度设计中本是谁的权力？",
+      options: ["首辅", "司礼监掌印", "皇帝本人", "六科给事中"],
+      answer: 2,
+      explain: "批红是皇帝的最终裁定权，被委托给司礼监正是中枢失衡的开始。",
+    },
+    {
+      id: "q10",
+      dim: "institution",
+      stem: "一条鞭法最核心的变化是？",
+      options: ["增加税种", "赋役合并、按亩折银征收", "改收实物", "免除徭役"],
+      answer: 1,
+      explain: "税制简化，但财政从此绑定白银供应。",
+    },
+  ],
+
+  /* 研读画像：只读 localStorage 汇总，不上传任何数据。 */
+  profileUI: {
+    footprintTitle: "研读足迹",
+    timelineTitle: "时间线已读",
+    timelineLink: "去时间线",
+    decisionsTitle: "决策完成",
+    decisionsLink: "去决策模式",
+    quizTitle: "小测三维得分率",
+    quizScoreLabel: "总分",
+    quizEmpty:
+      "尚未完成小测。答完十题，这里会给出你的三维得分率，并依最弱维度给出一条推荐。",
+    quizCta: "去答小测",
+    recTitle: "给你的推荐",
+    recs: {
+      timeline: {
+        text: "时间线感最弱：回时间线，把对应节点展开读一遍——年份背后是制度转折。",
+        links: [{ href: "timeline.html", label: "回时间线读节点" }],
+      },
+      person: {
+        text: "人物洞察最弱：去看人物卡——把人放回他所处的制度位置里读。",
+        links: [{ href: "cards.html", label: "去看人物卡" }],
+      },
+      institution: {
+        text: "制度理解最弱：去看制度卡与决策模式——机制如何运转，亲手选一次就懂。",
+        links: [
+          { href: "cards.html", label: "去看制度卡" },
+          { href: "decisions.html", label: "去决策模式" },
+        ],
+      },
+    },
+    privacy: "本页所有数据只读取本机浏览器 localStorage，不上传任何服务器。",
+  },
 
   /* 时间线：era 分组 + 事件。展开事件即记为已读，进度存 localStorage，多页共用。 */
   timeline: {
@@ -233,7 +609,7 @@ const SITE_DATA = {
         id: "e1435",
         era: "shoucheng",
         year: "1435",
-        reign: "正统元年",
+        reign: "宣德十年",
         title: "九岁英宗即位，批红渐归司礼监",
         summary: "幼主临朝，票拟与批红的分工开始失衡。",
         detail: [
@@ -298,7 +674,7 @@ const SITE_DATA = {
         id: "e1521",
         era: "zhongqi",
         year: "1521",
-        reign: "正德十六年 / 嘉靖元年",
+        reign: "正德十六年",
         title: "大礼议",
         summary: "新君以藩王入继，皇统与礼法正面冲突。",
         detail: [
@@ -321,6 +697,19 @@ const SITE_DATA = {
         tags: ["言官", "六科", "治安疏"],
       },
       {
+        id: "e1567",
+        era: "gaige",
+        year: "1567",
+        reign: "隆庆元年",
+        title: "隆庆开关",
+        summary: "开放福建月港，民间海船合法出海，白银开始大量流入。",
+        detail: [
+          "穆宗即位后，应东南商民与官员之请，开放福建漳州月港，准许民间海船出海贸易，明初以来的厉行海禁第一次正式松动——这不是恩赐，而是走私猖獗、海禁既管不住也离不开的现实选择。",
+          "开关之后，美洲与日本白银经贸易大量流入中国，为十四年后一条鞭法「赋役折银」准备了货币条件：没有白银流入，折银征收无从谈起。",
+        ],
+        tags: ["海禁", "月港", "白银流入"],
+      },
+      {
         id: "e1572",
         era: "gaige",
         year: "1572",
@@ -332,6 +721,19 @@ const SITE_DATA = {
           "随后清丈田亩、推行一条鞭法，赋役折银并征，财政显著好转。但张居正的权力来自太后与幼主的信任、以及司礼监冯保的配合——仍是人治式的制度修补。",
         ],
         tags: ["考成法", "一条鞭法", "清丈田亩"],
+      },
+      {
+        id: "e1581",
+        era: "gaige",
+        year: "1581",
+        reign: "万历九年",
+        title: "一条鞭法推行全国",
+        summary: "赋役合并、按亩折银征收，张居正改革的财政落点。",
+        detail: [
+          "张居正将各州县的田赋、徭役与杂项摊派合并为一条，按田亩折算成白银统一征收，简化税制、压缩胥吏上下其手的空间，太仓积银一度充盈。",
+          "但它也把帝国财政整体绑在白银上：白银主要靠海外贸易流入，一旦流入收紧，税额不变而银贵谷贱，负担反而加重——晚明的加派与财政危机里，有它的一份结构性原因。",
+        ],
+        tags: ["一条鞭法", "赋役折银", "张居正改革"],
       },
       {
         id: "e1582",
@@ -376,7 +778,7 @@ const SITE_DATA = {
         id: "e1627",
         era: "zhongju",
         year: "1627",
-        reign: "天启七年 / 崇祯元年",
+        reign: "天启七年",
         title: "崇祯即位，除魏忠贤",
         summary: "新君铲除阉党，却未能重建可运转的中枢。",
         detail: [

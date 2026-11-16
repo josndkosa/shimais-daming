@@ -296,6 +296,10 @@
     block.appendChild(el("p", "main-question", data.hero.question));
     block.appendChild(el("p", "question-note", data.hero.questionNote));
     question.appendChild(block);
+    const ctaModule = data.modules.find((m) => m.id === data.hero.ctaTarget);
+    const cta = el("a", "cta-button", data.hero.cta);
+    cta.href = ctaModule ? ctaModule.page : "timeline.html";
+    question.appendChild(cta);
     app.appendChild(question);
 
     const entries = el("section", "entries-section container");
@@ -416,6 +420,611 @@
     });
   }
 
+  /* ---------- 决策模式 ---------- */
+
+  function decisionState() {
+    const p = loadProgress();
+    const d = p.decisions && typeof p.decisions === "object" ? p.decisions : {};
+    return {
+      done: Array.isArray(d.done) ? d.done : [],
+      picks: d.picks && typeof d.picks === "object" ? d.picks : {},
+    };
+  }
+
+  function renderDecisions() {
+    const ui = data.decisionLabels;
+    const scenarios = data.decisions;
+    app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
+
+    const wrap = el("div", "container dc-wrap");
+    const strip = el("div", "dc-progress");
+    const label = el("p", "dc-progress-label");
+    label.appendChild(el("span", "dc-progress-text", ui.progressLabel));
+    const count = el("span", "dc-count");
+    label.appendChild(count);
+    const bar = el("div", "dc-bar");
+    const fill = el("span", "dc-bar-fill");
+    bar.appendChild(fill);
+    strip.append(label, bar);
+    wrap.appendChild(strip);
+
+    const note = el("p", "dc-complete-note", ui.completeNote);
+    note.hidden = true;
+    wrap.appendChild(note);
+
+    const nodes = new Map();
+
+    function applyState(sc, node) {
+      const pick = decisionState().picks[sc.id];
+      const hint = node.querySelector(".dc-lock-hint");
+      const result = node.querySelector(".dc-result");
+      node.classList.toggle("is-done", !!pick);
+      node.querySelector(".dc-seal").hidden = !pick;
+      hint.textContent = pick ? ui.lockedHint : ui.lockHint;
+      node.querySelectorAll(".dc-choice").forEach((btn) => {
+        const key = btn.dataset.key;
+        btn.disabled = !!pick;
+        btn.classList.toggle("is-picked", pick === key);
+        btn.classList.toggle("is-dim", !!pick && pick !== key);
+        btn.setAttribute("aria-pressed", pick === key ? "true" : "false");
+      });
+      if (pick) {
+        const choice = sc.choices.find((c) => c.key === pick);
+        result.querySelector(".dc-consequence-p").textContent = choice.consequence;
+        result.querySelector(".dc-history-p").textContent = choice.history;
+        result.hidden = false;
+      } else {
+        result.hidden = true;
+      }
+    }
+
+    function refreshStrip() {
+      const done = decisionState().done;
+      count.textContent = done.length + " / " + scenarios.length;
+      fill.style.width = (done.length / scenarios.length) * 100 + "%";
+      note.hidden = done.length < scenarios.length;
+    }
+
+    scenarios.forEach((sc) => {
+      const article = el("article", "dc-scenario");
+      article.dataset.id = sc.id;
+
+      const head = el("div", "dc-head");
+      head.appendChild(el("span", "dc-num", sc.num));
+      const headMain = el("div", "dc-head-main");
+      headMain.appendChild(el("p", "dc-meta", sc.year + " · " + sc.reign));
+      headMain.appendChild(el("h2", "dc-title", sc.title));
+      head.appendChild(headMain);
+      const seal = el("span", "dc-seal", ui.doneBadge);
+      seal.hidden = true;
+      head.appendChild(seal);
+      article.appendChild(head);
+
+      const role = el("p", "dc-role");
+      role.appendChild(el("span", "dc-role-label", ui.roleLabel));
+      role.appendChild(el("span", "dc-role-name", sc.role));
+      role.appendChild(el("span", "dc-role-note", sc.roleNote));
+      article.appendChild(role);
+
+      const bg = el("div", "dc-bg");
+      sc.background.forEach((s) => bg.appendChild(el("p", "dc-bg-p", s)));
+      article.appendChild(bg);
+
+      article.appendChild(el("p", "dc-lock-hint", ui.lockHint));
+
+      const choices = el("div", "dc-choices");
+      choices.setAttribute("role", "group");
+      choices.setAttribute("aria-label", sc.title);
+      sc.choices.forEach((c) => {
+        const btn = el("button", "dc-choice");
+        btn.type = "button";
+        btn.dataset.key = c.key;
+        btn.setAttribute("aria-pressed", "false");
+        btn.appendChild(el("span", "dc-key", c.key));
+        btn.appendChild(el("span", "dc-choice-label", c.label));
+        btn.addEventListener("click", () => {
+          if (decisionState().picks[sc.id]) return;
+          updateProgress((p) => {
+            p.decisions = p.decisions || {};
+            p.decisions.done = Array.isArray(p.decisions.done) ? p.decisions.done : [];
+            if (!p.decisions.done.includes(sc.id)) p.decisions.done.push(sc.id);
+            p.decisions.picks = p.decisions.picks || {};
+            p.decisions.picks[sc.id] = c.key;
+          });
+          applyState(sc, article);
+          refreshStrip();
+          const result = article.querySelector(".dc-result");
+          result.scrollIntoView({
+            behavior: reducedMotion.matches ? "auto" : "smooth",
+            block: "nearest",
+          });
+        });
+        choices.appendChild(btn);
+      });
+      article.appendChild(choices);
+
+      const result = el("div", "dc-result");
+      result.hidden = true;
+      result.setAttribute("aria-live", "polite");
+      const cons = el("div", "dc-block dc-consequence");
+      cons.appendChild(el("h3", "dc-block-title", ui.consequenceLabel));
+      cons.appendChild(el("p", "dc-consequence-p"));
+      const hist = el("div", "dc-block dc-history");
+      hist.appendChild(el("h3", "dc-block-title", ui.historyLabel));
+      hist.appendChild(el("p", "dc-history-p"));
+      result.append(cons, hist);
+      article.appendChild(result);
+
+      wrap.appendChild(article);
+      nodes.set(sc.id, article);
+      applyState(sc, article);
+    });
+
+    app.appendChild(wrap);
+    refreshStrip();
+
+    window.addEventListener("storage", (e) => {
+      if (e.key !== PROGRESS_KEY) return;
+      scenarios.forEach((sc) => applyState(sc, nodes.get(sc.id)));
+      refreshStrip();
+    });
+  }
+
+  /* ---------- 卡片墙 ---------- */
+
+  function renderCards() {
+    const ui = data.cardsLabels;
+    app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
+
+    const wrap = el("div", "container cw-wrap");
+    const reveal = [];
+    const groups = [
+      { kind: "person", title: ui.peopleTitle, hint: ui.peopleHint },
+      { kind: "institution", title: ui.institutionTitle, hint: ui.institutionHint },
+    ];
+
+    groups.forEach((g) => {
+      const list = data.cards.filter((c) => c.kind === g.kind);
+      const section = el("section", "cw-group");
+      const head = el("div", "section-head");
+      head.appendChild(el("h2", "section-title", g.title));
+      head.appendChild(el("p", "section-hint", g.hint));
+      section.appendChild(head);
+
+      const grid = el(
+        "div",
+        "cw-grid " + (g.kind === "person" ? "cw-people" : "cw-institutions")
+      );
+      list.forEach((c, i) => {
+        const backdrop = c.mode === "backdrop";
+        const card = el(
+          "article",
+          "cw-card " +
+            (g.kind === "person" ? "cw-person" : "cw-inst") +
+            (backdrop ? " cw-backdrop" : "")
+        );
+        card.style.setProperty("--d", (i % 3) * 70 + "ms");
+
+        if (g.kind === "person" && !backdrop) {
+          const portrait = el("div", "cw-portrait");
+          const frame = el("div", "cw-frame");
+          const img = el("img");
+          img.src = c.img;
+          img.alt = c.name + "画像";
+          img.loading = "lazy";
+          img.decoding = "async";
+          frame.appendChild(img);
+          portrait.appendChild(frame);
+          card.appendChild(portrait);
+        }
+        if (backdrop) {
+          const bg = el("img", "cw-bg");
+          bg.src = c.img;
+          bg.alt = "";
+          bg.loading = "lazy";
+          bg.decoding = "async";
+          bg.setAttribute("aria-hidden", "true");
+          card.append(bg, el("div", "cw-scrim"));
+        }
+
+        const body = el("div", "cw-body");
+        if (g.kind === "institution") body.appendChild(el("span", "cw-glyph", c.glyph));
+        const headRow = el("div", "cw-head");
+        headRow.appendChild(el("h3", "cw-name", c.name));
+        if (c.role) headRow.appendChild(el("span", "cw-role", c.role));
+        if (c.era) headRow.appendChild(el("span", "cw-era", c.era));
+        body.appendChild(headRow);
+        if (c.sub) body.appendChild(el("p", "cw-sub", c.sub));
+        body.appendChild(el("p", "cw-position", c.position));
+        if (c.note) body.appendChild(el("p", "cw-note", c.note));
+
+        const facts = el("div", "cw-facts");
+        facts.appendChild(el("p", "cw-facts-label", ui.factsLabel));
+        const ul = el("ul", "cw-fact-list");
+        c.facts.forEach((f) => ul.appendChild(el("li", "cw-fact", f)));
+        facts.appendChild(ul);
+        body.appendChild(facts);
+
+        const comment = el("div", "cw-comment");
+        comment.appendChild(el("span", "cw-comment-label", ui.commentLabel));
+        comment.appendChild(el("p", "cw-comment-p", c.comment));
+        body.appendChild(comment);
+
+        card.appendChild(body);
+        grid.appendChild(card);
+        reveal.push(card);
+      });
+      section.appendChild(grid);
+      wrap.appendChild(section);
+    });
+
+    wrap.appendChild(el("p", "cw-source", ui.sourceNote));
+    app.appendChild(wrap);
+
+    if (reducedMotion.matches || !("IntersectionObserver" in window)) {
+      reveal.forEach((n) => n.classList.add("is-in"));
+    } else {
+      const io = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((en) => {
+            if (en.isIntersecting) {
+              en.target.classList.add("is-in");
+              io.unobserve(en.target);
+            }
+          });
+        },
+        { threshold: 0.12 }
+      );
+      reveal.forEach((n) => io.observe(n));
+    }
+  }
+
+  /* ---------- 小测 ---------- */
+
+  function quizState() {
+    const p = loadProgress();
+    const q = p.quiz && typeof p.quiz === "object" ? p.quiz : {};
+    return {
+      picks: Array.isArray(q.picks) ? q.picks : [],
+      submitted: typeof q.score === "number",
+      score: q.score,
+      dims: q.dims && typeof q.dims === "object" ? q.dims : null,
+    };
+  }
+
+  function renderQuiz() {
+    const ui = data.quizUI;
+    const questions = data.quiz;
+    app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
+
+    const wrap = el("div", "container qz-wrap");
+    const strip = el("div", "dc-progress");
+    const label = el("p", "dc-progress-label");
+    label.appendChild(el("span", "dc-progress-text", ui.progressLabel));
+    const count = el("span", "dc-count");
+    label.appendChild(count);
+    const bar = el("div", "dc-bar");
+    const fill = el("span", "dc-bar-fill");
+    bar.appendChild(fill);
+    strip.append(label, bar);
+    wrap.appendChild(strip);
+
+    const nodes = new Map();
+
+    function applyQuestion(q, node, pick) {
+      const has = pick != null;
+      node.querySelectorAll(".qz-choice").forEach((btn) => {
+        const i = Number(btn.dataset.i);
+        const badge = btn.querySelector(".qz-badge");
+        btn.disabled = has;
+        btn.classList.toggle("is-correct", has && i === pick && i === q.answer);
+        btn.classList.toggle("is-wrong", has && i === pick && i !== q.answer);
+        btn.classList.toggle("is-answer", has && i === q.answer && pick !== q.answer);
+        btn.classList.toggle("is-mute", has && i !== pick && i !== q.answer);
+        if (has && i === pick) {
+          badge.textContent = i === q.answer ? ui.correctBadge : ui.wrongBadge;
+          badge.hidden = false;
+        } else if (has && i === q.answer) {
+          badge.textContent = ui.answerLabel;
+          badge.hidden = false;
+        } else {
+          badge.hidden = true;
+        }
+      });
+      const explain = node.querySelector(".qz-explain");
+      if (has) {
+        explain.querySelector(".qz-answer-line").textContent =
+          ui.answerLabel + " · " + "ABCD"[q.answer] + "　" + q.options[q.answer];
+        explain.querySelector(".qz-explain-p").textContent = q.explain;
+        explain.hidden = false;
+      } else {
+        explain.hidden = true;
+      }
+    }
+
+    const submitWrap = el("div", "qz-submit");
+    const submitBtn = el("button", "cta-button qz-submit-btn", ui.submit);
+    submitBtn.type = "button";
+    submitBtn.disabled = true;
+    const submitHint = el("p", "qz-submit-hint", ui.submitHint);
+    submitWrap.append(submitBtn, submitHint);
+
+    let resultNode = null;
+
+    function buildResult() {
+      const st = quizState();
+      const sec = el("section", "qz-result");
+      sec.appendChild(el("h2", "section-title", ui.resultTitle));
+      const score = el("p", "qz-score");
+      score.appendChild(el("span", "qz-score-num", String(st.score)));
+      score.appendChild(el("span", "qz-score-total", " / " + questions.length));
+      sec.appendChild(score);
+      const dims = el("div", "qz-dims");
+      ["timeline", "person", "institution"].forEach((d) => {
+        const v = (st.dims && st.dims[d]) || { hit: 0, total: 0 };
+        const row = el("div", "qz-dim-row");
+        row.appendChild(el("span", "qz-dim-name", data.dimLabels[d]));
+        row.appendChild(el("span", "qz-dim-frac", v.hit + " / " + v.total));
+        const b = el("div", "pf-bar");
+        const f = el("span", "pf-bar-fill");
+        b.appendChild(f);
+        row.appendChild(b);
+        row.appendChild(
+          el("span", "qz-dim-pct", Math.round((v.hit / (v.total || 1)) * 100) + "%")
+        );
+        dims.appendChild(row);
+        requestAnimationFrame(() => {
+          f.style.width = (v.hit / (v.total || 1)) * 100 + "%";
+        });
+      });
+      sec.appendChild(dims);
+      sec.appendChild(el("p", "qz-submitted-note", ui.submittedNote));
+      const link = el("a", "cta-button cta-gold", ui.viewProfile);
+      link.href = "profile.html";
+      sec.appendChild(link);
+      return sec;
+    }
+
+    function showResult() {
+      if (resultNode) resultNode.remove();
+      resultNode = buildResult();
+      wrap.appendChild(resultNode);
+      submitWrap.hidden = true;
+    }
+
+    function refresh() {
+      const st = quizState();
+      const answered = questions.filter((q, i) => st.picks[i] != null).length;
+      count.textContent = answered + " / " + questions.length;
+      fill.style.width = (answered / questions.length) * 100 + "%";
+      if (st.submitted) {
+        if (!resultNode) showResult();
+      } else {
+        submitBtn.disabled = answered < questions.length;
+        submitHint.textContent =
+          answered < questions.length ? ui.submitHint : ui.submitReady;
+      }
+    }
+
+    questions.forEach((q, qi) => {
+      const item = el("article", "qz-item");
+      const head = el("div", "qz-head");
+      head.appendChild(el("span", "qz-num", String(qi + 1).padStart(2, "0")));
+      head.appendChild(el("span", "qz-dim", data.dimLabels[q.dim]));
+      head.appendChild(el("h2", "qz-stem", q.stem));
+      item.appendChild(head);
+
+      const choices = el("div", "qz-choices");
+      choices.setAttribute("role", "group");
+      choices.setAttribute("aria-label", q.stem);
+      q.options.forEach((opt, i) => {
+        const btn = el("button", "qz-choice");
+        btn.type = "button";
+        btn.dataset.i = String(i);
+        btn.appendChild(el("span", "qz-key", "ABCD"[i]));
+        btn.appendChild(el("span", "qz-choice-label", opt));
+        const badge = el("span", "qz-badge");
+        badge.hidden = true;
+        btn.appendChild(badge);
+        btn.addEventListener("click", () => {
+          if (quizState().picks[qi] != null || quizState().submitted) return;
+          updateProgress((p) => {
+            p.quiz = p.quiz || {};
+            p.quiz.picks = Array.isArray(p.quiz.picks) ? p.quiz.picks : [];
+            p.quiz.picks[qi] = i;
+          });
+          applyQuestion(q, item, i);
+          refresh();
+        });
+        choices.appendChild(btn);
+      });
+      item.appendChild(choices);
+
+      const explain = el("div", "qz-explain");
+      explain.hidden = true;
+      explain.setAttribute("aria-live", "polite");
+      explain.appendChild(el("p", "qz-answer-line"));
+      explain.appendChild(el("span", "qz-explain-label", ui.explainLabel));
+      explain.appendChild(el("p", "qz-explain-p"));
+      item.appendChild(explain);
+
+      wrap.appendChild(item);
+      nodes.set(q.id, item);
+      applyQuestion(q, item, quizState().picks[qi]);
+    });
+
+    wrap.appendChild(submitWrap);
+    app.appendChild(wrap);
+    refresh();
+
+    submitBtn.addEventListener("click", () => {
+      const st = quizState();
+      if (st.submitted || st.picks.filter((x) => x != null).length < questions.length) return;
+      const dims = {};
+      let score = 0;
+      questions.forEach((q, i) => {
+        const d = (dims[q.dim] = dims[q.dim] || { hit: 0, total: 0 });
+        d.total += 1;
+        if (st.picks[i] === q.answer) {
+          d.hit += 1;
+          score += 1;
+        }
+      });
+      updateProgress((p) => {
+        p.quiz = p.quiz || {};
+        p.quiz.picks = st.picks;
+        p.quiz.score = score;
+        p.quiz.dims = dims;
+      });
+      refresh();
+      resultNode.scrollIntoView({
+        behavior: reducedMotion.matches ? "auto" : "smooth",
+        block: "nearest",
+      });
+    });
+
+    window.addEventListener("storage", (e) => {
+      if (e.key !== PROGRESS_KEY) return;
+      const st = quizState();
+      questions.forEach((q, i) => applyQuestion(q, nodes.get(q.id), st.picks[i]));
+      refresh();
+    });
+  }
+
+  /* ---------- 研读画像（只读汇总） ---------- */
+
+  function renderProfile() {
+    const ui = data.profileUI;
+    app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
+    const wrap = el("div", "container pf-wrap");
+
+    function buildContent() {
+      const box = el("div", "pf-content");
+      const read = readIds();
+      const p = loadProgress();
+      const done =
+        p.decisions && Array.isArray(p.decisions.done) ? p.decisions.done : [];
+      const quiz = p.quiz && typeof p.quiz.score === "number" ? p.quiz : null;
+
+      const foot = el("section", "pf-section");
+      foot.appendChild(el("h2", "section-title", ui.footprintTitle));
+      const stats = el("div", "pf-stats");
+
+      const tlStat = el("div", "pf-stat");
+      tlStat.appendChild(el("p", "pf-stat-title", ui.timelineTitle));
+      tlStat.appendChild(
+        el("p", "pf-count", read.length + " / " + data.timeline.events.length)
+      );
+      const tlBar = el("div", "pf-bar");
+      const tlFill = el("span", "pf-bar-fill");
+      tlBar.appendChild(tlFill);
+      tlStat.appendChild(tlBar);
+      const tlLink = el("a", "pf-link", ui.timelineLink);
+      tlLink.href = "timeline.html";
+      tlStat.appendChild(tlLink);
+      stats.appendChild(tlStat);
+
+      const dcStat = el("div", "pf-stat");
+      dcStat.appendChild(el("p", "pf-stat-title", ui.decisionsTitle));
+      dcStat.appendChild(el("p", "pf-count", done.length + " / " + data.decisions.length));
+      const seals = el("div", "pf-seals");
+      data.decisions.forEach((sc) => {
+        const s = el("span", "pf-seal", sc.num);
+        if (done.includes(sc.id)) s.classList.add("is-done");
+        seals.appendChild(s);
+      });
+      dcStat.appendChild(seals);
+      const dcLink = el("a", "pf-link", ui.decisionsLink);
+      dcLink.href = "decisions.html";
+      dcStat.appendChild(dcLink);
+      stats.appendChild(dcStat);
+      foot.appendChild(stats);
+      box.appendChild(foot);
+
+      const qzSec = el("section", "pf-section");
+      const qzHead = el("div", "pf-head-row");
+      qzHead.appendChild(el("h2", "section-title", ui.quizTitle));
+      if (quiz) {
+        qzHead.appendChild(
+          el("span", "pf-score-line", ui.quizScoreLabel + " " + quiz.score + " / " + data.quiz.length)
+        );
+      }
+      qzSec.appendChild(qzHead);
+      if (quiz) {
+        const dims = el("div", "pf-dims");
+        ["timeline", "person", "institution"].forEach((d) => {
+          const v = (quiz.dims && quiz.dims[d]) || { hit: 0, total: 0 };
+          const rate = v.hit / (v.total || 1);
+          const row = el("div", "pf-dim-row");
+          row.appendChild(el("span", "pf-dim-name", data.dimLabels[d]));
+          row.appendChild(el("span", "pf-dim-frac", v.hit + " / " + v.total));
+          const b = el("div", "pf-bar");
+          const f = el("span", "pf-bar-fill");
+          b.appendChild(f);
+          row.appendChild(b);
+          row.appendChild(el("span", "pf-dim-pct", Math.round(rate * 100) + "%"));
+          dims.appendChild(row);
+          requestAnimationFrame(() => {
+            f.style.width = rate * 100 + "%";
+          });
+        });
+        qzSec.appendChild(dims);
+      } else {
+        const empty = el("div", "pf-empty");
+        empty.appendChild(el("p", "pf-empty-p", ui.quizEmpty));
+        const cta = el("a", "cta-button", ui.quizCta);
+        cta.href = "quiz.html";
+        empty.appendChild(cta);
+        qzSec.appendChild(empty);
+      }
+      box.appendChild(qzSec);
+
+      if (quiz) {
+        let weakest = null;
+        let weakestRate = Infinity;
+        ["timeline", "person", "institution"].forEach((d) => {
+          const v = (quiz.dims && quiz.dims[d]) || { hit: 0, total: 0 };
+          if (!v.total) return;
+          const rate = v.hit / v.total;
+          if (rate < weakestRate) {
+            weakestRate = rate;
+            weakest = d;
+          }
+        });
+        if (weakest) {
+          const rec = ui.recs[weakest];
+          const recSec = el("section", "pf-section");
+          recSec.appendChild(el("h2", "section-title", ui.recTitle));
+          const recBox = el("div", "pf-rec");
+          recBox.appendChild(el("p", "pf-rec-p", rec.text));
+          const links = el("div", "pf-rec-links");
+          rec.links.forEach((l) => {
+            const a = el("a", "cta-button cta-gold", l.label);
+            a.href = l.href;
+            links.appendChild(a);
+          });
+          recBox.appendChild(links);
+          recSec.appendChild(recBox);
+          box.appendChild(recSec);
+        }
+      }
+
+      box.appendChild(el("p", "pf-privacy", ui.privacy));
+      requestAnimationFrame(() => {
+        tlFill.style.width = (read.length / data.timeline.events.length) * 100 + "%";
+      });
+      return box;
+    }
+
+    wrap.appendChild(buildContent());
+    app.appendChild(wrap);
+
+    window.addEventListener("storage", (e) => {
+      if (e.key !== PROGRESS_KEY) return;
+      wrap.replaceChildren(buildContent());
+    });
+  }
+
   /* ---------- 占位模块页 ---------- */
 
   function renderPlaceholder() {
@@ -433,6 +1042,10 @@
   renderNav();
   if (page === "index") renderIndex();
   else if (page === "timeline") renderTimeline();
+  else if (page === "decision") renderDecisions();
+  else if (page === "cards") renderCards();
+  else if (page === "quiz") renderQuiz();
+  else if (page === "profile") renderProfile();
   else renderPlaceholder();
   app.appendChild(renderFooter());
 })();
