@@ -139,8 +139,6 @@
 
     let idx = 0;
     let timer = null;
-    let hovering = false;
-    let focused = false;
 
     const slideNodes = slides.map((s, i) => {
       const isPortrait = /02-taizu/.test(s.img);
@@ -224,8 +222,8 @@
 
     function start() {
       stop();
-      /* 自动切换不受 prefers-reduced-motion 限制，该设置只影响过渡动画 */
-      if (hovering || focused || document.hidden) return;
+      /* 自动切换不受 prefers-reduced-motion 限制，该设置只影响过渡动画；唯一暂停条件是标签页在后台 */
+      if (document.hidden) return;
       timer = setInterval(() => go(idx + 1), 6000);
     }
 
@@ -242,24 +240,6 @@
       restart();
     });
 
-    region.addEventListener("mouseenter", () => {
-      hovering = true;
-      stop();
-    });
-    region.addEventListener("mouseleave", () => {
-      hovering = false;
-      start();
-    });
-    region.addEventListener("focusin", () => {
-      focused = true;
-      stop();
-    });
-    region.addEventListener("focusout", (e) => {
-      if (!region.contains(e.relatedTarget)) {
-        focused = false;
-        start();
-      }
-    });
     document.addEventListener("visibilitychange", () => {
       document.hidden ? stop() : start();
     });
