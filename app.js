@@ -66,17 +66,22 @@
     const nav = el("header", "site-nav");
     const inner = el("div", "nav-inner");
 
-    const brand = el("a", "nav-brand", data.meta.title);
+    const brand = el("a", "nav-brand");
     brand.href = "index.html";
+    const brandParts = data.meta.title.split("·");
+    brand.appendChild(el("span", "nav-brand-a", brandParts[0]));
+    brand.appendChild(el("span", "nav-brand-dot", "·"));
+    brand.appendChild(el("span", "nav-brand-b", brandParts[1]));
     inner.appendChild(brand);
 
     const links = el("nav", "nav-links");
     links.setAttribute("aria-label", data.modulesLabel);
-    data.modules.forEach((m) => {
+    const navItems = [{ id: "index", page: "index.html", title: "首页" }].concat(data.modules);
+    navItems.forEach((m) => {
       const a = el("a", "nav-link");
       a.href = m.page;
       a.appendChild(el("span", "nav-full", m.title));
-      a.appendChild(el("span", "nav-short", m.short));
+      if (m.short) a.appendChild(el("span", "nav-short", m.short));
       if (m.id === page) {
         a.classList.add("is-current");
         a.setAttribute("aria-current", "page");
@@ -86,6 +91,17 @@
     inner.appendChild(links);
     nav.appendChild(inner);
     document.body.prepend(nav);
+
+    /* 移动端顶栏换行后高度不定，实测高度同步给 --nav-h，供正文偏移与吸顶组件使用 */
+    const syncNavHeight = () => {
+      document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px");
+    };
+    syncNavHeight();
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(syncNavHeight).observe(nav);
+    } else {
+      window.addEventListener("resize", syncNavHeight);
+    }
   }
 
   /* ---------- 窄幅页眉区 ---------- */
@@ -124,6 +140,7 @@
     let idx = 0;
     let timer = null;
     let hovering = false;
+    let focused = false;
 
     const slideNodes = slides.map((s, i) => {
       const isPortrait = /02-taizu/.test(s.img);
@@ -207,7 +224,8 @@
 
     function start() {
       stop();
-      if (reducedMotion.matches || hovering || document.hidden) return;
+      /* 自动切换不受 prefers-reduced-motion 限制，该设置只影响过渡动画 */
+      if (hovering || focused || document.hidden) return;
       timer = setInterval(() => go(idx + 1), 6000);
     }
 
@@ -233,12 +251,12 @@
       start();
     });
     region.addEventListener("focusin", () => {
-      hovering = true;
+      focused = true;
       stop();
     });
     region.addEventListener("focusout", (e) => {
       if (!region.contains(e.relatedTarget)) {
-        hovering = false;
+        focused = false;
         start();
       }
     });
