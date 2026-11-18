@@ -226,6 +226,11 @@ body {
 
 /* ---------- 首页全屏轮播 ---------- */
 
+/* 首页无页眉带：轮播紧贴导航下沿，高度只扣除导航 */
+body[data-page="index"] {
+  --head-h: 0px;
+}
+
 .carousel {
   position: relative;
   height: calc(100vh - var(--nav-h) - var(--head-h));

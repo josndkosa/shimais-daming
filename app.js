@@ -286,7 +286,6 @@
   /* ---------- 首页 ---------- */
 
   function renderIndex() {
-    app.appendChild(renderPageHead(data.meta.title, data.meta.subtitle));
     app.appendChild(buildCarousel());
 
     const question = el("section", "question-section container");
