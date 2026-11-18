@@ -8,6 +8,8 @@
   const app = document.getElementById("app");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const PROGRESS_KEY = "shimais-daming:progress:v1";
+  // 占位地址：上线前替换为真实 Render 服务地址（后端地址仅在此一处定义）
+  const CHAT_API_BASE = "https://shimais-daming-api.onrender.com";
 
   document.documentElement.lang = data.meta.lang;
   const currentModule =
@@ -59,6 +61,19 @@
       p.timeline = p.timeline || {};
       p.timeline.read = Array.isArray(p.timeline.read) ? p.timeline.read : [];
       if (!p.timeline.read.includes(id)) p.timeline.read.push(id);
+    });
+  }
+
+  function chatState() {
+    const p = loadProgress();
+    const c = p.chat && typeof p.chat === "object" ? p.chat : {};
+    return { started: !!c.started };
+  }
+
+  function markChatStarted() {
+    if (chatState().started) return;
+    updateProgress((p) => {
+      p.chat = { started: true };
     });
   }
 
@@ -578,6 +593,12 @@
   function renderCards() {
     const ui = data.cardsLabels;
     app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
+    const seen = loadProgress();
+    if (!(seen.cards && seen.cards.opened)) {
+      updateProgress((p) => {
+        p.cards = Object.assign({}, p.cards, { opened: true });
+      });
+    }
 
     const wrap = el("div", "container cw-wrap");
     const reveal = [];
@@ -927,6 +948,29 @@
       dcLink.href = "decisions.html";
       dcStat.appendChild(dcLink);
       stats.appendChild(dcStat);
+
+      const signals = {
+        timeline: read.length > 0,
+        decision: done.length > 0,
+        cards: !!(p.cards && p.cards.opened),
+        chat: !!(p.chat && p.chat.started),
+        quiz: !!quiz,
+        profile: true,
+      };
+      const startedModules = data.modules.filter((m) => signals[m.id]).length;
+      const mdStat = el("div", "pf-stat");
+      mdStat.appendChild(el("p", "pf-stat-title", ui.modulesTitle));
+      mdStat.appendChild(
+        el("p", "pf-count", startedModules + " / " + data.modules.length)
+      );
+      const mdBar = el("div", "pf-bar");
+      const mdFill = el("span", "pf-bar-fill");
+      mdBar.appendChild(mdFill);
+      mdStat.appendChild(mdBar);
+      const mdLink = el("a", "pf-link", ui.modulesLink);
+      mdLink.href = "chat.html";
+      mdStat.appendChild(mdLink);
+      stats.appendChild(mdStat);
       foot.appendChild(stats);
       box.appendChild(foot);
 
@@ -1001,6 +1045,7 @@
       box.appendChild(el("p", "pf-privacy", ui.privacy));
       requestAnimationFrame(() => {
         tlFill.style.width = (read.length / data.timeline.events.length) * 100 + "%";
+        mdFill.style.width = (startedModules / data.modules.length) * 100 + "%";
       });
       return box;
     }
@@ -1012,6 +1057,219 @@
       if (e.key !== PROGRESS_KEY) return;
       wrap.replaceChildren(buildContent());
     });
+  }
+
+  /* ---------- 人物对话 ---------- */
+
+  function renderChat() {
+    const ui = data.chatUI;
+    const figures = data.chatFigures;
+    app.appendChild(renderPageHead(ui.headTitle, ui.headHint));
+
+    // 预热请求：不阻塞渲染，失败静默
+    fetch(CHAT_API_BASE + "/api/health").catch(() => {});
+
+    const wrap = el("div", "container ct-wrap");
+    const sessions = {};
+    let current = figures[0].id;
+
+    const picker = el("div", "ct-picker");
+    picker.setAttribute("aria-label", ui.pickerLabel);
+    const pickerBtns = new Map();
+    figures.forEach((f) => {
+      const b = el("button", "ct-figure");
+      b.type = "button";
+      const img = el("img");
+      img.src = f.img;
+      img.alt = f.name;
+      img.loading = "lazy";
+      img.decoding = "async";
+      b.appendChild(img);
+      const meta = el("span", "ct-figure-meta");
+      meta.appendChild(el("span", "ct-figure-name", f.name));
+      meta.appendChild(el("span", "ct-figure-era", f.era));
+      b.appendChild(meta);
+      b.addEventListener("click", () => select(f.id));
+      picker.appendChild(b);
+      pickerBtns.set(f.id, b);
+    });
+    wrap.appendChild(picker);
+
+    const conv = el("section", "ct-conv");
+    const offlineNote = el("p", "ct-offline", ui.offline);
+    offlineNote.hidden = true;
+    conv.appendChild(offlineNote);
+
+    const chips = el("div", "ct-chips");
+    conv.appendChild(chips);
+
+    const flow = el("div", "ct-flow");
+    conv.appendChild(flow);
+
+    const inputArea = el("div", "ct-input");
+    const text = el("textarea", "ct-text");
+    text.rows = 2;
+    text.placeholder = ui.inputPlaceholder;
+    const sendBtn = el("button", "cta-button ct-send", ui.send);
+    sendBtn.type = "button";
+    inputArea.append(text, sendBtn);
+    conv.appendChild(inputArea);
+
+    const endArea = el("div", "ct-end");
+    endArea.hidden = true;
+    endArea.appendChild(el("p", "ct-end-text", ui.roundEnd));
+    const switchBtn = el("button", "cta-button ct-end-btn", ui.switchFigure);
+    switchBtn.type = "button";
+    const restartBtn = el("button", "cta-button cta-gold ct-end-btn", ui.restart);
+    restartBtn.type = "button";
+    endArea.append(switchBtn, restartBtn);
+    conv.appendChild(endArea);
+    wrap.appendChild(conv);
+    app.appendChild(wrap);
+
+    const disclaimer = el("p", "ct-disclaimer", ui.disclaimer);
+    document.body.appendChild(disclaimer);
+
+    function session() {
+      if (!sessions[current]) sessions[current] = { messages: [], offline: false };
+      return sessions[current];
+    }
+
+    function figure() {
+      return figures.find((f) => f.id === current);
+    }
+
+    function rounds() {
+      return session().messages.filter((m) => m.role === "user").length;
+    }
+
+    function messageNode(m) {
+      const box = el("div", "ct-msg " + (m.role === "user" ? "ct-user" : "ct-figure"));
+      box.appendChild(el("span", "ct-who", m.role === "user" ? ui.youLabel : figure().name));
+      box.appendChild(el("p", "ct-text", m.content));
+      if (m.note) box.appendChild(el("p", "ct-note", m.note));
+      return box;
+    }
+
+    function paintFlow() {
+      flow.replaceChildren();
+      session().messages.forEach((m) => flow.appendChild(messageNode(m)));
+    }
+
+    function paintChips() {
+      chips.replaceChildren();
+      chips.appendChild(el("span", "ct-chips-label", ui.askLabel));
+      figure().qas.forEach((qa) => {
+        const c = el("button", "ct-chip", qa.q);
+        c.type = "button";
+        c.addEventListener("click", () => send(qa.q));
+        chips.appendChild(c);
+      });
+    }
+
+    function refreshInput() {
+      const ended = rounds() >= ui.roundsMax;
+      inputArea.hidden = ended;
+      endArea.hidden = !ended;
+    }
+
+    function select(id) {
+      current = id;
+      pickerBtns.forEach((b, fid) => b.classList.toggle("is-current", fid === id));
+      offlineNote.hidden = !session().offline;
+      paintChips();
+      paintFlow();
+      refreshInput();
+      flow.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "nearest" });
+    }
+
+    function scriptReply(message) {
+      const f = figure();
+      const hit =
+        f.qas.find((qa) => qa.q === message) ||
+        f.qas.find((qa) => qa.keywords.some((k) => message.includes(k)));
+      return hit ? hit.a : f.fallback;
+    }
+
+    async function send(message) {
+      const msg = (message || "").trim();
+      if (!msg || rounds() >= ui.roundsMax) return;
+      const s = session();
+      const history = s.messages.slice(-ui.historyRounds * 2).map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+      s.messages.push({ role: "user", content: msg });
+      flow.appendChild(messageNode({ role: "user", content: msg }));
+      text.value = "";
+      refreshInput();
+
+      const pending = el("div", "ct-msg ct-figure ct-pending");
+      pending.appendChild(el("span", "ct-who", figure().name));
+      pending.appendChild(el("p", "ct-text", ui.thinking));
+      const cold = el("p", "ct-cold", ui.coldStart);
+      cold.hidden = true;
+      pending.appendChild(cold);
+      flow.appendChild(pending);
+      flow.scrollTop = flow.scrollHeight;
+      const coldTimer = setTimeout(() => {
+        cold.hidden = false;
+      }, ui.coldHintMs);
+
+      let reply = null;
+      let note = null;
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), ui.timeoutMs);
+      try {
+        const resp = await fetch(CHAT_API_BASE + "/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ figure: current, history, message: msg }),
+          signal: ctrl.signal,
+        });
+        if (!resp.ok) throw new Error("status " + resp.status);
+        const body = await resp.json();
+        reply = body.reply;
+        note = body.note || null;
+        s.offline = false;
+        offlineNote.hidden = true;
+      } catch {
+        s.offline = true;
+        offlineNote.hidden = false;
+        reply = scriptReply(msg);
+        note = null;
+      } finally {
+        clearTimeout(timer);
+        clearTimeout(coldTimer);
+        pending.remove();
+      }
+
+      s.messages.push({ role: "assistant", content: reply, note });
+      flow.appendChild(messageNode({ role: "assistant", content: reply, note }));
+      markChatStarted();
+      refreshInput();
+      flow.scrollTop = flow.scrollHeight;
+    }
+
+    sendBtn.addEventListener("click", () => send(text.value));
+    text.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        send(text.value);
+      }
+    });
+    switchBtn.addEventListener("click", () => {
+      picker.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
+    });
+    restartBtn.addEventListener("click", () => {
+      const s = session();
+      s.messages = [];
+      paintFlow();
+      refreshInput();
+      text.focus();
+    });
+
+    select(current);
   }
 
   /* ---------- 帝王首辅关系全图 ---------- */
@@ -1193,6 +1451,7 @@
   else if (page === "quiz") renderQuiz();
   else if (page === "profile") renderProfile();
   else if (page === "relations") renderRelations();
+  else if (page === "chat") renderChat();
   else renderPlaceholder();
   app.appendChild(renderFooter());
 })();
