@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Literal
 
 import httpx
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -16,6 +17,8 @@ from pydantic import BaseModel
 import retriever
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
+# 本地密钥放 backend/.env（已 gitignore）；已有环境变量（如 Render）优先，不被覆盖
+load_dotenv(Path(__file__).resolve().parent / ".env")
 PERSONAS = json.loads((DATA_DIR / "personas.json").read_text(encoding="utf-8"))
 
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"

@@ -24,15 +24,17 @@ backend/
 
 ## 本地运行
 
+密钥二选一：① 复制 `.env.example` 为 `.env`，在 `DEEPSEEK_API_KEY=` 后填真实密钥（`.env` 已 gitignore，启动自动读取）；② 设环境变量 `DEEPSEEK_API_KEY`（优先级高于 .env，Render 用这种）。
+
 ```bash
 cd backend
 python -m venv .venv && source .venv/Scripts/activate   # Windows；Linux/macOS 用 .venv/bin/activate
 pip install -r requirements.txt
-export DEEPSEEK_API_KEY=你的密钥                          # Windows PowerShell: $env:DEEPSEEK_API_KEY="…"
 uvicorn main:app --host 127.0.0.1 --port 8000
+# 或直接 python main.py（含 __main__ 入口）；PyCharm 可用 .idea 里的 backend 运行配置
 ```
 
-密钥只从环境变量 `DEEPSEEK_API_KEY` 读取，代码与仓库中不含任何密钥。
+密钥只从环境变量或 backend/.env 读取，代码与仓库中不含任何密钥。
 
 ## Render 部署（免费版）
 
