@@ -305,18 +305,16 @@
     head.appendChild(el("p", "section-hint", data.modulesHint));
     entries.appendChild(head);
 
-    const grid = el("div", "entry-grid");
-    data.modules.forEach((m) => {
+    const list = el("div", "entry-list");
+    data.modules.forEach((m, i) => {
       const a = el("a", "entry-block");
       a.href = m.page;
-      a.appendChild(el("span", "entry-index", m.index));
+      a.appendChild(el("span", "entry-index", String(i + 1).padStart(2, "0")));
       a.appendChild(el("h3", "entry-title", m.title));
-      a.appendChild(el("p", "entry-tagline", m.tagline));
       a.appendChild(el("p", "entry-desc", m.desc));
-      a.appendChild(el("span", "entry-arrow", "→"));
-      grid.appendChild(a);
+      list.appendChild(a);
     });
-    entries.appendChild(grid);
+    entries.appendChild(list);
     app.appendChild(entries);
   }
 
@@ -593,35 +591,22 @@
         "cw-grid " + (g.kind === "person" ? "cw-people" : "cw-institutions")
       );
       list.forEach((c, i) => {
-        const backdrop = c.mode === "backdrop";
         const card = el(
           "article",
-          "cw-card " +
-            (g.kind === "person" ? "cw-person" : "cw-inst") +
-            (backdrop ? " cw-backdrop" : "")
+          "cw-card " + (g.kind === "person" ? "cw-person" : "cw-inst")
         );
         card.style.setProperty("--d", (i % 3) * 70 + "ms");
 
-        if (g.kind === "person" && !backdrop) {
-          const portrait = el("div", "cw-portrait");
-          const frame = el("div", "cw-frame");
+        if (g.kind === "person") {
+          const photo = el("figure", "cw-photo");
           const img = el("img");
           img.src = c.img;
-          img.alt = c.name + "画像";
+          img.alt = c.mode === "backdrop" ? c.note : c.name + "画像";
           img.loading = "lazy";
           img.decoding = "async";
-          frame.appendChild(img);
-          portrait.appendChild(frame);
-          card.appendChild(portrait);
-        }
-        if (backdrop) {
-          const bg = el("img", "cw-bg");
-          bg.src = c.img;
-          bg.alt = "";
-          bg.loading = "lazy";
-          bg.decoding = "async";
-          bg.setAttribute("aria-hidden", "true");
-          card.append(bg, el("div", "cw-scrim"));
+          photo.appendChild(img);
+          if (c.note) photo.appendChild(el("figcaption", "cw-note", c.note));
+          card.appendChild(photo);
         }
 
         const body = el("div", "cw-body");
@@ -633,7 +618,6 @@
         body.appendChild(headRow);
         if (c.sub) body.appendChild(el("p", "cw-sub", c.sub));
         body.appendChild(el("p", "cw-position", c.position));
-        if (c.note) body.appendChild(el("p", "cw-note", c.note));
 
         const facts = el("div", "cw-facts");
         facts.appendChild(el("p", "cw-facts-label", ui.factsLabel));
