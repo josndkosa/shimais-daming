@@ -10,7 +10,9 @@
   const PROGRESS_KEY = "shimais-daming:progress:v1";
 
   document.documentElement.lang = data.meta.lang;
-  const currentModule = data.modules.find((m) => m.id === page);
+  const currentModule =
+    data.modules.find((m) => m.id === page) ||
+    (page === "relations" ? { title: data.relationsUI.headTitle } : null);
   document.title = currentModule
     ? currentModule.title + " · " + data.meta.title
     : data.meta.title;
@@ -76,7 +78,13 @@
 
     const links = el("nav", "nav-links");
     links.setAttribute("aria-label", data.modulesLabel);
-    const navItems = [{ id: "index", page: "index.html", title: "首页" }].concat(data.modules);
+    const navItems = [{ id: "index", page: "index.html", title: "首页" }];
+    data.modules.forEach((m) => {
+      navItems.push(m);
+      if (m.id === "timeline") {
+        navItems.push({ id: "relations", page: "relations.html", title: data.relationsUI.navTitle });
+      }
+    });
     navItems.forEach((m) => {
       const a = el("a", "nav-link");
       a.href = m.page;
@@ -1006,6 +1014,163 @@
     });
   }
 
+  /* ---------- 帝王首辅关系全图 ---------- */
+
+  function renderRelations() {
+    const ui = data.relationsUI;
+    const rl = data.relations;
+    app.appendChild(renderPageHead(ui.headTitle, ui.headHint));
+
+    const wrap = el("div", "container rl-wrap");
+    const span = ui.axisEnd - ui.axisStart;
+    const pct = (y) => ((y - ui.axisStart) / span) * 100;
+
+    const legend = el("div", "rl-legend");
+    ui.legend.forEach((g) => {
+      const item = el("span", "rl-legend-item");
+      item.appendChild(el("span", "rl-swatch rl-swatch-" + g.kind));
+      item.appendChild(el("span", "rl-legend-label", g.label));
+      legend.appendChild(item);
+    });
+    legend.appendChild(el("p", "rl-legend-note", ui.legendNote));
+    wrap.appendChild(legend);
+
+    const ticks = [];
+    for (let y = ui.axisStart; y <= ui.axisEnd; y += ui.axisStep) ticks.push(y);
+    if (ticks[ticks.length - 1] !== ui.axisEnd) ticks.push(ui.axisEnd);
+
+    const overlay = el("div", "rl-overlay");
+    overlay.hidden = true;
+    const dialog = el("div", "rl-card");
+    dialog.setAttribute("role", "dialog");
+    dialog.setAttribute("aria-modal", "true");
+    const closeBtn = el("button", "rl-close", ui.close);
+    closeBtn.type = "button";
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    let lastBar = null;
+
+    function closeCard() {
+      overlay.hidden = true;
+      if (lastBar) lastBar.focus();
+    }
+    closeBtn.addEventListener("click", closeCard);
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) closeCard();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !overlay.hidden) closeCard();
+    });
+
+    function openCard(kind, p, bar) {
+      lastBar = bar;
+      dialog.replaceChildren(closeBtn);
+      dialog.appendChild(el("h3", "rl-card-name", p.name));
+      const rows = [];
+      if (kind === "emperor") {
+        rows.push([ui.cardLabels.identity, p.era]);
+        rows.push([ui.cardLabels.tenure, p.from + "–" + p.to]);
+        rows.push([ui.cardLabels.reign, p.from + "–" + p.to + (p.note ? " · " + p.note : "")]);
+      } else {
+        rows.push([ui.cardLabels.identity, kind === "chief" ? ui.chiefIdentity : p.office]);
+        rows.push([ui.cardLabels.tenure, p.segments.map((s) => s[0] + "–" + s[1]).join("、")]);
+        rows.push([ui.cardLabels.lord, p.lord]);
+        rows.push([ui.cardLabels.tag, p.tag]);
+        rows.push([ui.cardLabels.end, p.end]);
+        rows.push([ui.cardLabels.note, p.note]);
+      }
+      rows.forEach(([label, value]) => {
+        const row = el("div", "rl-card-row");
+        row.appendChild(el("span", "rl-card-label", label));
+        row.appendChild(el("span", "rl-card-value", value));
+        dialog.appendChild(row);
+      });
+      overlay.hidden = false;
+      closeBtn.focus();
+    }
+
+    const scroll = el("div", "rl-scroll");
+    const chart = el("div", "rl-chart");
+
+    const axis = el("div", "rl-axis");
+    axis.appendChild(el("span", "rl-name-cell rl-axis-name", ui.axisName));
+    const axisTrack = el("div", "rl-track");
+    ticks.forEach((y, i) => {
+      const t = el("span", "rl-tick", String(y));
+      if (i === 0) t.classList.add("is-first");
+      if (i === ticks.length - 1) t.classList.add("is-last");
+      t.style.left = pct(y) + "%";
+      axisTrack.appendChild(t);
+    });
+    axis.appendChild(axisTrack);
+    chart.appendChild(axis);
+
+    const lanes = el("div", "rl-lanes");
+    const grid = el("div", "rl-grid");
+    ticks.forEach((y) => {
+      const g = el("span", "rl-gridline");
+      g.style.left = pct(y) + "%";
+      grid.appendChild(g);
+    });
+    lanes.appendChild(grid);
+
+    [
+      { kind: "emperor", people: rl.emperors },
+      { kind: "chief", people: rl.chiefs },
+      { kind: "guest", people: rl.guests },
+    ].forEach((lane) => {
+      const section = el("section", "rl-lane rl-lane-" + lane.kind);
+      const head = el("div", "rl-lane-head");
+      head.appendChild(el("span", "rl-name-cell rl-lane-title", ui.lanes[lane.kind]));
+      const headTrack = el("div", "rl-track");
+      headTrack.appendChild(
+        el("span", "rl-lane-count", lane.people.length + " " + ui.laneUnits[lane.kind])
+      );
+      head.appendChild(headTrack);
+      section.appendChild(head);
+
+      lane.people.forEach((p) => {
+        const row = el("div", "rl-row");
+        row.appendChild(el("span", "rl-name-cell rl-person", p.name));
+        const track = el("div", "rl-track");
+        const segs = lane.kind === "emperor" ? [[p.from, p.to]] : p.segments;
+        segs.forEach((s, si) => {
+          const bar = el("button", "rl-bar rl-bar-" + lane.kind);
+          bar.type = "button";
+          const left = pct(s[0]);
+          bar.style.left = left + "%";
+          bar.style.width = Math.max(pct(s[1]) - left, 0.45) + "%";
+          bar.setAttribute("aria-label", p.name + " " + s[0] + "–" + s[1]);
+          if (s[1] - s[0] >= 18) {
+            bar.classList.add("is-wide");
+            bar.appendChild(el("span", "rl-bar-label", p.name));
+          } else if (si === segs.length - 1) {
+            bar.appendChild(el("span", "rl-bar-label is-out", p.name));
+          }
+          bar.addEventListener("click", () => openCard(lane.kind, p, bar));
+          track.appendChild(bar);
+        });
+        row.appendChild(track);
+        section.appendChild(row);
+      });
+
+      if (lane.kind === "chief") {
+        const gap = el("div", "rl-gap");
+        gap.style.left = "var(--rl-name-w)";
+        gap.style.width =
+          "calc((100% - var(--rl-name-w)) * " + (ui.gapTo - ui.gapFrom) / span + ")";
+        gap.appendChild(el("span", "rl-gap-text", ui.gapNote));
+        section.appendChild(gap);
+      }
+      lanes.appendChild(section);
+    });
+
+    chart.appendChild(lanes);
+    scroll.appendChild(chart);
+    wrap.appendChild(scroll);
+    app.appendChild(wrap);
+  }
+
   /* ---------- 占位模块页 ---------- */
 
   function renderPlaceholder() {
@@ -1027,6 +1192,7 @@
   else if (page === "cards") renderCards();
   else if (page === "quiz") renderQuiz();
   else if (page === "profile") renderProfile();
+  else if (page === "relations") renderRelations();
   else renderPlaceholder();
   app.appendChild(renderFooter());
 })();
