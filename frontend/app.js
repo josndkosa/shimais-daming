@@ -578,13 +578,289 @@
       applyState(sc, article);
     });
 
+    /* ---------- 亲历 · 长剧本（决策模式内部，不计入画像六模块） ---------- */
+
+    const qu = data.qinliUI;
+    const stories = data.qinli;
+    const clampStat = (v) => Math.max(0, Math.min(100, v));
+    const signed = (v) => (v > 0 ? "+" + v : String(v));
+
+    function qinliState() {
+      const p = loadProgress();
+      const q = p.qinli && typeof p.qinli === "object" ? p.qinli : {};
+      return {
+        done: Array.isArray(q.done) ? q.done : [],
+        current: q.current && typeof q.current === "object" ? q.current : null,
+      };
+    }
+
+    function saveCurrent(cur) {
+      updateProgress((p) => {
+        p.qinli = p.qinli && typeof p.qinli === "object" ? p.qinli : {};
+        p.qinli.done = Array.isArray(p.qinli.done) ? p.qinli.done : [];
+        p.qinli.current = cur;
+      });
+    }
+
+    function finishStory(id) {
+      updateProgress((p) => {
+        p.qinli = p.qinli && typeof p.qinli === "object" ? p.qinli : {};
+        p.qinli.done = Array.isArray(p.qinli.done) ? p.qinli.done : [];
+        if (!p.qinli.done.includes(id)) p.qinli.done.push(id);
+        p.qinli.current = null;
+      });
+    }
+
+    const qsec = el("section", "ql-section");
+    const qhead = el("div", "section-head");
+    qhead.appendChild(el("h2", "section-title", qu.sectionTitle));
+    qhead.appendChild(el("p", "section-hint", qu.sectionHint));
+    qsec.appendChild(qhead);
+
+    const cards = el("div", "ql-cards");
+    const cardNodes = new Map();
+    const play = el("div", "ql-play");
+    play.hidden = true;
+    let run = null;
+
+    const stats = el("div", "ql-stats");
+    const statRows = {};
+    ["prestige", "morale"].forEach((k) => {
+      const row = el("div", "ql-stat-row");
+      row.appendChild(el("span", "ql-stat-label", qu[k]));
+      const bar = el("div", "ql-bar");
+      const fill = el("span", "ql-bar-fill");
+      bar.appendChild(fill);
+      row.appendChild(bar);
+      const val = el("span", "ql-stat-val", "50");
+      row.appendChild(val);
+      stats.appendChild(row);
+      statRows[k] = { fill, val };
+    });
+    play.appendChild(stats);
+    const headBox = el("div", "ql-head-box");
+    play.appendChild(headBox);
+    const stage = el("div", "ql-stage");
+    play.appendChild(stage);
+
+    function paintStats() {
+      ["prestige", "morale"].forEach((k) => {
+        statRows[k].fill.style.width = run[k] + "%";
+        statRows[k].val.textContent = String(run[k]);
+      });
+    }
+
+    function paintCards() {
+      const st = qinliState();
+      stories.forEach((s) => {
+        const node = cardNodes.get(s.id);
+        const done = st.done.includes(s.id);
+        node.classList.toggle("is-done", done);
+        node.querySelector(".ql-done").hidden = !done;
+        if (s.playable) {
+          node.querySelector(".ql-play-btn").textContent =
+            st.current && st.current.storyId === s.id ? qu.resume : qu.play;
+        }
+      });
+    }
+
+    function storyHead(s) {
+      const head = el("div", "ql-story-head");
+      head.appendChild(el("h3", "ql-story-title", s.title));
+      const role = el("p", "ql-story-role");
+      role.appendChild(el("span", "ql-mini-label", qu.roleLabel));
+      role.appendChild(el("span", "ql-story-role-text", s.roleText));
+      head.appendChild(role);
+      const opening = el("p", "ql-story-opening");
+      opening.appendChild(el("span", "ql-mini-label", qu.openingLabel));
+      opening.appendChild(el("span", "ql-story-opening-text", s.opening));
+      head.appendChild(opening);
+      return head;
+    }
+
+    function showEnding(eid) {
+      const e = run.story.endings.find((x) => x.id === eid);
+      stage.replaceChildren();
+      const box = el("div", "ql-ending");
+      box.appendChild(el("h4", "ql-ending-title", e.title));
+      box.appendChild(el("p", "ql-ending-text", e.text));
+      const cl = el("div", "ql-closure");
+      cl.appendChild(el("h5", "ql-block-title", qu.closure));
+      cl.appendChild(el("p", "ql-closure-p", e.closure));
+      box.appendChild(cl);
+      const btns = el("div", "ql-ending-btns");
+      const again = el("button", "cta-button ql-again", qu.restart);
+      again.type = "button";
+      again.addEventListener("click", () => {
+        run = { story: run.story, index: 0, prestige: 50, morale: 50 };
+        saveCurrent({ storyId: run.story.id, sceneIndex: 0, prestige: 50, morale: 50 });
+        paintStats();
+        paintScene();
+        paintCards();
+        play.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
+      });
+      const toChat = el("a", "cta-button cta-gold ql-tochat", qu.toChat);
+      toChat.href = "chat.html?figure=yuqian";
+      btns.append(again, toChat);
+      box.appendChild(btns);
+      stage.appendChild(box);
+      box.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "nearest" });
+    }
+
+    function pick(sc, c, box, btn) {
+      if (box.dataset.locked) return;
+      box.dataset.locked = "1";
+      box.querySelectorAll(".ql-choice").forEach((b) => {
+        b.disabled = true;
+        b.classList.toggle("is-picked", b === btn);
+        b.classList.toggle("is-dim", b !== btn);
+      });
+      const result = box.querySelector(".ql-result");
+      result.hidden = false;
+      result.querySelector(".ql-cons-p").textContent = c.consequence;
+      result.querySelector(".ql-hist-p").textContent = c.history;
+      const delta = result.querySelector(".ql-delta");
+      const next = result.querySelector(".ql-next");
+      if (c.ending) {
+        delta.hidden = true;
+        next.hidden = true;
+        finishStory(run.story.id);
+        paintCards();
+        showEnding(c.ending);
+        return;
+      }
+      run.prestige = clampStat(run.prestige + c.effect.prestige);
+      run.morale = clampStat(run.morale + c.effect.morale);
+      delta.hidden = false;
+      delta.textContent =
+        qu.prestige + " " + signed(c.effect.prestige) + "，" + qu.morale + " " + signed(c.effect.morale);
+      paintStats();
+      saveCurrent({
+        storyId: run.story.id,
+        sceneIndex: run.index + 1,
+        prestige: run.prestige,
+        morale: run.morale,
+      });
+      const last = run.index >= run.story.scenes.length - 1;
+      next.hidden = false;
+      next.textContent = last ? qu.finish : qu.next;
+      next.onclick = () => {
+        if (last) {
+          const eid = run.prestige >= 75 && run.morale >= 75 ? "hero" : "plain";
+          finishStory(run.story.id);
+          paintCards();
+          showEnding(eid);
+        } else {
+          run.index += 1;
+          paintScene();
+          stage.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
+        }
+      };
+      result.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "nearest" });
+    }
+
+    function paintScene() {
+      stage.replaceChildren();
+      const sc = run.story.scenes[run.index];
+      const box = el("div", "ql-scene");
+      box.appendChild(el("h4", "ql-scene-label", sc.label));
+      box.appendChild(el("p", "ql-bg", sc.background));
+      const choices = el("div", "ql-choices");
+      sc.choices.forEach((c) => {
+        const btn = el("button", "ql-choice");
+        btn.type = "button";
+        btn.appendChild(el("span", "ql-key", c.key));
+        btn.appendChild(el("span", "ql-choice-text", c.text));
+        btn.addEventListener("click", () => pick(sc, c, box, btn));
+        choices.appendChild(btn);
+      });
+      box.appendChild(choices);
+      const result = el("div", "ql-result");
+      result.hidden = true;
+      result.setAttribute("aria-live", "polite");
+      const cons = el("div", "ql-block");
+      cons.appendChild(el("h5", "ql-block-title", qu.consequence));
+      cons.appendChild(el("p", "ql-cons-p"));
+      const hist = el("div", "ql-block");
+      hist.appendChild(el("h5", "ql-block-title", qu.history));
+      hist.appendChild(el("p", "ql-hist-p"));
+      const delta = el("p", "ql-delta");
+      delta.hidden = true;
+      const next = el("button", "cta-button ql-next", qu.next);
+      next.type = "button";
+      next.hidden = true;
+      result.append(cons, hist, delta, next);
+      box.appendChild(result);
+      stage.appendChild(box);
+    }
+
+    function enter(s, scroll) {
+      const st = qinliState();
+      if (st.current && st.current.storyId === s.id) {
+        run = {
+          story: s,
+          index: Math.min(st.current.sceneIndex || 0, s.scenes.length - 1),
+          prestige: clampStat(typeof st.current.prestige === "number" ? st.current.prestige : 50),
+          morale: clampStat(typeof st.current.morale === "number" ? st.current.morale : 50),
+        };
+      } else {
+        run = { story: s, index: 0, prestige: 50, morale: 50 };
+        saveCurrent({ storyId: s.id, sceneIndex: 0, prestige: 50, morale: 50 });
+      }
+      play.hidden = false;
+      headBox.replaceChildren(storyHead(s));
+      paintStats();
+      paintScene();
+      paintCards();
+      if (scroll !== false) {
+        play.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
+      }
+    }
+
+    stories.forEach((s) => {
+      const card = el("article", "ql-card" + (s.playable ? "" : " is-locked"));
+      card.appendChild(el("span", "ql-year", String(s.year)));
+      card.appendChild(el("h3", "ql-title", s.title));
+      card.appendChild(el("p", "ql-role", s.role));
+      const theme = el("p", "ql-theme", s.theme);
+      if (!s.playable) theme.hidden = true;
+      card.appendChild(theme);
+      const done = el("span", "ql-done", qu.doneBadge);
+      done.hidden = true;
+      card.appendChild(done);
+      const btn = el("button", "ql-play-btn", s.playable ? qu.play : qu.comingSoon);
+      btn.type = "button";
+      btn.addEventListener("click", () => {
+        if (s.playable) enter(s);
+        else theme.hidden = !theme.hidden;
+      });
+      card.appendChild(btn);
+      cards.appendChild(card);
+      cardNodes.set(s.id, card);
+    });
+    qsec.appendChild(cards);
+    qsec.appendChild(play);
+    wrap.appendChild(qsec);
+    paintCards();
+    const resumeStory = stories.find(
+      (s) => s.playable && qinliState().current && qinliState().current.storyId === s.id
+    );
+    if (resumeStory) enter(resumeStory, false);
+
+    const placeStats = () => {
+      stats.style.top = "calc(var(--nav-h) + " + strip.offsetHeight + "px)";
+    };
+    window.addEventListener("resize", placeStats);
+
     app.appendChild(wrap);
     refreshStrip();
+    placeStats();
 
     window.addEventListener("storage", (e) => {
       if (e.key !== PROGRESS_KEY) return;
       scenarios.forEach((sc) => applyState(sc, nodes.get(sc.id)));
       refreshStrip();
+      paintCards();
     });
   }
 
@@ -1072,6 +1348,8 @@
     const wrap = el("div", "container ct-wrap");
     const sessions = {};
     let current = figures[0].id;
+    const wanted = new URLSearchParams(window.location.search).get("figure");
+    if (wanted && figures.some((f) => f.id === wanted)) current = wanted;
 
     const picker = el("div", "ct-picker");
     picker.setAttribute("aria-label", ui.pickerLabel);
