@@ -378,6 +378,9 @@
       const lords = data.relations.emperors
         .filter((p) => p.from <= y && y <= p.to)
         .sort((a, b) => a.from - b.from);
+      // 年号唯一命中 reign 者优先（1457 天顺元年→英宗）；零或多命中仍取 from 最早
+      const eraHits = lords.filter((p) => p.era && ev.reign.includes(p.era));
+      const lord = eraHits.length === 1 ? eraHits[0] : lords[0];
       let chief = "内阁未设";
       if (y >= 1402) {
         const covers = [];
@@ -389,7 +392,7 @@
         covers.sort((a, b) => a[0] - b[0]);
         chief = covers.length ? covers[0][1] : "—";
       }
-      return ev.reign + " · 在位：" + (lords.length ? lords[0].name : "—") + " · 首辅：" + chief;
+      return ev.reign + " · 在位：" + (lords.length ? lord.name : "—") + " · 首辅：" + chief;
     }
     function setContext(ev) {
       ctxLine.textContent = contextFor(ev);
