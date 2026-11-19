@@ -998,6 +998,9 @@ const SITE_DATA = {
   ],
 
   qinliUI: {
+    navTitle: "亲历",
+    entryText: "亲历 · 长剧本——选一个身份，活过一段大明。",
+    entryLink: "进入亲历 →",
     sectionTitle: "亲历 · 长剧本",
     sectionHint: "记住历史最好的方式，是亲身经历一遍历史——选一个身份，活过一段大明。",
     comingSoon: "剧本撰写中，敬请期待",
@@ -1024,6 +1027,14 @@ const SITE_DATA = {
       title: "洪武十三年 · 诏狱",
       role: "刚入仕的年轻御史",
       theme: "废相与恐惧，活下去和站直了，选一个。",
+      playable: false,
+    },
+    {
+      id: "q1402",
+      year: 1402,
+      title: "建文四年 · 金陵",
+      role: "翰林编修 · 方孝孺门生",
+      theme: "城破之日，忠义与活路只能选一条——洪武分封埋下的雷，在这一年爆了。",
       playable: false,
     },
     {

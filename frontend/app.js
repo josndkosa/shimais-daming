@@ -14,7 +14,8 @@
   document.documentElement.lang = data.meta.lang;
   const currentModule =
     data.modules.find((m) => m.id === page) ||
-    (page === "relations" ? { title: data.relationsUI.headTitle } : null);
+    (page === "relations" ? { title: data.relationsUI.headTitle } : null) ||
+    (page === "qinli" ? { title: data.qinliUI.sectionTitle } : null);
   document.title = currentModule
     ? currentModule.title + " · " + data.meta.title
     : data.meta.title;
@@ -98,6 +99,9 @@
       navItems.push(m);
       if (m.id === "timeline") {
         navItems.push({ id: "relations", page: "relations.html", title: data.relationsUI.navTitle });
+      }
+      if (m.id === "decision") {
+        navItems.push({ id: "qinli", page: "qinli.html", title: data.qinliUI.navTitle });
       }
     });
     navItems.forEach((m) => {
@@ -578,10 +582,30 @@
       applyState(sc, article);
     });
 
-    /* ---------- 亲历 · 长剧本（决策模式内部，不计入画像六模块） ---------- */
+    const entry = el("div", "ql-entry");
+    entry.appendChild(el("p", "ql-entry-text", data.qinliUI.entryText));
+    const entryLink = el("a", "ql-entry-link", data.qinliUI.entryLink);
+    entryLink.href = "qinli.html";
+    entry.appendChild(entryLink);
+    wrap.appendChild(entry);
 
+    app.appendChild(wrap);
+    refreshStrip();
+
+    window.addEventListener("storage", (e) => {
+      if (e.key !== PROGRESS_KEY) return;
+      scenarios.forEach((sc) => applyState(sc, nodes.get(sc.id)));
+      refreshStrip();
+    });
+  }
+
+  /* ---------- 亲历 · 长剧本（独立页） ---------- */
+
+  function renderQinli() {
     const qu = data.qinliUI;
     const stories = data.qinli;
+    app.appendChild(renderPageHead(qu.sectionTitle, qu.sectionHint));
+    const wrap = el("div", "container ql-wrap");
     const clampStat = (v) => Math.max(0, Math.min(100, v));
     const signed = (v) => (v > 0 ? "+" + v : String(v));
 
@@ -610,12 +634,6 @@
         p.qinli.current = null;
       });
     }
-
-    const qsec = el("section", "ql-section");
-    const qhead = el("div", "section-head");
-    qhead.appendChild(el("h2", "section-title", qu.sectionTitle));
-    qhead.appendChild(el("p", "section-hint", qu.sectionHint));
-    qsec.appendChild(qhead);
 
     const cards = el("div", "ql-cards");
     const cardNodes = new Map();
@@ -838,33 +856,20 @@
       cards.appendChild(card);
       cardNodes.set(s.id, card);
     });
-    qsec.appendChild(cards);
-    qsec.appendChild(play);
-    wrap.appendChild(qsec);
+    wrap.appendChild(cards);
+    wrap.appendChild(play);
+    app.appendChild(wrap);
     paintCards();
     const resumeStory = stories.find(
       (s) => s.playable && qinliState().current && qinliState().current.storyId === s.id
     );
     if (resumeStory) enter(resumeStory, false);
 
-    const placeStats = () => {
-      stats.style.top = "calc(var(--nav-h) + " + strip.offsetHeight + "px)";
-    };
-    window.addEventListener("resize", placeStats);
-
-    app.appendChild(wrap);
-    refreshStrip();
-    placeStats();
-
     window.addEventListener("storage", (e) => {
       if (e.key !== PROGRESS_KEY) return;
-      scenarios.forEach((sc) => applyState(sc, nodes.get(sc.id)));
-      refreshStrip();
       paintCards();
     });
-  }
-
-  /* ---------- 卡片墙 ---------- */
+  }  /* ---------- 卡片墙 ---------- */
 
   function renderCards() {
     const ui = data.cardsLabels;
@@ -1730,6 +1735,7 @@
   else if (page === "profile") renderProfile();
   else if (page === "relations") renderRelations();
   else if (page === "chat") renderChat();
+  else if (page === "qinli") renderQinli();
   else renderPlaceholder();
   app.appendChild(renderFooter());
 })();
