@@ -9,7 +9,7 @@
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const PROGRESS_KEY = "shimais-daming:progress:v1";
   // 占位地址：上线前替换为真实 Render 服务地址（后端地址仅在此一处定义）
-  const CHAT_API_BASE = "https://shimais-daming-api.onrender.com";
+  const CHAT_API_BASE = "http://localhost:8000";
 
   document.documentElement.lang = data.meta.lang;
   const currentModule =
