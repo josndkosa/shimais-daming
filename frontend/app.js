@@ -615,6 +615,9 @@
       const m = run.morale;
       if (run.story.id === "q1402") return p >= 75 ? "martyr" : m >= 70 ? "exile" : "new";
       if (run.story.id === "q1380") return p <= 25 || (run.sixC && p < 40) ? "purge" : m >= 75 ? "qingming" : "survive";
+      if (run.story.id === "q1548") return m >= 75 ? "wanren" : p >= 75 ? "yupai" : "chenmo";
+      if (run.story.id === "q1581") return m <= 25 ? "minren" : m >= 75 ? "qingtian" : p >= 75 ? "nengli" : "pingchang";
+      if (run.story.id === "q1644") return p >= 70 ? "nandu" : m >= 70 ? "xingcun" : "wuming";
       return p >= 75 && m >= 75 ? "hero" : "plain";
     }
 
