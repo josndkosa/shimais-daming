@@ -608,6 +608,15 @@
     const wrap = el("div", "container ql-wrap");
     const clampStat = (v) => Math.max(0, Math.min(100, v));
     const signed = (v) => (v > 0 ? "+" + v : String(v));
+    const ml = (k) => (run && run.story.meterLabels && run.story.meterLabels[k]) || qu[k];
+
+    function judgeEnding() {
+      const p = run.prestige;
+      const m = run.morale;
+      if (run.story.id === "q1402") return p >= 75 ? "martyr" : m >= 70 ? "exile" : "new";
+      if (run.story.id === "q1380") return p <= 25 || (run.sixC && p < 40) ? "purge" : m >= 75 ? "qingming" : "survive";
+      return p >= 75 && m >= 75 ? "hero" : "plain";
+    }
 
     function qinliState() {
       const p = loadProgress();
@@ -645,7 +654,8 @@
     const statRows = {};
     ["prestige", "morale"].forEach((k) => {
       const row = el("div", "ql-stat-row");
-      row.appendChild(el("span", "ql-stat-label", qu[k]));
+      const lab = el("span", "ql-stat-label", qu[k]);
+      row.appendChild(lab);
       const bar = el("div", "ql-bar");
       const fill = el("span", "ql-bar-fill");
       bar.appendChild(fill);
@@ -653,7 +663,7 @@
       const val = el("span", "ql-stat-val", "50");
       row.appendChild(val);
       stats.appendChild(row);
-      statRows[k] = { fill, val };
+      statRows[k] = { fill, val, lab };
     });
     play.appendChild(stats);
     const headBox = el("div", "ql-head-box");
@@ -710,7 +720,7 @@
       const again = el("button", "cta-button ql-again", qu.restart);
       again.type = "button";
       again.addEventListener("click", () => {
-        run = { story: run.story, index: 0, prestige: 50, morale: 50 };
+        run = { story: run.story, index: 0, prestige: 50, morale: 50, sixC: false };
         saveCurrent({ storyId: run.story.id, sceneIndex: 0, prestige: 50, morale: 50 });
         paintStats();
         paintScene();
@@ -739,32 +749,48 @@
       result.querySelector(".ql-hist-p").textContent = c.history;
       const delta = result.querySelector(".ql-delta");
       const next = result.querySelector(".ql-next");
+      if (c.effect) {
+        run.prestige = clampStat(run.prestige + c.effect.prestige);
+        run.morale = clampStat(run.morale + c.effect.morale);
+      }
+      if (sc.n === 6 && c.key === "C") run.sixC = true;
       if (c.ending) {
         delta.hidden = true;
         next.hidden = true;
+        paintStats();
         finishStory(run.story.id);
         paintCards();
         showEnding(c.ending);
         return;
       }
-      run.prestige = clampStat(run.prestige + c.effect.prestige);
-      run.morale = clampStat(run.morale + c.effect.morale);
+      if (c.judge) {
+        delta.hidden = false;
+        delta.textContent =
+          ml("prestige") + " " + signed(c.effect ? c.effect.prestige : 0) + "，" + ml("morale") + " " + signed(c.effect ? c.effect.morale : 0);
+        next.hidden = true;
+        paintStats();
+        finishStory(run.story.id);
+        paintCards();
+        showEnding(judgeEnding());
+        return;
+      }
       delta.hidden = false;
       delta.textContent =
-        qu.prestige + " " + signed(c.effect.prestige) + "，" + qu.morale + " " + signed(c.effect.morale);
+        ml("prestige") + " " + signed(c.effect.prestige) + "，" + ml("morale") + " " + signed(c.effect.morale);
       paintStats();
       saveCurrent({
         storyId: run.story.id,
         sceneIndex: run.index + 1,
         prestige: run.prestige,
         morale: run.morale,
+        sixC: run.sixC ? true : undefined,
       });
       const last = run.index >= run.story.scenes.length - 1;
       next.hidden = false;
       next.textContent = last ? qu.finish : qu.next;
       next.onclick = () => {
         if (last) {
-          const eid = run.prestige >= 75 && run.morale >= 75 ? "hero" : "plain";
+          const eid = judgeEnding();
           finishStory(run.story.id);
           paintCards();
           showEnding(eid);
@@ -820,13 +846,17 @@
           index: Math.min(st.current.sceneIndex || 0, s.scenes.length - 1),
           prestige: clampStat(typeof st.current.prestige === "number" ? st.current.prestige : 50),
           morale: clampStat(typeof st.current.morale === "number" ? st.current.morale : 50),
+          sixC: !!st.current.sixC,
         };
       } else {
-        run = { story: s, index: 0, prestige: 50, morale: 50 };
+        run = { story: s, index: 0, prestige: 50, morale: 50, sixC: false };
         saveCurrent({ storyId: s.id, sceneIndex: 0, prestige: 50, morale: 50 });
       }
       play.hidden = false;
       headBox.replaceChildren(storyHead(s));
+      ["prestige", "morale"].forEach((k) => {
+        statRows[k].lab.textContent = ml(k);
+      });
       paintStats();
       paintScene();
       paintCards();
