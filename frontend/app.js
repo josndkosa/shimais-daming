@@ -15,7 +15,8 @@
   const currentModule =
     data.modules.find((m) => m.id === page) ||
     (page === "relations" ? { title: data.relationsUI.headTitle } : null) ||
-    (page === "qinli" ? { title: data.qinliUI.sectionTitle } : null);
+    (page === "qinli" ? { title: data.qinliUI.sectionTitle } : null) ||
+    (page === "search" ? { title: data.searchUI.navTitle } : null);
   document.title = currentModule
     ? currentModule.title + " · " + data.meta.title
     : data.meta.title;
@@ -103,6 +104,9 @@
       if (m.id === "decision") {
         navItems.push({ id: "qinli", page: "qinli.html", title: data.qinliUI.navTitle });
       }
+      if (m.id === "cards") {
+        navItems.push({ id: "search", page: "search.html", title: data.searchUI.navTitle });
+      }
     });
     navItems.forEach((m) => {
       const a = el("a", "nav-link");
@@ -119,7 +123,7 @@
     nav.appendChild(inner);
     document.body.prepend(nav);
 
-    /* 移动端顶栏换行后高度不定，实测高度同步给 --nav-h，供正文偏移与吸顶组件使用 */
+    /* 顶栏单行横滑后高度仍可能随字号变化，实测高度同步给 --nav-h，供正文偏移与吸顶组件使用 */
     const syncNavHeight = () => {
       document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px");
     };
@@ -436,6 +440,16 @@
 
     app.appendChild(wrap);
     refreshProgress();
+
+    const deepId = new URLSearchParams(location.search).get("event");
+    const deepEvent = deepId && rows.get(deepId);
+    if (deepEvent) {
+      if (deepEvent.querySelector(".tl-detail").hidden) {
+        deepEvent.querySelector(".tl-row").click();
+      }
+      deepEvent.classList.add("is-deep-hit");
+      deepEvent.scrollIntoView({ block: "center" });
+    }
 
     window.addEventListener("storage", (e) => {
       if (e.key === PROGRESS_KEY) refreshProgress();
@@ -1743,6 +1757,126 @@
     scroll.appendChild(chart);
     wrap.appendChild(scroll);
     app.appendChild(wrap);
+
+    const qp = new URLSearchParams(location.search);
+    const person = qp.get("person");
+    if (person) {
+      const kindParam = qp.get("kind");
+      const kinds = kindParam === "guest" || kindParam === "chief" ? [kindParam] : ["chief", "guest"];
+      for (const k of kinds) {
+        const p = (k === "guest" ? rl.guests : rl.chiefs).find((x) => x.name === person);
+        if (!p) continue;
+        const bar = [...scroll.querySelectorAll(".rl-lane-" + k + " .rl-bar")].find((b) =>
+          b.getAttribute("aria-label").startsWith(person + " ")
+        );
+        if (bar) bar.scrollIntoView({ block: "center", inline: "center" });
+        openCard(k, p, bar || null);
+        break;
+      }
+    }
+  }
+
+  /* ---------- 史料检索：只读本地 SEARCH_INDEX，不发网络请求、不写进度 ---------- */
+
+  function renderSearch() {
+    const ui = data.searchUI;
+    app.appendChild(renderPageHead(ui.headTitle, ui.headHint));
+
+    const wrap = el("div", "container sr-wrap");
+    const form = el("form", "sr-form");
+    const input = el("input", "sr-input");
+    input.type = "search";
+    input.placeholder = ui.placeholder;
+    input.setAttribute("aria-label", ui.navTitle);
+    const btn = el("button", "sr-btn", ui.searchBtn);
+    btn.type = "submit";
+    form.append(input, btn);
+    wrap.appendChild(form);
+
+    function hotRow(parent) {
+      const hot = el("div", "sr-hot");
+      hot.appendChild(el("span", "sr-hot-label", ui.hotLabel));
+      ui.hot.forEach((w) => {
+        const b = el("button", "sr-hot-word", w);
+        b.type = "button";
+        b.addEventListener("click", () => {
+          input.value = w;
+          run(w);
+        });
+        hot.appendChild(b);
+      });
+      parent.appendChild(hot);
+    }
+    hotRow(wrap);
+
+    const status = el("p", "sr-status");
+    const results = el("div", "sr-results");
+    wrap.append(status, results);
+    app.appendChild(wrap);
+
+    function paintHit(node, text, q) {
+      let rest = text;
+      let at;
+      while ((at = rest.indexOf(q)) >= 0) {
+        node.appendChild(document.createTextNode(rest.slice(0, at)));
+        node.appendChild(el("strong", "sr-hit", q));
+        rest = rest.slice(at + q.length);
+      }
+      node.appendChild(document.createTextNode(rest));
+    }
+
+    function run(raw) {
+      const q = raw.trim();
+      results.replaceChildren();
+      if (!q) {
+        status.textContent = ui.emptyHint;
+        return;
+      }
+      const hits = [];
+      SEARCH_INDEX.forEach((e, i) => {
+        // 年份是事件标题的一部分：搜年份须命中对应时间线条目
+        const tier =
+          e.title.includes(q) || (e.year && e.year.includes(q))
+            ? 0
+            : e.keywords.some((k) => k.includes(q) || q.includes(k))
+              ? 1
+              : e.text.includes(q)
+                ? 2
+                : -1;
+        if (tier >= 0) hits.push({ e, i, tier });
+      });
+      hits.sort((a, b) => a.tier - b.tier || a.i - b.i);
+      if (!hits.length) {
+        status.textContent = ui.noResultTitle;
+        hotRow(results);
+        results.appendChild(el("p", "sr-empty-hint", ui.noResultHint));
+        return;
+      }
+      status.textContent = ui.countPrefix + " " + hits.length + " " + ui.countSuffix;
+      hits.forEach(({ e }) => {
+        const card = el("a", "sr-card");
+        card.href = e.target;
+        card.appendChild(el("span", "sr-kind sr-kind-" + e.kind, ui.kindLabels[e.kind]));
+        card.appendChild(el("h3", "sr-title", e.title));
+        const sum = el("p", "sr-text");
+        paintHit(sum, e.text, q);
+        card.appendChild(sum);
+        const src =
+          e.kind === "timeline"
+            ? e.source + " · " + e.year
+            : e.kind === "relation"
+              ? e.source + " · " + e.lord
+              : e.source;
+        card.appendChild(el("p", "sr-source", src));
+        results.appendChild(card);
+      });
+    }
+
+    form.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      run(input.value);
+    });
+    run("");
   }
 
   /* ---------- 占位模块页 ---------- */
@@ -1764,6 +1898,7 @@
   else if (page === "timeline") renderTimeline();
   else if (page === "decision") renderDecisions();
   else if (page === "cards") renderCards();
+  else if (page === "search") renderSearch();
   else if (page === "quiz") renderQuiz();
   else if (page === "profile") renderProfile();
   else if (page === "relations") renderRelations();
