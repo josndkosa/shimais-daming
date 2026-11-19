@@ -3504,3 +3504,63 @@ textarea.ct-text {
     white-space: normal;
   }
 }
+
+/* ---------- 检索页书单 ---------- */
+
+.sr-books {
+  margin-top: calc(var(--gap) * 1.8);
+}
+
+.sr-book {
+  padding: calc(16px * var(--site-space, 1)) 0;
+  border-top: 1px solid var(--line);
+}
+
+.sr-book-title {
+  margin: 0;
+  font-family: var(--site-font);
+  font-size: calc(20px * var(--site-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--site-fg);
+}
+
+.sr-book-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.sr-book-author {
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+}
+
+.sr-book-level {
+  padding: 2px 8px;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--gold);
+}
+
+.sr-book-note {
+  margin: 8px 0 0;
+  font-size: calc(13.5px * var(--site-type, 1));
+  line-height: 1.9;
+  letter-spacing: 0.02em;
+  color: var(--body-fg);
+}
+
+.sr-book-link {
+  color: var(--vermilion-bright);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.sr-book-link:hover {
+  color: var(--site-fg);
+}

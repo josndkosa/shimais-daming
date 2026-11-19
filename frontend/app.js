@@ -1902,6 +1902,37 @@
     const status = el("p", "sr-status");
     const results = el("div", "sr-results");
     wrap.append(status, results);
+
+    const books = el("section", "sr-books");
+    const booksHead = el("div", "section-head");
+    booksHead.appendChild(el("h2", "section-title", ui.booksTitle));
+    booksHead.appendChild(el("p", "section-hint", ui.booksHint));
+    books.appendChild(booksHead);
+    const bookList = el("div", "sr-book-list");
+    ui.books.forEach((b) => {
+      const item = el("article", "sr-book");
+      item.appendChild(el("h3", "sr-book-title", b.title));
+      const meta = el("div", "sr-book-meta");
+      meta.appendChild(el("span", "sr-book-author", b.author));
+      meta.appendChild(el("span", "sr-book-level", b.level));
+      item.appendChild(meta);
+      const note = el("p", "sr-book-note");
+      const pieces = b.note.split("ctext.org");
+      pieces.forEach((piece, i) => {
+        note.appendChild(document.createTextNode(piece));
+        if (i < pieces.length - 1) {
+          const link = el("a", "sr-book-link", "ctext.org");
+          link.href = "https://ctext.org";
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          note.appendChild(link);
+        }
+      });
+      item.appendChild(note);
+      bookList.appendChild(item);
+    });
+    books.appendChild(bookList);
+    wrap.appendChild(books);
     app.appendChild(wrap);
 
     function paintHit(node, text, q) {
