@@ -3456,3 +3456,51 @@ textarea.ct-text {
     transition: none;
   }
 }
+
+/* ---------- 时间线随动上下文条（仅 timeline 页） ---------- */
+
+.tl-context {
+  position: sticky;
+  top: var(--nav-h);
+  z-index: 29;
+  background: var(--site-bg);
+  border-bottom: 1px solid var(--line);
+}
+
+.tl-context-inner {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.tl-context-line {
+  margin: 0;
+  font-family: var(--site-font);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+}
+
+.tl-context-note {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+  white-space: nowrap;
+}
+
+.tl-event {
+  scroll-margin-top: calc(var(--nav-h) + var(--tl-ctx-h, 0px) + 8px);
+}
+
+@media (max-width: 640px) {
+  .tl-context-inner {
+    flex-wrap: wrap;
+    gap: 2px 12px;
+  }
+
+  .tl-context-note {
+    white-space: normal;
+  }
+}

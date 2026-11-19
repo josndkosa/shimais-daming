@@ -355,6 +355,46 @@
     const tl = data.timeline;
     app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
 
+    const ctx = el("div", "tl-context");
+    const ctxInner = el("div", "container tl-context-inner");
+    const ctxLine = el("p", "tl-context-line");
+    ctxInner.appendChild(ctxLine);
+    ctxInner.appendChild(el("span", "tl-context-note", "首辅以本站帝王首辅表收录为准。"));
+    ctx.appendChild(ctxInner);
+    app.appendChild(ctx);
+    const syncCtxHeight = () => {
+      document.documentElement.style.setProperty("--tl-ctx-h", ctx.offsetHeight + "px");
+    };
+    syncCtxHeight();
+    if ("ResizeObserver" in window) {
+      new ResizeObserver(syncCtxHeight).observe(ctx);
+    } else {
+      window.addEventListener("resize", syncCtxHeight);
+    }
+
+    // 首辅分段以离任年为区间末（不含），故 1644 年无覆盖；皇帝按闭区间、同年起始最早者
+    function contextFor(ev) {
+      const y = Number(ev.year);
+      const lords = data.relations.emperors
+        .filter((p) => p.from <= y && y <= p.to)
+        .sort((a, b) => a.from - b.from);
+      let chief = "内阁未设";
+      if (y >= 1402) {
+        const covers = [];
+        data.relations.chiefs.forEach((p) => {
+          p.segments.forEach((s) => {
+            if (s[0] <= y && y < s[1]) covers.push([s[0], p.name]);
+          });
+        });
+        covers.sort((a, b) => a[0] - b[0]);
+        chief = covers.length ? covers[0][1] : "—";
+      }
+      return ev.reign + " · 在位：" + (lords.length ? lords[0].name : "—") + " · 首辅：" + chief;
+    }
+    function setContext(ev) {
+      ctxLine.textContent = contextFor(ev);
+    }
+
     const wrap = el("div", "container tl-wrap");
 
     const strip = el("div", "tl-progress");
@@ -424,6 +464,7 @@
           detail.hidden = !open;
           row.setAttribute("aria-expanded", open ? "true" : "false");
           article.classList.toggle("is-open", open);
+          setContext(ev);
           if (open) {
             markRead(ev.id);
             refreshProgress();
@@ -441,6 +482,41 @@
     app.appendChild(wrap);
     refreshProgress();
 
+    const evNodes = tl.events.map((ev) => ({ ev, node: rows.get(ev.id) }));
+    function pickCurrent() {
+      // 页底时末条永远到不了顶线，触底即视为当前
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) {
+        setContext(evNodes[evNodes.length - 1].ev);
+        return;
+      }
+      const ref = ctx.getBoundingClientRect().bottom;
+      let best = evNodes[0];
+      let bestDist = Infinity;
+      evNodes.forEach((item) => {
+        const d = Math.abs(item.node.getBoundingClientRect().top - ref);
+        if (d < bestDist) {
+          bestDist = d;
+          best = item;
+        }
+      });
+      setContext(best.ev);
+    }
+    let ctxTick = false;
+    let ctxLock = false;
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (ctxTick || ctxLock) return;
+        ctxTick = true;
+        requestAnimationFrame(() => {
+          ctxTick = false;
+          pickCurrent();
+        });
+      },
+      { passive: true }
+    );
+    setContext(tl.events[0]);
+
     const deepId = new URLSearchParams(location.search).get("event");
     const deepEvent = deepId && rows.get(deepId);
     if (deepEvent) {
@@ -448,7 +524,15 @@
         deepEvent.querySelector(".tl-row").click();
       }
       deepEvent.classList.add("is-deep-hit");
-      deepEvent.scrollIntoView({ block: "center" });
+      ctxLock = true;
+      // scrollIntoView 的 scroll-margin 在本布局有偏差，手动对齐到信息条下沿
+      const navH = document.querySelector(".site-nav").offsetHeight;
+      const docTop = deepEvent.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({ top: Math.max(0, docTop - navH - ctx.offsetHeight - 8), behavior: "instant" });
+      setTimeout(() => {
+        ctxLock = false;
+      }, 350);
+      setContext(tl.events.find((ev) => ev.id === deepId));
     }
 
     window.addEventListener("storage", (e) => {
@@ -910,7 +994,10 @@
     const resumeStory = stories.find(
       (s) => s.playable && qinliState().current && qinliState().current.storyId === s.id
     );
-    if (resumeStory) enter(resumeStory, false);
+    const storyParam = new URLSearchParams(location.search).get("story");
+    const paramStory = stories.find((s) => s.playable && s.id === storyParam);
+    if (paramStory) enter(paramStory);
+    else if (resumeStory) enter(resumeStory, false);
 
     window.addEventListener("storage", (e) => {
       if (e.key !== PROGRESS_KEY) return;
