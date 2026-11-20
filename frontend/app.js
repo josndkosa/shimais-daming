@@ -944,7 +944,10 @@
 
     function enter(s, scroll) {
       const st = qinliState();
+      let awaitingJudge = false;
       if (st.current && st.current.storyId === s.id) {
+        // 存档越界＝最后一场已选完待判结局：直接落结局，防刷新重复加分
+        awaitingJudge = (st.current.sceneIndex || 0) >= s.scenes.length;
         run = {
           story: s,
           index: Math.min(st.current.sceneIndex || 0, s.scenes.length - 1),
@@ -962,8 +965,14 @@
         statRows[k].lab.textContent = ml(k);
       });
       paintStats();
-      paintScene();
-      paintCards();
+      if (awaitingJudge) {
+        finishStory(s.id);
+        paintCards();
+        showEnding(judgeEnding());
+      } else {
+        paintScene();
+        paintCards();
+      }
       if (scroll !== false) {
         play.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
       }
@@ -1703,6 +1712,11 @@
       box.appendChild(qzSec);
 
       if (quiz) {
+        // 三维全对时不存在"最弱"，不渲染推荐区
+        const perfect = ["timeline", "person", "institution"].every((d) => {
+          const v = quiz.dims && quiz.dims[d];
+          return v && v.total > 0 && v.hit === v.total;
+        });
         let weakest = null;
         let weakestRate = Infinity;
         ["timeline", "person", "institution"].forEach((d) => {
@@ -1714,7 +1728,7 @@
             weakest = d;
           }
         });
-        if (weakest) {
+        if (weakest && !perfect) {
           const rec = ui.recs[weakest];
           const recSec = el("section", "pf-section");
           recSec.appendChild(el("h2", "section-title", ui.recTitle));
@@ -1875,8 +1889,8 @@
       flow.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "nearest" });
     }
 
-    function scriptReply(message) {
-      const f = figure();
+    function scriptReply(message, fig) {
+      const f = fig || figure();
       const hit =
         f.qas.find((qa) => qa.q === message) ||
         f.qas.find((qa) => qa.keywords.some((k) => message.includes(k)));
@@ -1887,6 +1901,9 @@
       const msg = (message || "").trim();
       if (!msg || rounds() >= ui.roundsMax) return;
       const s = session();
+      // 捕获发送对象：回复归属发送时的会话，界面是否贴节点取决于当前人物是否仍是发送对象
+      const sentId = current;
+      const sentFig = figure();
       const history = s.messages.slice(-ui.historyRounds * 2).map((m) => ({
         role: m.role,
         content: m.content,
@@ -1897,7 +1914,7 @@
       refreshInput();
 
       const pending = el("div", "ct-msg ct-figure ct-pending");
-      pending.appendChild(el("span", "ct-who", figure().name));
+      pending.appendChild(el("span", "ct-who", sentFig.name));
       pending.appendChild(el("p", "ct-text", ui.thinking));
       const cold = el("p", "ct-cold", ui.coldStart);
       cold.hidden = true;
@@ -1916,7 +1933,7 @@
         const resp = await fetch(CHAT_API_BASE + "/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ figure: current, history, message: msg }),
+          body: JSON.stringify({ figure: sentId, history, message: msg }),
           signal: ctrl.signal,
         });
         if (!resp.ok) throw new Error("status " + resp.status);
@@ -1924,11 +1941,11 @@
         reply = body.reply;
         note = body.note || null;
         s.offline = false;
-        offlineNote.hidden = true;
+        if (current === sentId) offlineNote.hidden = true;
       } catch {
         s.offline = true;
-        offlineNote.hidden = false;
-        reply = scriptReply(msg);
+        if (current === sentId) offlineNote.hidden = false;
+        reply = scriptReply(msg, sentFig);
         note = null;
       } finally {
         clearTimeout(timer);
@@ -1937,10 +1954,12 @@
       }
 
       s.messages.push({ role: "assistant", content: reply, note });
-      flow.appendChild(messageNode({ role: "assistant", content: reply, note }));
       markChatStarted();
       refreshInput();
-      flow.scrollTop = flow.scrollHeight;
+      if (current === sentId) {
+        flow.appendChild(messageNode({ role: "assistant", content: reply, note }));
+        flow.scrollTop = flow.scrollHeight;
+      }
     }
 
     sendBtn.addEventListener("click", () => send(text.value));

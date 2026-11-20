@@ -27,6 +27,7 @@ UPSTREAM_TIMEOUT = 30.0
 
 HISTORY_MAX_ENTRIES = 20  # 10 轮（20 条）；history 已达 20 条即第 11 轮提问，直接 400
 MESSAGE_MAX_CHARS = 500
+ASSISTANT_HISTORY_MAX_CHARS = 2000  # 历史 assistant 回复可长于新消息，截断而非拒绝
 RATE_LIMIT = 30
 RATE_WINDOW_SECONDS = 3600
 
@@ -166,7 +167,13 @@ async def chat(req: ChatRequest, request: Request):
         return JSONResponse(status_code=502, content={"detail": "史料库暂不可用，请稍后再试。"})
 
     messages = [{"role": "system", "content": system}]
-    messages += [{"role": m.role, "content": m.content} for m in req.history]
+    messages += [
+        {
+            "role": m.role,
+            "content": m.content[: MESSAGE_MAX_CHARS if m.role == "user" else ASSISTANT_HISTORY_MAX_CHARS],
+        }
+        for m in req.history
+    ]
     messages.append({"role": "user", "content": req.message})
 
     try:
