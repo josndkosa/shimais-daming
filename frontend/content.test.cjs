@@ -350,7 +350,14 @@ test('chapter renders intro, sections, source prefixes and next links without wr
   assert.deepEqual(Array.from(next, a => a.href), Array.from(data.chapterUI.next, l => l.href));
   assert.deepEqual(Array.from(next, a => textOf(a)), Array.from(data.chapterUI.next, l => l.label));
 });
-test('index entry block and Zhu Yuanzhang card link both reach the chapter', () => {
+test('chapter banner has the specified copy and no obsolete in-card styling', () => {
+  assert.equal(data.chapterUI.bannerEyebrow, '白话明史 · 试点章');
+  assert.equal(data.chapterUI.bannerTitle, '洪武朝');
+  assert.equal(data.chapterUI.bannerDesc, '用白话把洪武朝从头讲一遍：建国、废相、锦衣卫与晚年大狱，全文依据本站已核材料。');
+  assert.equal(data.chapterUI.bannerBtn, '开始读 →');
+  assert.equal(/\.cw-chapter-link\b/.test(fs.readFileSync(path.join(root, 'styles.css'), 'utf8')), false, 'obsolete in-card link styling removed');
+});
+test('index entry and full-width cards banner open the chapter in a new tab', () => {
   const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const indexCode = source.slice(source.indexOf('  function renderIndex()'), source.indexOf('  /* ---------- 时间线'));
   const app = new Node('main');
@@ -366,6 +373,8 @@ test('index entry block and Zhu Yuanzhang card link both reach the chapter', () 
   assert.equal(textOf(walk(entry, 'ch-entry-desc')[0]), data.chapterUI.entryDesc);
   const btn = walk(entry, 'cta-button').find(a => textOf(a) === data.chapterUI.entryBtn);
   assert.ok(btn && btn.href === 'chapter.html');
+  assert.equal(btn.target, '_blank');
+  assert.equal(btn.rel, 'noopener');
   assert.equal(walk(app, 'entry-block').length, 6, 'module entries unchanged');
   const cardsCode = source.slice(source.indexOf('  function renderCards()'), source.indexOf('  function quizState()'));
   const capp = new Node('main');
@@ -377,7 +386,11 @@ test('index entry block and Zhu Yuanzhang card link both reach the chapter', () 
   vm.runInContext(cardsCode + '\nrenderCards();', cctx);
   const banner = walk(capp, 'cw-chapter-banner')[0];
   assert.ok(banner, 'cards chapter banner missing');
+  assert.equal(walk(capp, 'cw-chapter-banner').length, 1);
+  assert.equal(banner.tag, 'a', 'the entire banner is one link');
   assert.equal(banner.href, 'chapter.html');
+  assert.equal(banner.target, '_blank');
+  assert.equal(banner.rel, 'noopener');
   assert.equal(textOf(walk(banner, 'cw-banner-eyebrow')[0]), data.chapterUI.bannerEyebrow);
   assert.equal(textOf(walk(banner, 'cw-banner-title')[0]), data.chapterUI.bannerTitle);
   assert.equal(textOf(walk(banner, 'cw-banner-desc')[0]), data.chapterUI.bannerDesc);

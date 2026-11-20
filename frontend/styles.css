@@ -3879,10 +3879,6 @@ textarea.ct-text {
   margin-top: 14px;
 }
 
-.cw-chapter-link {
-  color: var(--vermilion-bright);
-}
-
 .ch-wrap {
   padding-top: calc(var(--gap) * 1.4);
   padding-bottom: calc(var(--gap) * 2.2);

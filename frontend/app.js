@@ -427,6 +427,8 @@
     chEntry.appendChild(el("p", "ch-entry-desc", data.chapterUI.entryDesc));
     const chBtn = el("a", "cta-button", data.chapterUI.entryBtn);
     chBtn.href = "chapter.html";
+    chBtn.target = "_blank";
+    chBtn.rel = "noopener";
     chEntry.appendChild(chBtn);
     app.appendChild(chEntry);
 
@@ -1151,6 +1153,8 @@
     const wrap = el("div", "container cw-wrap");
     const banner = el("a", "cw-chapter-banner");
     banner.href = "chapter.html";
+    banner.target = "_blank";
+    banner.rel = "noopener";
     const bannerCopy = el("div", "cw-banner-copy");
     bannerCopy.appendChild(el("span", "cw-banner-eyebrow", data.chapterUI.bannerEyebrow));
     bannerCopy.appendChild(el("h2", "cw-banner-title", data.chapterUI.bannerTitle));
