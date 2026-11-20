@@ -13,7 +13,7 @@ const SITE_DATA = {
     kicker: "交互式明朝研读 · 主打看懂制度",
     seal: "明",
     question: "一个把权力抓得最紧的王朝，为什么最后失控了？",
-    questionNote: "这是本站的主线问题。五个模块，都围绕它展开。",
+    questionNote: "这是本站提出的研读问题（编辑分析，非古人引文）。各模块围绕它展开。",
     cta: "开始研读",
     ctaTarget: "timeline",
   },
@@ -127,7 +127,7 @@ const SITE_DATA = {
     lockHint: "三选一 · 选定即锁定，不可更改",
     lockedHint: "此局已锁 · 选择不可更改",
     consequenceLabel: "后果",
-    historyLabel: "史实对照",
+    historyLabel: "历史背景与编辑解读 · 非原典",
     doneBadge: "已决",
     completeNote: "三局已决。你的选择与历史的选择，都留在本页。",
   },
@@ -255,15 +255,21 @@ const SITE_DATA = {
     peopleTitle: "人物",
     peopleHint: "六个人，六种制度坐标",
     institutionTitle: "制度",
-    institutionHint: "三种机制，三种权力命运",
-    factsLabel: "关键事实",
-    commentLabel: "制度点评",
+    institutionHint: "从具体机制看权力如何运转",
+    factsLabel: "历史概述 · 现代转述",
+    commentLabel: "制度点评 · 编辑分析",
     sourceNote: "人物画像为传世古画（公有领域），源自 Wikimedia Commons。",
   },
   searchUI: {
     navTitle: "史料检索",
     headTitle: "史料检索",
-    headHint: "只搜站内已核订的 99 条：史料卡 · 时间线 · 帝王首辅表",
+    headHint: "站内材料 · 时间线 · 帝王首辅表；内容身份与核验范围见材料详情，不等于全部原典已校勘。",
+    loading: "正在载入本站材料，无需连接 AI 服务…",
+    loadError: "材料载入失败。时间线与关系表仍可检索；请重试，并通过 HTTP 静态站点打开本页。",
+    missing: "没有找到这个材料 ID，请检查链接或使用下方检索。",
+    detailTitle: "材料详情",
+    detailLink: "阅读材料详情",
+    retry: "重新载入材料",
     placeholder: "搜人名、事件、制度……比如：土木堡、批红、一条鞭法",
     searchBtn: "搜索",
     hotLabel: "热门搜索",
@@ -271,9 +277,9 @@ const SITE_DATA = {
     kindLabels: { source: "史料", timeline: "时间线", relation: "关系表" },
     countPrefix: "找到",
     countSuffix: "条",
-    emptyHint: "输入关键词开始检索——只搜站内已核订的 99 条内容。",
+    emptyHint: "输入关键词检索站内材料。材料正文来自本站静态资料文件，AI 服务离线不影响阅读。",
     noResultTitle: "没有找到相关内容，试试这些词：",
-    noResultHint: "本站只收录已核订的 99 条内容，全文检索不在本站范围",
+    noResultHint: "本站仅检索已收录内容，不是古籍全文数据库。可换用人名、制度名或年份。",
     booksTitle: "想读原文？这几本书",
     booksHint: "本站的检索只到站内为止。想核对原文、往深里查，照这份书单去找——都是真能读下去的书。",
     books: [
@@ -333,6 +339,7 @@ const SITE_DATA = {
       facts: ["废丞相、设锦衣卫", "立黄册里甲", "以祖训锁死后世改制空间"],
       quote: "驱除胡虏，恢复中华，立纲陈纪，救济斯民。",
       quoteFrom: "北伐《谕中原檄》",
+      quoteVerification: "原文及撰作归属待核；本轮未核对具体版本，不作朱元璋亲笔认定。",
       comment: "他设计的体制只适合他自己这样的劳模皇帝。",
     },
     {
@@ -357,7 +364,8 @@ const SITE_DATA = {
       facts: ["土木堡后力主守京、拥立景帝", "打赢北京保卫战", "夺门之变后被杀"],
       quote: "粉身碎骨浑不怕，要留清白在人间。",
       quoteFrom: "《石灰吟》",
-      comment: "他证明了明代危机靠人而非制度——人一死，清算就来。",
+      quoteVerification: "原文待核：流传文本有异文，本轮未核对诗集版本。",
+      comment: "守京既需要于谦的决断，也依赖兵部调度、军队与粮饷。危机中的授权有助于动员，却不能保证政局转变后功臣的安全；个人担当与制度资源不能截然对立。",
     },
     {
       id: "p4",
@@ -370,6 +378,7 @@ const SITE_DATA = {
       facts: ["备棺上《治安疏》", "直斥嘉靖", "为官清廉、断案刚直"],
       quote: "盖天下之人不直陛下久矣。",
       quoteFrom: "《治安疏》",
+      quoteVerification: "原文待核：篇名为查找线索，本轮未核对奏疏版本。",
       comment: "当纠错只能靠不要命，说明常规监察通道已经淤塞。",
     },
     {
@@ -382,8 +391,9 @@ const SITE_DATA = {
       position: "最成功的补锅匠",
       facts: ["考成法、清丈田亩", "一条鞭法推向全国", "死后遭清算抄家"],
       quote: "天下之事，不难于立法，而难于法之必行。",
-      quoteFrom: "张居正奏疏",
-      comment: "他证明了体制能被强人修好，也证明了修好不可持续。",
+      quoteFrom: "旧标注：张居正奏疏",
+      quoteVerification: "原文与归属待核：具体篇名、卷次和版本未确认。",
+      comment: "在太后、皇帝及内廷支持下，考核与清丈有助于推动政令、整顿财政；严厉督责也会把压力传给地方官民。支持联盟变化后，各项改革的延续程度不同，不能把成败都归于一位强人。",
     },
     {
       id: "p6",
@@ -423,10 +433,11 @@ const SITE_DATA = {
       kind: "institution",
       glyph: "银",
       name: "一条鞭法与白银财政",
-      sub: "赋役合并、按亩折银",
-      position: "把帝国财政绑上白银",
-      facts: ["赋役合并按亩折银", "白银靠海外贸易流入", "流入一收紧，银贵谷贱、负担反而加重"],
-      comment: "先进的货币化税制，遇上不可控的银源，就是晚明的财政死结。",
+      sub: "赋役合并、折银征收",
+      position: "从亲身应役到货币缴纳",
+      sourceId: "zhangjuzheng/c4",
+      facts: ["总括一州县赋役，量地计丁，官为佥募", "折银与计亩征收是重要方向，丁地分摊和实物保留存在地区差异", "嘉靖间已试行，万历九年普遍推行，非张居正独创"],
+      comment: "合并征收可简化手续，减轻亲身应役的牵累；但售粮换银的成本可能由农户承担。在应纳银额不变、每单位粮食可换白银减少时，农户须多售粮。地方执行、市场条件和加派都会影响实际负担，不能单用银源解释晚明危机。",
     },
     {
       id: "i4",
@@ -440,6 +451,36 @@ const SITE_DATA = {
         "六科给事中官小权大，分科稽察六部，不合体制的诏旨理论上可以封驳",
       ],
       comment: "入口与出口都在皇帝身边，中间的票拟与批红一分家，权力就有了可钻的缝。",
+    },
+  ],
+
+  topic: {
+    id: "yitiaobian",
+    title: "一条鞭法：从赋役合并到农户成本",
+    steps: [
+      { label: "看背景", goal: "定位万历九年的改革，区分推广与创制。", href: "timeline.html?event=e1581" },
+      { label: "读机制", goal: "解释赋役合并与折银，识别收益和边界。", href: "cards.html?card=i3" },
+      { label: "试处境", goal: "在清丈情境中辨认执行压力与成本承担者。", href: "qinli.html?story=q1581" },
+      { label: "做迁移", goal: "用两道题检验概念和给定银价条件下的推理。", href: "quiz.html?topic=yitiaobian" },
+      { label: "回材料", goal: "核对引文、转述和分析，不把推演当成原典。", href: "search.html?source=zhangjuzheng%2Fc4" },
+    ],
+  },
+  topicQuiz: [
+    {
+      id: "yitiaobian-basic", dim: "institution",
+      stem: "一条鞭法最核心的变化是？",
+      options: ["增加税种", "赋役合并、按亩折银征收", "改收实物", "免除徭役"],
+      answer: 1,
+      explain: "此项概括赋役合并与折银的方向。并非简单免役；具体实施仍有量地计丁、丁地分摊和保留实物的差异，不能理解为全国全部只按亩征收。",
+      sourceId: "zhangjuzheng/c4", reviewHref: "search.html?source=zhangjuzheng%2Fc4",
+    },
+    {
+      id: "yitiaobian-transfer", dim: "institution",
+      stem: "假设农户应纳银额不变，完全靠售粮换银纳税；每石粮可换的白银减少（银相对粮更贵），没有其他收入或减免。为缴清同额税银，他需要卖出多少粮食？",
+      options: ["更多粮食", "更少粮食", "同样多的粮食", "无需再卖粮"],
+      answer: 0,
+      explain: "所需售粮量＝应纳银额÷每石粮可换银额。分子不变、分母变小，需要多售粮，成本落在售粮纳税的农户身上。这只检验明确条件下的机制，不据此概括所有农户或晚明财政的全部成因。",
+      sourceId: "zhangjuzheng/c4", reviewHref: "search.html?source=zhangjuzheng%2Fc4",
     },
   ],
 
@@ -475,6 +516,7 @@ const SITE_DATA = {
   quiz: [
     {
       id: "q1",
+      reviewHref: "timeline.html?event=e1380",
       dim: "timeline",
       stem: "朱元璋废除丞相是在哪一年？",
       options: ["1368", "1380", "1402", "1421"],
@@ -483,6 +525,7 @@ const SITE_DATA = {
     },
     {
       id: "q2",
+      reviewHref: "timeline.html?event=e1405",
       dim: "timeline",
       stem: "郑和第一次下西洋出发于哪一年？",
       options: ["1402", "1405", "1421", "1449"],
@@ -491,6 +534,7 @@ const SITE_DATA = {
     },
     {
       id: "q3",
+      reviewHref: "timeline.html?event=e1567",
       dim: "timeline",
       stem: "隆庆开关开放的港口是？",
       options: ["广州十三行", "上海", "福建月港", "宁波"],
@@ -499,6 +543,7 @@ const SITE_DATA = {
     },
     {
       id: "q4",
+      reviewHref: "timeline.html?event=e1619",
       dim: "timeline",
       stem: "萨尔浒之战发生于哪一年？",
       options: ["1592", "1619", "1627", "1644"],
@@ -507,6 +552,7 @@ const SITE_DATA = {
     },
     {
       id: "q5",
+      sourceId: "yuqian/c2", reviewHref: "search.html?source=yuqian%2Fc2",
       dim: "person",
       stem: "土木堡之变中被瓦剌俘获的皇帝是？",
       options: ["英宗", "景帝", "武宗", "熹宗"],
@@ -515,6 +561,7 @@ const SITE_DATA = {
     },
     {
       id: "q6",
+      sourceId: "yuqian/c4", reviewHref: "search.html?source=yuqian%2Fc4",
       dim: "person",
       stem: "北京保卫战的主要主持者是？",
       options: ["徐有贞", "于谦", "杨士奇", "王振"],
@@ -523,6 +570,7 @@ const SITE_DATA = {
     },
     {
       id: "q7",
+      sourceId: "zhangjuzheng/c4", reviewHref: "search.html?source=zhangjuzheng%2Fc4",
       dim: "person",
       stem: "一条鞭法的主要推行者是？",
       options: ["海瑞", "严嵩", "张居正", "徐阶"],
@@ -531,6 +579,7 @@ const SITE_DATA = {
     },
     {
       id: "q8",
+      reviewHref: "cards.html?card=i1",
       dim: "institution",
       stem: "废丞相后，实际分担皇帝政务的是哪组机制？",
       options: ["内阁票拟＋司礼监批红", "六部合议", "科道言官", "藩王辅政"],
@@ -539,6 +588,7 @@ const SITE_DATA = {
     },
     {
       id: "q9",
+      reviewHref: "cards.html?card=i1",
       dim: "institution",
       stem: "「批红」在制度设计中本是谁的权力？",
       options: ["首辅", "司礼监掌印", "皇帝本人", "六科给事中"],
@@ -547,18 +597,26 @@ const SITE_DATA = {
     },
     {
       id: "q10",
+      sourceId: "zhangjuzheng/c4", reviewHref: "search.html?source=zhangjuzheng%2Fc4",
       dim: "institution",
       stem: "一条鞭法最核心的变化是？",
       options: ["增加税种", "赋役合并、按亩折银征收", "改收实物", "免除徭役"],
       answer: 1,
-      explain: "税制简化，但财政从此绑定白银供应。",
+      explain: "此选项概括赋役合并与折银的方向；具体办法仍有量地计丁、丁地分摊与保留实物的差异，并非全国全部只按亩征收。实际负担受执行及粮银比价影响。",
     },
   ],
 
   /* 研读画像：只读 localStorage 汇总，不上传任何数据。 */
   profileUI: {
     footprintTitle: "研读足迹",
-    modulesTitle: "模块进度",
+    modulesTitle: "模块访问",
+    visitNote: "访问、完成与掌握不同：打开卡片页只代表到访；正式十题也只是基础检查，不代表完整掌握。",
+    qinliTitle: "亲历完成",
+    resumeTitle: "继续上次研读",
+    resumeEmpty: "展开一个事件、定位一张卡或进入亲历后，这里会保留具体续读入口。",
+    perfectTitle: "基础题全对，继续深入",
+    perfectNote: "满分不是研读终点。试试一条鞭法专题的条件迁移题，再回到材料检验解释边界。",
+    legacyNote: "这份旧成绩没有可核对的逐题答案，暂不推定具体错题。可回正式小测查看记录或从专题继续。",
     modulesLink: "去人物对话",
     timelineTitle: "时间线已读",
     timelineLink: "去时间线",
@@ -567,7 +625,7 @@ const SITE_DATA = {
     quizTitle: "小测三维得分率",
     quizScoreLabel: "总分",
     quizEmpty:
-      "尚未完成小测。答完十题，这里会给出你的三维得分率，并依最弱维度给出一条推荐。",
+      "尚未完成小测。答完十题，这里会展示基础得分，并按实际错题提供精确材料回链。",
     quizCta: "去答小测",
     recTitle: "给你的推荐",
     recs: {
@@ -832,10 +890,11 @@ const SITE_DATA = {
         year: "1581",
         reign: "万历九年",
         title: "一条鞭法推行全国",
-        summary: "赋役合并、按亩折银征收，张居正改革的财政落点。",
+        summary: "赋役合并、折银征收，观察改革如何改变缴纳方式。",
+        sourceId: "zhangjuzheng/c4",
         detail: [
-          "张居正将各州县的田赋、徭役与杂项摊派合并为一条，按田亩折算成白银统一征收，简化税制、压缩胥吏上下其手的空间，太仓积银一度充盈。",
-          "但它也把帝国财政整体绑在白银上：白银主要靠海外贸易流入，一旦流入收紧，税额不变而银贵谷贱，负担反而加重——晚明的加派与财政危机里，有它的一份结构性原因。",
+          "现代转述：《明史》食货二记载，一条鞭法总括州县赋役、量地计丁，嘉靖间已多次试行，万历九年普遍推行。它不是张居正独创；丁地分摊、折银与保留实物的办法也有地区差异。",
+          "编辑分析：合并征收有助于简化手续，但实际收益取决于清丈、执行和市场条件。若应纳银额不变而售粮换银条件变差，农户须多售粮纳税；这是条件推理，不意味着银源是晚明危机的唯一原因。下方材料列出引文、出处和版本限制。",
         ],
         tags: ["一条鞭法", "赋役折银", "张居正改革"],
       },
@@ -1104,17 +1163,24 @@ const SITE_DATA = {
     prestige: "朝议声望",
     morale: "京师军心",
     consequence: "后果",
-    history: "史实对照",
+    history: "历史背景与编辑解读 · 非原典",
+    mechanismTitle: "机制回顾 · 编辑分析",
+    mechanismNote: "人物、对白、数值与具体后果属于游戏推演，非史学测量，也不意味着同样选择必然产生同样历史结局。请用延伸材料区分背景与剧情。",
     next: "下一场",
     finish: "走向结局",
     restart: "再活一次",
     toChat: "去跟于谦聊聊",
-    closure: "史实收束",
+    closure: "历史背景与剧情边界 · 编辑解读",
   },
 
   qinli: [
     {
       id: "q1380",
+      followups: [
+        { label: "回看废丞相材料", href: "search.html?source=zhuyuanzhang%2Fc3" },
+        { label: "定位锦衣卫事件", href: "timeline.html?event=e1382" },
+      ],
+      review: "在集中皇权和株连压力下，检举可能换取自保，却把代价转给同僚及其家属；拒绝配合则使自身承担惩罚风险。回顾本次结局：若取证与复核有独立保障，哪项选择的成本可能改变？",
       year: 1380,
       title: "洪武十三年 · 诏狱",
       role: "刚入仕的年轻御史",
@@ -1161,7 +1227,7 @@ const SITE_DATA = {
           choices: [
             { key: "A", text: "开门收留她一夜，天亮送她出城投亲。", effect: { prestige: -15, morale: 15 }, consequence: "你做了一件人事上该做、官场上找死的事。", history: "锦衣卫诏狱不经法司、可直接奉旨逮人，是洪武皇权最锋利的爪牙；株连之祸里，收留罪眷本身就是重罪。" },
             { key: "B", text: "关门装睡，次日照常上衙。", effect: { prestige: 5, morale: -15 }, consequence: "你一夜没睡，但你活着，升迁的考语也不会受影响。", history: "恐怖政治最深的伤害不是杀人，是让所有人学会关门。洪武朝邻里亲故之间的人情，就是这样一夜一夜凉下去的。" },
-            { key: "C", text: "写信给锦衣卫的旧识打听口风，想捞人。", effect: { prestige: 0, morale: 5 }, consequence: "旧识回了四个字：\"莫问，莫管。\"你把回信烧了。", history: "诏狱的案子没有\"打听\"的余地——问，就是关系；关系，就是罪名。这四个字，是洪武官场伦理最准确的总结。" },
+            { key: "C", text: "写信给锦衣卫的旧识打听口风，想捞人。", effect: { prestige: 0, morale: 5 }, consequence: "旧识回了四个字：\"莫问，莫管。\"你把回信烧了。", history: "\"莫问，莫管\"是本站创作的对白，并非史料原句。此处用情境推演表现株连恐惧对求助的压抑，不据此推定所有案件或官员的实际行为。" },
           ],
         },
         {
@@ -1177,9 +1243,9 @@ const SITE_DATA = {
         {
           n: 6,
           label: "第六场 · 洪武二十三年，名单上的故人",
-          background: "胡案再兴，新名单公布——这一次，你那位同年的名字赫然在上，正是十三年你检举过（或包庇过）的那一位。诏狱来人向你取证，问的正是十三年前那份揭帖。",
+          background: "胡案再兴，新名单公布——这一次，你那位同年的名字赫然在上，正是十三年你检举过（或包庇过）的那一位。诏狱来人向你取证，问的正是十年前那份揭帖。",
           choices: [
-            { key: "A", text: "照原帖复述，一个字不改。", effect: { prestige: 10, morale: -10 }, consequence: "你说完，忽然想起那年他请你喝酒，说你的字写得好。", history: "1390 年胡案再兴，开国第一文臣李善长被赐死，全家七十余口被诛；案子到此收官，前后十年，三万余人。一份十三年前的文字，足够在十年后要一个人的命。" },
+            { key: "A", text: "照原帖复述，一个字不改。", effect: { prestige: 10, morale: -10 }, consequence: "你说完，忽然想起那年他请你喝酒，说你的字写得好。", history: "1390 年胡案再兴，开国第一文臣李善长被赐死，全家七十余口被诛；案子到此收官，前后十年，三万余人。一份十年前的文字，足够在十年后要一个人的命。" },
             { key: "B", text: "说\"年久记不清了\"，含糊过去。", effect: { prestige: -5, morale: 5 }, consequence: "取证的人深深看你一眼，在册子上记了四个字。", history: "在诏狱的证词里，\"记不清\"是高风险的仁慈；但正是靠着许多人的\"记不清\"，洪武朝还是漏下去了一些人。" },
             { key: "C", text: "翻出当年他替你写的荐书，一并呈上，为他作证。", effect: { prestige: -20, morale: 20 }, consequence: "荐书呈上去的那一刻，你就知道自己可能回不来了。", history: "为胡党作证，等于自入党籍。李善长的下场摆在那里：在这个案子里，功劳簿保护不了任何人。" },
           ],
@@ -1228,6 +1294,11 @@ const SITE_DATA = {
     },
     {
       id: "q1402",
+      followups: [
+        { label: "回看靖难之役材料", href: "search.html?source=zhudi%2Fc2" },
+        { label: "阅读建文旧臣材料", href: "search.html?source=zhudi%2Fc3" },
+      ],
+      review: "在兵权不均和新旧政权更替的约束下，表态能换取一方信任，也可能让本人、师友与家属承担清算成本。结局的忠义与生机不能代替机制解释：若有退出政治冲突的保护，选择会如何不同？",
       year: 1402,
       title: "建文四年 · 金陵",
       role: "翰林编修 · 方孝孺门生",
@@ -1341,6 +1412,11 @@ const SITE_DATA = {
     },
     {
       id: "q1449",
+      followups: [
+        { label: "回看北京保卫战材料", href: "search.html?source=yuqian%2Fc4" },
+        { label: "阅读战后整军材料", href: "search.html?source=yuqian%2Fc6" },
+      ],
+      review: "在皇帝被俘、军队受损的约束下，守京需要合法授权、兵力和粮饷，不能只靠个人勇气。动员缓解防务压力，也由士兵及供给军需的百姓承担成本。若调度资源减少，本次结局还能成立吗？",
       year: 1449,
       title: "正统十四年 · 京师",
       role: "兵部一名主事",
@@ -1441,7 +1517,7 @@ const SITE_DATA = {
           id: "hero",
           title: "保卫战功臣",
           text: "仗打完了，京师还在。你因功升迁，留在了兵部，参与善后与边防整顿。同僚提起你，会说'德胜门那夜他在阵前'——这句话，够你在兵部吃一辈子。",
-          closure: "主角为虚构人物，结局为虚构推演；真实的于谦在战后位极人臣，却在 1457 年夺门之变后被杀——他证明了明代危机靠人而非制度，人一死，清算就来。",
+          closure: "主角和结局为情境推演。于谦在守京中运用了兵部权限、军队与粮饷资源，1457 年夺门之变后被杀。危机授权能促成动员，却不保证政局更替后的安全；不能把个人担当与制度作用截然对立。",
         },
         {
           id: "plain",
@@ -1453,6 +1529,11 @@ const SITE_DATA = {
     },
     {
       id: "q1548",
+      followups: [
+        { label: "回看内阁形成的背景材料", href: "search.html?source=zhudi%2Fc8" },
+        { label: "理解票拟与批红", href: "cards.html?card=i1" },
+      ],
+      review: "在票拟、批红与私人请托交织的约束下，顺从可能减轻仕途压力，却把失真文书的代价转给边军和纳税人；如实呈报则可能使办事者承担排挤成本。若核查渠道不依附同一权力中心，结果会怎样？",
       year: 1548,
       title: "嘉靖二十七年 · 首辅之局",
       role: "内阁中书舍人",
@@ -1573,6 +1654,11 @@ const SITE_DATA = {
     },
     {
       id: "q1581",
+      followups: [
+        { label: "回看一条鞭法的材料与边界", href: "search.html?source=zhangjuzheng%2Fc4" },
+        { label: "下一步：做两道专题题", href: "quiz.html?topic=yitiaobian" },
+      ],
+      review: "在清丈期限、地方阻力与农户承受力之间，如实清丈可改善分摊，却需要人力和执行保障；急于交差可能把核查、催征和换银的成本转给农户。回看本次结局：谁得到了便利，谁承担了成本？不能仅凭声望数值推定改革成败。",
       year: 1581,
       title: "万历九年 · 清丈",
       role: "南直隶某县知县",
@@ -1700,6 +1786,11 @@ const SITE_DATA = {
     },
     {
       id: "q1644",
+      followups: [
+        { label: "回看三饷加派材料", href: "search.html?source=chongzhen%2Fc4" },
+        { label: "定位甲申之变", href: "timeline.html?event=e1644" },
+      ],
+      review: "在战争、财政紧张与信息失真的约束下，个人尽责不必然能挽救全局。筹饷可能缓解军需，却把成本转给纳税人；延误和逃散又可能把防务代价留给守军与城中百姓。哪项约束不是主角一人能改变的？",
       year: 1644,
       title: "崇祯十七年 · 煤山前夜",
       role: "内阁值夜中书舍人",
@@ -1829,7 +1920,7 @@ const SITE_DATA = {
 
   footer: {
     series: "史脉系列 · 第一季：大明",
-    note: "以制度为线索读明史 · 纯前端页面，数据仅存于你的浏览器",
+    note: "学习进度保存在本机浏览器。使用在线 AI 时，问题与会话历史会发送至后端及模型服务；保留期限与日志政策尚待部署方核实，请勿输入敏感信息。",
   },
 };
 /* 史料检索索引：99 条（史料 48＋时间线 23＋关系表 28），标题/正文/出处逐字取自仓库，仅新增 keywords 与 target。 */

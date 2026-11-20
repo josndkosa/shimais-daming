@@ -3,11 +3,12 @@
 将来替换为向量检索时只需重写本模块的 retrieve，保持返回 chunk 字典列表即可。
 """
 
-import json
 import re
 from pathlib import Path
 
 from rank_bm25 import BM25Okapi
+
+from export_materials import load_figure
 
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _cache = {}
@@ -40,8 +41,7 @@ def _query_tokens(query):
 
 def _corpus(figure):
     if figure not in _cache:
-        path = _DATA_DIR / (figure + ".json")
-        chunks = json.loads(path.read_text(encoding="utf-8"))["chunks"]
+        chunks = load_figure(figure, _DATA_DIR)
         bm25 = BM25Okapi([_tokens(c["title"] + " " + c["text"]) for c in chunks])
         _cache[figure] = (chunks, bm25)
     return _cache[figure]
@@ -50,5 +50,6 @@ def _corpus(figure):
 def retrieve(figure, query):
     chunks, bm25 = _corpus(figure)
     scores = bm25.get_scores(_query_tokens(query))
-    order = sorted(range(len(chunks)), key=lambda i: scores[i], reverse=True)[:3]
+    order = sorted((i for i in range(len(chunks)) if scores[i] > 0),
+                   key=lambda i: scores[i], reverse=True)[:3]
     return [chunks[i] for i in order]

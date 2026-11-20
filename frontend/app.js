@@ -8,8 +8,21 @@
   const app = document.getElementById("app");
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
   const PROGRESS_KEY = "shimais-daming:progress:v1";
-  // 占位地址：上线前替换为真实 Render 服务地址（后端地址仅在此一处定义）
-  const CHAT_API_BASE = "http://localhost:8000";
+  const apiSetting = document.querySelector('meta[name="api-base"]')?.content.trim();
+  const CHAT_API_BASE = (() => {
+    if (apiSetting === "offline") return null;
+    if (apiSetting === "same-origin") return location.origin;
+    if (apiSetting) {
+      try {
+        const url = new URL(apiSetting, location.href);
+        if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password ||
+            (location.protocol === 'https:' && url.protocol !== 'https:')) return null;
+        return url.href.replace(/\/$/, '');
+      } catch { return null; }
+    }
+    return ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname)
+      ? 'http://localhost:8000' : null;
+  })();
 
   document.documentElement.lang = data.meta.lang;
   const currentModule =
@@ -59,11 +72,62 @@
   }
 
   function markRead(id) {
+    if (!resolveLastRead({ kind: "timeline", id })) return;
     updateProgress((p) => {
       p.timeline = p.timeline || {};
       p.timeline.read = Array.isArray(p.timeline.read) ? p.timeline.read : [];
       if (!p.timeline.read.includes(id)) p.timeline.read.push(id);
     });
+    markLastRead("timeline", id);
+  }
+
+  function resolveLastRead(record) {
+    if (!record || typeof record.id !== "string") return null;
+    let item;
+    if (record.kind === "timeline") {
+      item = data.timeline.events.find((e) => e.id === record.id);
+      return item ? { label: item.title, href: "timeline.html?event=" + item.id } : null;
+    }
+    if (record.kind === "card") {
+      item = data.cards.find((c) => c.id === record.id);
+      return item ? { label: item.name, href: "cards.html?card=" + item.id } : null;
+    }
+    if (record.kind === "qinli") {
+      item = data.qinli.find((s) => s.playable && s.id === record.id);
+      return item ? { label: item.title, href: "qinli.html?story=" + item.id } : null;
+    }
+    return null;
+  }
+
+  function markLastRead(kind, id) {
+    if (!resolveLastRead({ kind, id })) return;
+    updateProgress((p) => { p.lastRead = { kind, id }; });
+  }
+
+  function buildTopicPath(activeHref) {
+    const section = el("section", "topic-path");
+    section.setAttribute("aria-label", data.topic.title);
+    section.appendChild(el("h3", "topic-title", "专题 · " + data.topic.title));
+    const active = data.topic.steps.findIndex((step) => step.href === activeHref);
+    if (active >= 0) section.appendChild(el("p", "topic-goal", "本步目标：" + data.topic.steps[active].goal));
+    const steps = el("ol", "topic-steps");
+    data.topic.steps.forEach((step, i) => {
+      const item = el("li", i === active ? "is-current" : "");
+      const link = el("a", "topic-link", step.label);
+      link.href = step.href;
+      link.title = step.goal;
+      if (i === active) link.setAttribute("aria-current", "step");
+      item.appendChild(link);
+      steps.appendChild(item);
+    });
+    section.appendChild(steps);
+    if (active >= 0 && active < data.topic.steps.length - 1) {
+      const next = data.topic.steps[active + 1];
+      const link = el("a", "topic-next", "下一步：" + next.label + " — " + next.goal);
+      link.href = next.href;
+      section.appendChild(link);
+    }
+    return section;
   }
 
   function chatState() {
@@ -119,13 +183,26 @@
       }
       links.appendChild(a);
     });
+    links.setAttribute("aria-describedby", "nav-scroll-hint");
     inner.appendChild(links);
+    const hint = el("span", "nav-scroll-hint", "栏目可横向滑动");
+    hint.id = "nav-scroll-hint";
+    inner.appendChild(hint);
     nav.appendChild(inner);
     document.body.prepend(nav);
 
     /* 顶栏单行横滑后高度仍可能随字号变化，实测高度同步给 --nav-h，供正文偏移与吸顶组件使用 */
     const syncNavHeight = () => {
       document.documentElement.style.setProperty("--nav-h", nav.offsetHeight + "px");
+      requestAnimationFrame(() => {
+        const active = links.querySelector('[aria-current="page"]');
+        if (!active) return;
+        const viewport = links.getBoundingClientRect();
+        const item = active.getBoundingClientRect();
+        // 只改变导航内部横向位置，不调用会移动整页的 scrollIntoView。
+        if (item.left < viewport.left) links.scrollLeft -= viewport.left - item.left + 8;
+        else if (item.right > viewport.right) links.scrollLeft += item.right - viewport.right + 8;
+      });
     };
     syncNavHeight();
     if ("ResizeObserver" in window) {
@@ -317,6 +394,20 @@
   /* ---------- 首页 ---------- */
 
   function renderIndex() {
+    const start = el("section", "topic-start container");
+    const copy = el("div");
+    copy.appendChild(el("p", "topic-title", "第一次来？从一个制度问题开始"));
+    copy.appendChild(el("p", "topic-goal", data.topic.title + " · 读背景、试处境、做迁移、回材料"));
+    const begin = el("a", "cta-button cta-gold", "开始一条鞭法专题");
+    begin.href = data.topic.steps[0].href;
+    start.append(copy, begin);
+    const last = resolveLastRead(loadProgress().lastRead);
+    if (last) {
+      const resume = el("a", "topic-next", "继续上次：" + last.label);
+      resume.href = last.href;
+      start.appendChild(resume);
+    }
+    app.appendChild(start);
     app.appendChild(buildCarousel());
 
     const question = el("section", "question-section container");
@@ -458,6 +549,12 @@
         const detail = el("div", "tl-detail");
         detail.hidden = true;
         ev.detail.forEach((p) => detail.appendChild(el("p", "tl-detail-p", p)));
+        if (ev.sourceId) {
+          const source = el("a", "topic-next", "查看引文、出处与版本限制");
+          source.href = "search.html?source=" + encodeURIComponent(ev.sourceId);
+          detail.appendChild(source);
+        }
+        if (ev.id === "e1581") detail.appendChild(buildTopicPath("timeline.html?event=e1581"));
         const tags = el("div", "tl-tags");
         ev.tags.forEach((t) => tags.appendChild(el("span", "tl-tag", t)));
         detail.appendChild(tags);
@@ -807,6 +904,8 @@
       opening.appendChild(el("span", "ql-mini-label", qu.openingLabel));
       opening.appendChild(el("span", "ql-story-opening-text", s.opening));
       head.appendChild(opening);
+      head.appendChild(el("p", "content-note", qu.mechanismNote));
+      if (s.id === "q1581") head.appendChild(buildTopicPath("qinli.html?story=q1581"));
       return head;
     }
 
@@ -820,6 +919,11 @@
       cl.appendChild(el("h5", "ql-block-title", qu.closure));
       cl.appendChild(el("p", "ql-closure-p", e.closure));
       box.appendChild(cl);
+      const review = el("div", "ql-closure");
+      review.appendChild(el("h5", "ql-block-title", qu.mechanismTitle));
+      review.appendChild(el("p", "ql-closure-p", run.story.review));
+      review.appendChild(el("p", "content-note", qu.mechanismNote));
+      box.appendChild(review);
       const btns = el("div", "ql-ending-btns");
       const again = el("button", "cta-button ql-again", qu.restart);
       again.type = "button";
@@ -831,9 +935,12 @@
         paintCards();
         play.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
       });
-      const toChat = el("a", "cta-button cta-gold ql-tochat", qu.toChat);
-      toChat.href = "chat.html?figure=yuqian";
-      btns.append(again, toChat);
+      btns.appendChild(again);
+      run.story.followups.forEach((followup) => {
+        const link = el("a", "cta-button cta-gold", followup.label);
+        link.href = followup.href;
+        btns.appendChild(link);
+      });
       box.appendChild(btns);
       stage.appendChild(box);
       box.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "nearest" });
@@ -943,6 +1050,7 @@
     }
 
     function enter(s, scroll) {
+      markLastRead("qinli", s.id);
       const st = qinliState();
       let awaitingJudge = false;
       if (st.current && st.current.storyId === s.id) {
@@ -1051,7 +1159,11 @@
           "article",
           "cw-card " + (g.kind === "person" ? "cw-person" : "cw-inst")
         );
+        card.id = "card-" + c.id;
+        card.dataset.card = c.id;
         card.style.setProperty("--d", (i % 3) * 70 + "ms");
+        card.addEventListener("click", () => markLastRead("card", c.id));
+        card.addEventListener("focusin", () => markLastRead("card", c.id));
 
         if (g.kind === "person") {
           const photo = el("figure", "cw-photo");
@@ -1096,6 +1208,7 @@
           inner.appendChild(fish);
           inner.appendChild(el("p", "cw-paper-quote", "「" + c.quote + "」"));
           inner.appendChild(el("p", "cw-paper-from", "—— " + c.quoteFrom));
+          inner.appendChild(el("p", "cw-paper-verification", c.quoteVerification));
           mid.appendChild(inner);
           paper.appendChild(mid);
           body.appendChild(paper);
@@ -1105,6 +1218,15 @@
         comment.appendChild(el("span", "cw-comment-label", ui.commentLabel));
         comment.appendChild(el("p", "cw-comment-p", c.comment));
         body.appendChild(comment);
+        const permalink = el("a", "topic-next", "定位此卡 · 留作续读");
+        permalink.href = "cards.html?card=" + c.id;
+        body.appendChild(permalink);
+        if (c.sourceId) {
+          const source = el("a", "topic-next", "查看引文、出处与版本限制");
+          source.href = "search.html?source=" + encodeURIComponent(c.sourceId);
+          body.appendChild(source);
+        }
+        if (c.id === "i3") body.appendChild(buildTopicPath("cards.html?card=i3"));
 
         card.appendChild(body);
         grid.appendChild(card);
@@ -1133,6 +1255,17 @@
       );
       reveal.forEach((n) => io.observe(n));
     }
+    const wanted = new URLSearchParams(location.search).get("card");
+    const hit = data.cards.some((c) => c.id === wanted) && reveal.find((n) => n.dataset.card === wanted);
+    if (hit) {
+      hit.classList.add("is-in", "is-deep-hit");
+      markLastRead("card", wanted);
+      hit.tabIndex = -1;
+      requestAnimationFrame(() => {
+        hit.scrollIntoView({ block: "start", behavior: "instant" });
+        hit.focus({ preventScroll: true });
+      });
+    }
   }
 
   /* ---------- 小测 ---------- */
@@ -1155,7 +1288,7 @@
     const wrap = el("div", "container qz-wrap");
     const modeRow = el("div", "qz-modes");
     const modeBtns = {};
-    [["formal", ui.modeFormal], ["practice", ui.modePractice]].forEach(([key, text]) => {
+    [["formal", ui.modeFormal], ["practice", ui.modePractice], ["topic", "一条鞭法专题"]].forEach(([key, text]) => {
       const b = el("button", "qz-mode", text);
       b.type = "button";
       b.addEventListener("click", () => setMode(key));
@@ -1168,16 +1301,35 @@
     app.appendChild(wrap);
 
     let formalRefresh = null;
+    const modeRoots = {};
 
     function setMode(next) {
-      modeBtns.formal.classList.toggle("is-on", next === "formal");
-      modeBtns.practice.classList.toggle("is-on", next === "practice");
-      modeBtns.formal.setAttribute("aria-pressed", String(next === "formal"));
-      modeBtns.practice.setAttribute("aria-pressed", String(next === "practice"));
-      stage.replaceChildren();
-      formalRefresh = null;
-      if (next === "formal") renderFormal(stage);
-      else renderPractice(stage);
+      Object.entries(modeBtns).forEach(([key, button]) => {
+        button.classList.toggle("is-on", key === next);
+        button.setAttribute("aria-pressed", String(key === next));
+      });
+      if (!modeRoots[next]) {
+        const root = el("div", "qz-" + next + "-root");
+        modeRoots[next] = root;
+        stage.appendChild(root);
+        if (next === "formal") renderFormal(root);
+        else if (next === "topic") {
+          root.appendChild(buildTopicPath("quiz.html?topic=yitiaobian"));
+          renderPractice(root, data.topicQuiz);
+        } else renderPractice(root);
+      }
+      Object.entries(modeRoots).forEach(([key, root]) => { root.hidden = key !== next; });
+      if (next === "formal" && formalRefresh) formalRefresh();
+    }
+
+    function appendReview(node, q) {
+      if (q.source) node.appendChild(el("p", "qz-source-line", "依据材料 · " + q.source));
+      const href = q.sourceId ? "search.html?source=" + encodeURIComponent(q.sourceId) : q.reviewHref;
+      if (href && /^(search|timeline|cards)\.html\?/.test(href)) {
+        const link = el("a", "pf-link qz-review-link", "回看依据材料");
+        link.href = href;
+        node.appendChild(link);
+      }
     }
 
     function applyQuestion(q, node, pick) {
@@ -1284,8 +1436,13 @@
         count.textContent = answered + " / " + questions.length;
         fill.style.width = (answered / questions.length) * 100 + "%";
         if (st.submitted) {
-          if (!resultNode) showResult();
+          showResult();
         } else {
+          if (resultNode) {
+            resultNode.remove();
+            resultNode = null;
+          }
+          submitWrap.hidden = false;
           submitBtn.disabled = answered < questions.length;
           submitHint.textContent =
             answered < questions.length ? ui.submitHint : ui.submitReady;
@@ -1294,6 +1451,7 @@
 
       questions.forEach((q, qi) => {
         const item = el("article", "qz-item");
+        item.id = q.id;
         const head = el("div", "qz-head");
         head.appendChild(el("span", "qz-num", String(qi + 1).padStart(2, "0")));
         head.appendChild(el("span", "qz-dim", data.dimLabels[q.dim]));
@@ -1332,6 +1490,7 @@
         explain.appendChild(el("p", "qz-answer-line"));
         explain.appendChild(el("span", "qz-explain-label", ui.explainLabel));
         explain.appendChild(el("p", "qz-explain-p"));
+        appendReview(explain, q);
         item.appendChild(explain);
 
         root.appendChild(item);
@@ -1377,7 +1536,7 @@
 
     /* ---------- AI 练习：本地判分，全程不写进度 ---------- */
 
-    function renderPractice(root) {
+    function renderPractice(root, topicQuestions = null) {
       const strip = el("div", "dc-progress");
       const label = el("p", "dc-progress-label");
       label.appendChild(el("span", "dc-progress-text", ui.progressLabel));
@@ -1388,6 +1547,7 @@
       bar.appendChild(fill);
       strip.append(label, bar);
       const panel = el("div", "qz-practice-panel");
+      panel.setAttribute("aria-live", "polite");
       const list = el("div", "qz-practice-list");
       const submitWrap = el("div", "qz-submit");
       const submitBtn = el("button", "cta-button qz-submit-btn", ui.submit);
@@ -1402,6 +1562,7 @@
       let picks = [];
       let submitted = false;
       let resultNode = null;
+      let pendingRequest = null;
 
       function refresh() {
         const total = questions ? questions.length : 10;
@@ -1411,7 +1572,7 @@
         if (questions && !submitted) {
           submitBtn.disabled = answered < questions.length;
           submitHint.textContent =
-            answered < questions.length ? ui.submitHint : ui.practiceResultNote;
+            answered < questions.length ? "答完 " + questions.length + " 题后可提交" : ui.practiceResultNote;
         }
       }
 
@@ -1422,54 +1583,92 @@
         }
       }
 
-      function genButton() {
-        const gen = el("button", "cta-button qz-gen-btn", ui.genBtn);
+      function genButton(label = ui.genBtn) {
+        const gen = el("button", "cta-button qz-gen-btn", label);
         gen.type = "button";
-        gen.addEventListener("click", () => generate(gen));
+        gen.disabled = CHAT_API_BASE === null;
+        gen.addEventListener("click", generate);
         return gen;
       }
 
+      function cancelRequest() {
+        if (!pendingRequest) return;
+        const request = pendingRequest;
+        pendingRequest = null;
+        clearTimeout(request.timer);
+        request.controller.abort();
+      }
+
+      function fallbackButton() {
+        const fb = el("button", "cta-button qz-fallback-btn", ui.fallbackBtn);
+        fb.type = "button";
+        fb.addEventListener("click", () => {
+          cancelRequest();
+          startSet(data.quiz);
+        });
+        return fb;
+      }
+
       function showIntro() {
-        questions = null;
-        picks = [];
-        submitted = false;
-        clearResult();
-        list.replaceChildren();
-        submitWrap.hidden = true;
         panel.replaceChildren();
-        panel.appendChild(el("p", "qz-practice-hint", ui.practiceHint));
-        panel.appendChild(genButton());
+        panel.appendChild(el("p", "qz-practice-hint", CHAT_API_BASE === null
+          ? "当前未启用在线出题，可直接使用固定题库。"
+          : ui.practiceHint + " 每地址每小时最多 6 次生成尝试，失败与取消也可能消耗次数；取消仅停止本次等待。模型审题不能替代人工核对。"));
+        panel.append(genButton(), fallbackButton());
         refresh();
       }
 
-      async function generate(btn) {
-        btn.disabled = true;
-        btn.textContent = ui.generating;
+      async function generate() {
+        if (pendingRequest || CHAT_API_BASE === null) return;
+        const request = { controller: new AbortController(), timedOut: false };
+        pendingRequest = request;
+        request.timer = setTimeout(() => {
+          request.timedOut = true;
+          request.controller.abort();
+        }, 130000);
+        panel.replaceChildren();
+        panel.appendChild(el("p", "qz-practice-hint", "正在出题并核对材料，最长等待 130 秒；切换模式不会丢失本次请求。"));
+        const cancel = el("button", "cta-button qz-cancel-btn", "取消等待");
+        cancel.type = "button";
+        cancel.addEventListener("click", () => { cancelRequest(); showIntro(); });
+        panel.append(cancel, fallbackButton());
         try {
-          const resp = await fetch(CHAT_API_BASE + "/api/quiz/practice", { method: "POST" });
-          if (!resp.ok) throw new Error("http " + resp.status);
-          const payload = await resp.json();
+          const resp = await fetch(CHAT_API_BASE + "/api/quiz/practice", { method: "POST", signal: request.controller.signal });
+          const payload = await resp.json().catch(() => null);
+          if (!resp.ok) {
+            const error = new Error("服务请求失败");
+            error.status = resp.status;
+            error.code = payload?.code || payload?.detail;
+            error.retryAfter = payload?.retry_after || Number(resp.headers.get("Retry-After"));
+            throw error;
+          }
           const qs = payload && payload.questions;
-          if (!Array.isArray(qs) || qs.length !== 10) throw new Error("bad payload");
+          if (!Array.isArray(qs) || qs.length !== 10 || !qs.every(q =>
+            q && typeof q.stem === "string" && Array.isArray(q.options) && q.options.length === 4 &&
+            q.options.every(o => typeof o === "string") && Number.isInteger(q.answer) &&
+            q.answer >= 0 && q.answer < 4 && typeof q.explain === "string" &&
+            ["timeline", "person", "institution"].includes(q.dim))) throw new Error("响应格式异常");
+          if (pendingRequest !== request) return;
           startSet(qs);
-        } catch {
-          showFail();
+        } catch (error) {
+          if (pendingRequest !== request) return;
+          let message = "网络或出题服务暂不可用，请重试或使用固定题库。";
+          if (request.timedOut || error.code === "upstream_timeout") message = "本次出题等待超时，可重新尝试或使用固定题库。";
+          else if (error.status === 429) message = "本时段生成次数已用尽，失败和取消也计入尝试次数。" +
+            (error.retryAfter > 0 ? "约 " + Math.ceil(error.retryAfter / 60) + " 分钟后可重试。" : "请稍后重试。");
+          else if (error.code === "generation_failed") message = ui.genFail;
+          else if (error.code === "materials_unavailable") message = "出题资料暂不可用，请稍后重试或使用固定题库。";
+          showFail(message);
+        } finally {
+          clearTimeout(request.timer);
+          if (pendingRequest === request) pendingRequest = null;
         }
       }
 
-      function showFail() {
-        questions = null;
-        picks = [];
-        submitted = false;
-        clearResult();
-        list.replaceChildren();
-        submitWrap.hidden = true;
+      function showFail(message) {
         panel.replaceChildren();
-        panel.appendChild(el("p", "qz-practice-hint", ui.genFail));
-        const fb = el("button", "cta-button qz-fallback-btn", ui.fallbackBtn);
-        fb.type = "button";
-        fb.addEventListener("click", () => startSet(data.quiz));
-        panel.appendChild(fb);
+        panel.appendChild(el("p", "qz-practice-hint", message));
+        panel.append(genButton("重新尝试生成"), fallbackButton());
         refresh();
       }
 
@@ -1516,9 +1715,7 @@
           explain.appendChild(el("p", "qz-answer-line"));
           explain.appendChild(el("span", "qz-explain-label", ui.explainLabel));
           explain.appendChild(el("p", "qz-explain-p"));
-          if (q.source) {
-            explain.appendChild(el("p", "qz-source-line", ui.practiceSourceLabel + "：" + q.source));
-          }
+          appendReview(explain, q);
           item.appendChild(explain);
           list.appendChild(item);
         });
@@ -1567,17 +1764,12 @@
         });
         sec.appendChild(dimsBox);
         sec.appendChild(el("p", "qz-submitted-note", ui.practiceResultNote));
-        const again = el("button", "cta-button qz-again-btn", ui.againBtn);
+        const again = el("button", "cta-button qz-again-btn", topicQuestions ? "重做专题题" : "再来一组（替换当前题组）");
         again.type = "button";
         again.addEventListener("click", () => {
-          clearResult();
-          list.replaceChildren();
-          submitWrap.hidden = true;
-          questions = null;
-          panel.replaceChildren();
-          const gen = genButton();
-          panel.appendChild(gen);
-          generate(gen);
+          if (topicQuestions) startSet(topicQuestions);
+          else if (CHAT_API_BASE === null) startSet(data.quiz);
+          else generate();
         });
         sec.appendChild(again);
         resultNode = sec;
@@ -1589,7 +1781,13 @@
         });
       });
 
-      showIntro();
+      if (topicQuestions) startSet(topicQuestions);
+      else showIntro();
+      window.addEventListener("pagehide", () => {
+        if (!pendingRequest) return;
+        cancelRequest();
+        showIntro();
+      });
     }
 
     window.addEventListener("storage", (e) => {
@@ -1597,7 +1795,10 @@
       if (formalRefresh) formalRefresh();
     });
 
-    setMode("formal");
+    const quizParams = new URLSearchParams(location.search);
+    setMode(quizParams.get("topic") === "yitiaobian" ? "topic" : "formal");
+    const wantedQuestion = data.quiz.find(q => q.id === quizParams.get("question"));
+    if (wantedQuestion) requestAnimationFrame(() => document.getElementById(wantedQuestion.id)?.scrollIntoView({ block: "start" }));
   }
 
   /* ---------- 研读画像（只读汇总） ---------- */
@@ -1614,6 +1815,17 @@
       const done =
         p.decisions && Array.isArray(p.decisions.done) ? p.decisions.done : [];
       const quiz = p.quiz && typeof p.quiz.score === "number" ? p.quiz : null;
+      const resumeSection = el("section", "pf-section");
+      resumeSection.appendChild(el("h2", "section-title", ui.resumeTitle));
+      const last = resolveLastRead(p.lastRead);
+      if (last) {
+        const link = el("a", "cta-button cta-gold", last.label);
+        link.href = last.href;
+        resumeSection.appendChild(link);
+      } else {
+        resumeSection.appendChild(el("p", "content-note", ui.resumeEmpty));
+      }
+      box.appendChild(resumeSection);
 
       const foot = el("section", "pf-section");
       foot.appendChild(el("h2", "section-title", ui.footprintTitle));
@@ -1647,6 +1859,17 @@
       dcLink.href = "decisions.html";
       dcStat.appendChild(dcLink);
       stats.appendChild(dcStat);
+      const qinliDone = p.qinli && Array.isArray(p.qinli.done) ? p.qinli.done : [];
+      const playable = data.qinli.filter((s) => s.playable);
+      const completed = playable.filter((s) => qinliDone.includes(s.id));
+      const qlStat = el("div", "pf-stat");
+      qlStat.appendChild(el("p", "pf-stat-title", ui.qinliTitle));
+      qlStat.appendChild(el("p", "pf-count", completed.length + " / " + playable.length));
+      const qlLink = el("a", "pf-link", "继续亲历");
+      const currentStory = resolveLastRead({ kind: "qinli", id: p.qinli && p.qinli.current && p.qinli.current.storyId });
+      qlLink.href = currentStory ? currentStory.href : "qinli.html";
+      qlStat.appendChild(qlLink);
+      stats.appendChild(qlStat);
 
       const signals = {
         timeline: read.length > 0,
@@ -1671,6 +1894,7 @@
       mdStat.appendChild(mdLink);
       stats.appendChild(mdStat);
       foot.appendChild(stats);
+      foot.appendChild(el("p", "content-note", ui.visitNote));
       box.appendChild(foot);
 
       const qzSec = el("section", "pf-section");
@@ -1712,38 +1936,36 @@
       box.appendChild(qzSec);
 
       if (quiz) {
-        // 三维全对时不存在"最弱"，不渲染推荐区
-        const perfect = ["timeline", "person", "institution"].every((d) => {
-          const v = quiz.dims && quiz.dims[d];
-          return v && v.total > 0 && v.hit === v.total;
-        });
-        let weakest = null;
-        let weakestRate = Infinity;
-        ["timeline", "person", "institution"].forEach((d) => {
-          const v = (quiz.dims && quiz.dims[d]) || { hit: 0, total: 0 };
-          if (!v.total) return;
-          const rate = v.hit / v.total;
-          if (rate < weakestRate) {
-            weakestRate = rate;
-            weakest = d;
+        const perfect = quiz.score === data.quiz.length;
+        const recSec = el("section", "pf-section");
+        recSec.appendChild(el("h2", "section-title", perfect ? ui.perfectTitle : ui.recTitle));
+        if (perfect) {
+          recSec.appendChild(el("p", "pf-rec-p", ui.perfectNote));
+          const deeper = el("a", "cta-button cta-gold", "继续专题 · 理解条件与成本");
+          deeper.href = "quiz.html?topic=yitiaobian";
+          recSec.appendChild(deeper);
+        } else {
+          const picks = Array.isArray(quiz.picks) ? quiz.picks : [];
+          const wrong = data.quiz.filter((q, i) => Number.isInteger(picks[i]) && picks[i] >= 0 && picks[i] < q.options.length && picks[i] !== q.answer);
+          if (wrong.length) {
+            const list = el("ul", "pf-review-list");
+            wrong.forEach((q) => {
+              const item = el("li");
+              item.appendChild(el("p", "pf-rec-p", "答错了：" + q.stem));
+              const link = el("a", "topic-next", "回看依据 · " + data.dimLabels[q.dim]);
+              link.href = q.reviewHref;
+              item.appendChild(link);
+              list.appendChild(item);
+            });
+            recSec.appendChild(list);
+          } else {
+            recSec.appendChild(el("p", "content-note", ui.legacyNote));
+            const review = el("a", "topic-next", "从一条鞭法专题继续");
+            review.href = "timeline.html?event=e1581";
+            recSec.appendChild(review);
           }
-        });
-        if (weakest && !perfect) {
-          const rec = ui.recs[weakest];
-          const recSec = el("section", "pf-section");
-          recSec.appendChild(el("h2", "section-title", ui.recTitle));
-          const recBox = el("div", "pf-rec");
-          recBox.appendChild(el("p", "pf-rec-p", rec.text));
-          const links = el("div", "pf-rec-links");
-          rec.links.forEach((l) => {
-            const a = el("a", "cta-button cta-gold", l.label);
-            a.href = l.href;
-            links.appendChild(a);
-          });
-          recBox.appendChild(links);
-          recSec.appendChild(recBox);
-          box.appendChild(recSec);
         }
+        box.appendChild(recSec);
       }
 
       box.appendChild(el("p", "pf-privacy", ui.privacy));
@@ -1770,8 +1992,7 @@
     const figures = data.chatFigures;
     app.appendChild(renderPageHead(ui.headTitle, ui.headHint));
 
-    // 预热请求：不阻塞渲染，失败静默
-    fetch(CHAT_API_BASE + "/api/health").catch(() => {});
+    const online = CHAT_API_BASE !== null;
 
     const wrap = el("div", "container ct-wrap");
     const sessions = {};
@@ -1806,6 +2027,12 @@
     offlineNote.hidden = true;
     conv.appendChild(offlineNote);
 
+    conv.appendChild(el("p", "qz-practice-hint ct-privacy", online
+      ? "在线对话：发送的问题及近期对话会传至本站后端和模型服务。请勿输入个人隐私；实际日志与保留期限需向部署方确认。"
+      : "当前为离线剧本模式，不发送对话；可使用推荐问题了解人物立场。"));
+    const status = el("p", "qz-practice-hint ct-status");
+    status.setAttribute("role", "status");
+    conv.appendChild(status);
     const chips = el("div", "ct-chips");
     conv.appendChild(chips);
 
@@ -1828,8 +2055,8 @@
     switchBtn.type = "button";
     const restartBtn = el("button", "cta-button cta-gold ct-end-btn", ui.restart);
     restartBtn.type = "button";
-    endArea.append(switchBtn, restartBtn);
-    conv.appendChild(endArea);
+    endArea.append(switchBtn);
+    conv.append(endArea, restartBtn);
     wrap.appendChild(conv);
     app.appendChild(wrap);
 
@@ -1837,7 +2064,7 @@
     document.body.appendChild(disclaimer);
 
     function session() {
-      if (!sessions[current]) sessions[current] = { messages: [], offline: false };
+      if (!sessions[current]) sessions[current] = { messages: [], offline: !online, pending: false, error: "" };
       return sessions[current];
     }
 
@@ -1860,6 +2087,7 @@
     function paintFlow() {
       flow.replaceChildren();
       session().messages.forEach((m) => flow.appendChild(messageNode(m)));
+      if (session().pendingNode) flow.appendChild(session().pendingNode);
     }
 
     function paintChips() {
@@ -1874,13 +2102,22 @@
     }
 
     function refreshInput() {
+      const s = session();
       const ended = rounds() >= ui.roundsMax;
       inputArea.hidden = ended;
       endArea.hidden = !ended;
+      sendBtn.disabled = s.pending || ended;
+      text.disabled = s.pending || ended;
+      chips.querySelectorAll("button").forEach((b) => { b.disabled = s.pending || ended; });
+      status.textContent = s.error || (s.pending ? ui.thinking : "问题最多 500 字，同一人物每次处理一个问题。");
+      offlineNote.hidden = !s.offline;
+      conv.setAttribute("aria-busy", String(s.pending));
     }
 
     function select(id) {
+      session().draft = text.value;
       current = id;
+      text.value = session().draft || "";
       pickerBtns.forEach((b, fid) => b.classList.toggle("is-current", fid === id));
       offlineNote.hidden = !session().offline;
       paintChips();
@@ -1899,65 +2136,93 @@
 
     async function send(message) {
       const msg = (message || "").trim();
-      if (!msg || rounds() >= ui.roundsMax) return;
       const s = session();
-      // 捕获发送对象：回复归属发送时的会话，界面是否贴节点取决于当前人物是否仍是发送对象
+      if (s.pending || rounds() >= ui.roundsMax) return;
+      if (!msg || Array.from(msg).length > 500) {
+        s.error = "问题须为 1–500 字，请缩短后再发送。";
+        refreshInput();
+        return;
+      }
       const sentId = current;
       const sentFig = figure();
       const history = s.messages.slice(-ui.historyRounds * 2).map((m) => ({
         role: m.role,
-        content: m.content,
+        content: Array.from(m.content).slice(0, m.role === "user" ? 500 : 2000).join(""),
       }));
+      while (history.reduce((n, m) => n + Array.from(m.content).length, Array.from(msg).length) > 20000) {
+        history.splice(0, 2);
+      }
+      s.error = "";
+      s.pending = true;
       s.messages.push({ role: "user", content: msg });
-      flow.appendChild(messageNode({ role: "user", content: msg }));
       text.value = "";
-      refreshInput();
-
       const pending = el("div", "ct-msg ct-figure ct-pending");
       pending.appendChild(el("span", "ct-who", sentFig.name));
       pending.appendChild(el("p", "ct-text", ui.thinking));
       const cold = el("p", "ct-cold", ui.coldStart);
       cold.hidden = true;
       pending.appendChild(cold);
-      flow.appendChild(pending);
+      s.pendingNode = pending;
+      paintFlow();
+      refreshInput();
       flow.scrollTop = flow.scrollHeight;
-      const coldTimer = setTimeout(() => {
-        cold.hidden = false;
-      }, ui.coldHintMs);
-
-      let reply = null;
-      let note = null;
+      const coldTimer = setTimeout(() => { cold.hidden = false; }, ui.coldHintMs);
       const ctrl = new AbortController();
+      s.controller = ctrl;
       const timer = setTimeout(() => ctrl.abort(), ui.timeoutMs);
+      let reply;
+      let note = null;
       try {
-        const resp = await fetch(CHAT_API_BASE + "/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ figure: sentId, history, message: msg }),
-          signal: ctrl.signal,
-        });
-        if (!resp.ok) throw new Error("status " + resp.status);
-        const body = await resp.json();
-        reply = body.reply;
-        note = body.note || null;
-        s.offline = false;
-        if (current === sentId) offlineNote.hidden = true;
-      } catch {
-        s.offline = true;
-        if (current === sentId) offlineNote.hidden = false;
-        reply = scriptReply(msg, sentFig);
-        note = null;
+        if (!online) {
+          reply = scriptReply(msg, sentFig);
+        } else {
+          const resp = await fetch(CHAT_API_BASE + "/api/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ figure: sentId, history, message: msg }),
+            signal: ctrl.signal,
+          });
+          const body = await resp.json().catch(() => null);
+          if (!resp.ok) {
+            const message = resp.status === 429 ? "本时段提问次数已用尽，请稍后再试。"
+              : [400, 404, 413, 422].includes(resp.status) ? "请求被拒绝，请检查人物及输入长度。" : "服务暂不可用";
+            const error = new Error(typeof body?.detail === "string" ? body.detail : message);
+            error.status = resp.status;
+            throw error;
+          }
+          if (typeof body?.reply !== "string" || !body.reply.trim()) throw new Error("服务返回格式异常");
+          reply = body.reply;
+          note = typeof body.note === "string" ? body.note : null;
+          s.offline = false;
+        }
+      } catch (error) {
+        if (sessions[sentId] !== s) return;
+        if ([400, 404, 413, 422, 429].includes(error.status)) {
+          s.messages.pop();
+          s.error = error.message + "（本次未计入对话回合）";
+          s.draft = msg;
+          if (current === sentId) text.value = msg;
+        } else {
+          s.offline = true;
+          s.error = (error.name === "AbortError" ? "等待超时" : "在线服务暂不可用") + "，本次改用离线剧本；下次可重新尝试在线对话。";
+          reply = scriptReply(msg, sentFig);
+        }
       } finally {
         clearTimeout(timer);
         clearTimeout(coldTimer);
         pending.remove();
+        s.pending = false;
+        s.pendingNode = null;
+        s.controller = null;
       }
-
-      s.messages.push({ role: "assistant", content: reply, note });
-      markChatStarted();
-      refreshInput();
+      if (sessions[sentId] !== s) return;
+      if (reply != null) {
+        s.messages.push({ role: "assistant", content: reply, note });
+        markChatStarted();
+      }
       if (current === sentId) {
-        flow.appendChild(messageNode({ role: "assistant", content: reply, note }));
+        paintFlow();
+        refreshInput();
         flow.scrollTop = flow.scrollHeight;
       }
     }
@@ -1973,10 +2238,10 @@
       picker.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
     });
     restartBtn.addEventListener("click", () => {
-      const s = session();
-      s.messages = [];
-      paintFlow();
-      refreshInput();
+      session().controller?.abort();
+      delete sessions[current];
+      text.value = "";
+      select(current);
       text.focus();
     });
 
@@ -2157,13 +2422,99 @@
     }
   }
 
-  /* ---------- 史料检索：只读本地 SEARCH_INDEX，不发网络请求、不写进度 ---------- */
+  /* ---------- 史料检索：静态 materials.json 为材料正文单源，不依赖 AI API ---------- */
 
   function renderSearch() {
     const ui = data.searchUI;
     app.appendChild(renderPageHead(ui.headTitle, ui.headHint));
 
     const wrap = el("div", "container sr-wrap");
+    const requestedSource = new URLSearchParams(location.search).get("source");
+    const materialStatus = el("p", "sr-material-status content-note", ui.loading);
+    materialStatus.setAttribute("role", "status");
+    const retry = el("button", "sr-retry sr-btn", ui.retry);
+    retry.type = "button";
+    retry.hidden = true;
+    retry.addEventListener("click", loadMaterials);
+    const detail = el("section", "sr-material-detail");
+    detail.hidden = true;
+    detail.setAttribute("aria-label", ui.detailTitle);
+    wrap.append(materialStatus, retry, detail);
+
+    // 旧索引只提供检索别名；其史料正文、标题和出处永不作为展示或搜索来源。
+    const aliases = new Map(SEARCH_INDEX.filter((e) => e.kind === "source").map((e) => {
+      const figure = new URLSearchParams(e.target.split("?")[1]).get("figure");
+      return [figure + "/" + e.id, e.keywords];
+    }));
+    const baseIndex = SEARCH_INDEX.filter((e) => e.kind !== "source").map((e) => {
+      const event = e.kind === "timeline" && data.timeline.events.find((item) => item.id === e.id);
+      return event ? { ...e, title: event.title, text: event.summary + event.detail.join(" ") } : e;
+    });
+    let searchIndex = baseIndex;
+    let loading = false;
+
+    function appendChatLink(parent, figureId) {
+      const figure = data.chatFigures.find((f) => f.id === figureId);
+      if (!figure) return;
+      const chat = el("a", "sr-chat-link", "向" + figure.name + "提问 · AI 人物对话（非史料）");
+      chat.href = "chat.html?figure=" + encodeURIComponent(figure.id);
+      parent.appendChild(chat);
+    }
+
+    function showMaterial(material) {
+      detail.replaceChildren();
+      detail.hidden = false;
+      if (!material) {
+        detail.appendChild(el("p", "content-note", ui.missing));
+        return;
+      }
+      detail.appendChild(el("h2", "section-title", material.title));
+      detail.appendChild(el("p", "sr-kind", material.kind || "现代转述 · 待核"));
+      detail.appendChild(el("p", "sr-material-text", material.text));
+      const meta = el("dl", "sr-material-meta");
+      [["材料 ID", material.id], ["出处", material.source], ["卷篇定位", material.locator], ["所据版本", material.edition], ["核验范围与限制", material.verification]].forEach(([label, value]) => {
+        meta.appendChild(el("dt", "", label));
+        meta.appendChild(el("dd", "", value || "尚未登记，待核对"));
+      });
+      detail.appendChild(meta);
+      if (typeof material.url === "string" && /^https?:\/\//i.test(material.url)) {
+        const external = el("a", "topic-next", "打开已记录的外部出处（网页不等于校勘本）");
+        external.href = material.url;
+        external.target = "_blank";
+        external.rel = "noopener noreferrer";
+        detail.appendChild(external);
+      }
+      appendChatLink(detail, material.figure);
+      if (material.id === "zhangjuzheng/c4") detail.appendChild(buildTopicPath("search.html?source=zhangjuzheng%2Fc4"));
+    }
+
+    async function loadMaterials() {
+      if (loading) return;
+      loading = true;
+      retry.hidden = true;
+      materialStatus.textContent = ui.loading;
+      try {
+        const response = await fetch("materials.json");
+        if (!response.ok) throw new Error("materials unavailable");
+        const payload = await response.json();
+        if (!payload || !Array.isArray(payload.sources) || !payload.sources.every((s) => s && typeof s.id === "string" && /^[a-z]+\/c\d+$/.test(s.id) && typeof s.title === "string" && typeof s.text === "string" && typeof s.source === "string")) throw new Error("invalid materials");
+        const sources = payload.sources;
+        if (new Set(sources.map((s) => s.id)).size !== sources.length) throw new Error("duplicate materials");
+        searchIndex = sources.map((s) => ({
+          ...s, kind: "source", contentKind: s.kind || "现代转述 · 待核",
+          keywords: aliases.get(s.id) || [], target: "search.html?source=" + encodeURIComponent(s.id),
+        })).concat(baseIndex);
+        materialStatus.textContent = "已载入 " + sources.length + " 条静态材料 · 核验限制见详情；无需 AI 服务。";
+        if (requestedSource !== null) showMaterial(sources.find((s) => s.id === requestedSource));
+        run(input.value);
+      } catch {
+        materialStatus.textContent = ui.loadError;
+        retry.hidden = false;
+      } finally {
+        loading = false;
+      }
+    }
+
     const form = el("form", "sr-form");
     const input = el("input", "sr-input");
     input.type = "search";
@@ -2245,14 +2596,14 @@
         return;
       }
       const hits = [];
-      SEARCH_INDEX.forEach((e, i) => {
+      searchIndex.forEach((e, i) => {
         // 年份是事件标题的一部分：搜年份须命中对应时间线条目
         const tier =
           e.title.includes(q) || (e.year && e.year.includes(q))
             ? 0
             : e.keywords.some((k) => k.includes(q) || q.includes(k))
               ? 1
-              : e.text.includes(q)
+              : [e.text, e.source, e.locator, e.edition].some((value) => typeof value === "string" && value.includes(q))
                 ? 2
                 : -1;
         if (tier >= 0) hits.push({ e, i, tier });
@@ -2266,10 +2617,16 @@
       }
       status.textContent = ui.countPrefix + " " + hits.length + " " + ui.countSuffix;
       hits.forEach(({ e }) => {
-        const card = el("a", "sr-card");
-        card.href = e.target;
-        card.appendChild(el("span", "sr-kind sr-kind-" + e.kind, ui.kindLabels[e.kind]));
-        card.appendChild(el("h3", "sr-title", e.title));
+        const card = el(e.kind === "source" ? "article" : "a", "sr-card");
+        if (e.kind !== "source") card.href = e.target;
+        card.appendChild(el("span", "sr-kind sr-kind-" + e.kind, e.kind === "source" ? "材料 · " + e.contentKind : ui.kindLabels[e.kind] + " · 编辑概述"));
+        const title = el("h3", "sr-title");
+        if (e.kind === "source") {
+          const link = el("a", "sr-detail-link", e.title + " · " + ui.detailLink);
+          link.href = e.target;
+          title.appendChild(link);
+        } else title.textContent = e.title;
+        card.appendChild(title);
         const sum = el("p", "sr-text");
         paintHit(sum, e.text, q);
         card.appendChild(sum);
@@ -2280,6 +2637,7 @@
               ? e.source + " · " + e.lord
               : e.source;
         card.appendChild(el("p", "sr-source", src));
+        if (e.kind === "source") appendChatLink(card, e.figure);
         results.appendChild(card);
       });
     }
@@ -2289,6 +2647,7 @@
       run(input.value);
     });
     run("");
+    loadMaterials();
   }
 
   /* ---------- 占位模块页 ---------- */

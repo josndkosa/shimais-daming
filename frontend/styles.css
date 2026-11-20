@@ -3439,11 +3439,36 @@ textarea.ct-text {
 .nav-links {
   min-width: 0;
   overflow-x: auto;
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--gold) transparent;
+  scroll-behavior: auto;
 }
 
 .nav-links::-webkit-scrollbar {
+  height: 5px;
+}
+
+.nav-links::-webkit-scrollbar-thumb {
+  background: var(--gold);
+}
+
+.nav-scroll-hint {
   display: none;
+}
+
+@media (max-width: 640px) {
+  .nav-inner {
+    padding-bottom: 20px;
+  }
+  .nav-scroll-hint {
+    display: block;
+    position: absolute;
+    bottom: 2px;
+    right: 14px;
+    font-size: 10px;
+    color: var(--site-muted);
+    pointer-events: none;
+  }
 }
 
 .tl-event {
@@ -3659,4 +3684,152 @@ textarea.ct-text {
 
 .qz-again-btn {
   margin-top: 12px;
+}
+
+/* ---------- 轻量专题、材料详情与续读 ---------- */
+.topic-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 24px;
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+
+.topic-path {
+  margin-top: 20px;
+  padding: 16px 0;
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line);
+}
+
+.topic-title {
+  margin: 0;
+  font-family: var(--site-font);
+  font-size: calc(18px * var(--site-type, 1));
+  color: var(--gold);
+  line-height: 1.6;
+}
+
+.topic-goal,
+.content-note {
+  margin: 8px 0;
+  font-size: calc(13px * var(--site-type, 1));
+  line-height: 1.8;
+  color: var(--site-muted);
+  overflow-wrap: anywhere;
+}
+
+.topic-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 28px;
+  margin: 12px 0;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--site-muted);
+}
+
+.topic-link,
+.topic-next,
+.sr-detail-link {
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  overflow-wrap: anywhere;
+}
+
+.topic-next {
+  display: block;
+  width: fit-content;
+  margin-top: 10px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.topic-steps .is-current {
+  color: var(--vermilion-bright);
+  font-weight: 700;
+}
+
+.cw-card.is-deep-hit {
+  outline: 1px solid var(--vermilion-bright);
+  outline-offset: 4px;
+}
+
+.cw-card {
+  scroll-margin-top: calc(var(--nav-h) + 16px);
+}
+
+.cw-paper-verification {
+  margin: 10px 0 0;
+  border-top: 1px solid #b1a183;
+  padding-top: 8px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #594a32;
+}
+
+.sr-material-detail {
+  margin: 16px 0 24px;
+  padding: 20px;
+  border: 1px solid var(--line-strong);
+}
+
+.sr-material-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 2;
+  color: var(--body-fg);
+}
+
+.sr-material-meta {
+  margin: 18px 0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.sr-material-meta dt {
+  margin-top: 10px;
+  color: var(--gold);
+}
+
+.sr-material-meta dd {
+  margin: 2px 0 0;
+  color: var(--site-muted);
+  overflow-wrap: anywhere;
+}
+
+.sr-chat-link {
+  display: block;
+  width: fit-content;
+  margin-top: 12px;
+  color: var(--site-muted);
+  font-size: 13px;
+  line-height: 1.8;
+  text-underline-offset: 3px;
+}
+
+.pf-review-list {
+  padding-left: 22px;
+}
+
+.pf-review-list li + li {
+  margin-top: 18px;
+}
+
+.qz-modes {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .topic-start {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+  .sr-material-detail {
+    padding: 14px;
+  }
 }

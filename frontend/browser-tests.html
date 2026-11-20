@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<title>史脉浏览器回归测试</title>
+<h1>浏览器回归测试（仅使用模拟接口与隔离存储）</h1>
+<pre id="results">运行中</pre>
+<script type="module">
+const sources = await Promise.all(['data.js', 'app.js'].map(p => fetch(p).then(r => r.text())));
+const results = [];
+const assert = (value, message) => { if (!value) throw new Error(message); };
+const tick = () => new Promise(resolve => setTimeout(resolve, 30));
+const response = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: {'Content-Type':'application/json'} });
+const fixtures = Array.from({length:10}, (_, i) => ({id:'test'+i, dim:i<4?'timeline':i<7?'person':'institution',stem:'测试问题 '+i,options:['甲','乙','丙','丁'],answer:0,explain:'解析',source:'测试资料',sourceId:'zhangjuzheng/c4'}));
+async function setup(page, options = {}) {
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'width:100%;height:180px';
+  document.body.append(frame);
+  const w = frame.contentWindow;
+  const d = w.document;
+  d.open(); d.write('<!doctype html><html><head><meta name="api-base" content="http://localhost:8000"></head><body data-page="'+page+'"><div id="app"></div></body></html>'); d.close();
+  const store = new Map();
+  Object.defineProperty(w, 'localStorage', {value: {getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}});
+  const requests = [];
+  const timeouts = [];
+  const nativeTimeout = w.setTimeout.bind(w);
+  w.setTimeout = (fn, ms, ...args) => { if (ms >= 10000) { timeouts.push({fn,ms}); return -timeouts.length; } return nativeTimeout(fn, ms, ...args); };
+  w.fetch = (url, init={}) => {
+    if (String(url).endsWith('/api/health')) return Promise.resolve(response({status:'ok'}));
+    return new Promise((resolve,reject) => {
+      const req = {url,init,resolve:body=>resolve(response(body)),fail:(body,status)=>resolve(response(body,status)),raw:(text,status,headers={})=>resolve(new Response(text,{status,headers})),reject};
+      requests.push(req);
+      if (!options.ignoreAbort) init.signal?.addEventListener('abort',()=>reject(new DOMException('Cancelled','AbortError')));
+    });
+  };
+  if (options.offline) d.querySelector('meta').content = 'offline';
+  if (options.progress) store.set('shimais-daming:progress:v1', JSON.stringify(options.progress));
+  for (let i=0;i<sources.length;i++) { const script=d.createElement('script'); script.textContent=sources[i]+(i===0?'\nwindow.fixtureData=SITE_DATA;':''); d.body.append(script); }
+  await tick();
+  return {w,d,frame,requests,store,timeouts,close:()=>frame.remove()};
+}
+async function test(name, fn) {
+  try { await fn(); results.push({name,pass:true}); }
+  catch (e) { results.push({name,pass:false,error:e.message}); }
+  document.querySelector('#results').textContent = results.map(r=>(r.pass?'PASS ':'FAIL ')+r.name+(r.error?' : '+r.error:'')).join('\n');
+}
+await test('T03/T05 同人物快速点击、Enter、推荐问题只请求一次',async()=>{
+  const t=await setup('chat');
+  try {
+    const input=t.d.querySelector('textarea'); input.value='第一问';
+    t.d.querySelector('.ct-send').click(); input.value='第二问';
+    input.dispatchEvent(new t.w.KeyboardEvent('keydown',{key:'Enter',bubbles:true}));
+    t.d.querySelector('.ct-chip').click();
+    assert(t.requests.length===1,'同会话发出了 '+t.requests.length+' 个并行请求');
+    assert(t.d.querySelector('.ct-send').disabled,'发送按钮未禁用');
+    t.requests[0].resolve({reply:'第一答'}); await tick();
+    assert(!t.d.querySelector('.ct-send').disabled,'响应后未解锁');
+  } finally {t.close();}
+});
+await test('T01/T02 切换人物后回复与离线回退归属原会话',async()=>{
+  const t=await setup('chat');
+  try {
+    t.d.querySelector('.ct-chip').click();
+    t.d.querySelectorAll('.ct-picker button')[1].click();
+    t.d.querySelector('.ct-chip').click();
+    assert(t.requests.length===2,'不同人物请求不独立');
+    t.requests[1].resolve({reply:'朱棣回答'}); await tick();
+    t.requests[0].reject(new TypeError('network')); await tick();
+    assert(t.d.querySelector('.ct-flow').textContent.includes('朱棣回答'),'新人物回答丢失');
+    assert(!t.d.querySelector('.ct-offline').checkVisibility(),'旧人物错误污染当前提示');
+    t.d.querySelectorAll('.ct-picker button')[0].click();
+    assert(!t.d.querySelector('.ct-flow').textContent.includes('朱棣回答'),'跨人物串台');
+    assert(t.d.querySelectorAll('.ct-flow .ct-msg').length===2,'原人物回退缺失');
+  } finally {t.close();}
+});
+await test('T04 等待时重开，旧响应不得进入新会话',async()=>{
+  const t=await setup('chat',{ignoreAbort:true});
+  try {
+    t.d.querySelector('.ct-chip').click();
+    const restart=Array.from(t.d.querySelectorAll('button')).find(b=>b.textContent==='重开一轮');
+    assert(restart?.checkVisibility(),'等待时无法重新开始');
+    restart.click(); t.requests[0].resolve({reply:'过期回答'}); await tick();
+    assert(!t.d.querySelector('.ct-flow').textContent.includes('过期回答'),'旧回答写入新会话');
+    assert(t.d.querySelectorAll('.ct-flow .ct-user').length===0,'旧问题未清空');
+    t.d.querySelector('.ct-chip').click(); assert(t.requests.length===2,'重开后不能再次发送');
+  } finally {t.close();}
+});
+await test('F02 输入边界错误不得伪装离线或消耗回合',async()=>{
+  const t=await setup('chat');
+  try {
+    const input=t.d.querySelector('textarea'); input.value='字'.repeat(501);
+    t.d.querySelector('.ct-send').click(); assert(t.requests.length===0,'501字未在前端拒绝');
+    input.value='合法问题'; t.d.querySelector('.ct-send').click();
+    t.requests[0].fail({code:'invalid_input',detail:'历史累计长度超限'},400); await tick();
+    assert(t.d.querySelectorAll('.ct-flow .ct-msg').length===0,'非法输入仍计入对话');
+    assert(t.d.querySelector('.ct-status').textContent.includes('超限'),'边界错误没有显示');
+    assert(!t.d.querySelector('.ct-offline').checkVisibility(),'输入错误被标为离线');
+  } finally {t.close();}
+});
+await test('T19/T17/T18 练习切换保留题组、答案、成绩且不修改正式记录',async()=>{
+  const t=await setup('quiz',{progress:{quiz:{picks:[1],score:9,dims:{timeline:{hit:3,total:4}}}}});
+  try {
+    const before=t.store.get('shimais-daming:progress:v1');
+    t.d.querySelectorAll('.qz-mode')[1].click(); t.d.querySelector('.qz-gen-btn').click();
+    t.requests[0].resolve({questions:fixtures}); await tick();
+    t.d.querySelector('.qz-practice-list .qz-choice').click();
+    t.d.querySelectorAll('.qz-mode')[0].click();t.d.querySelectorAll('.qz-mode')[1].click();
+    assert(t.d.querySelectorAll('.qz-practice-list .qz-item').length===10,'切换丢失题组');
+    assert(t.d.querySelector('.qz-practice-list .qz-choice').disabled,'切换丢失答案');
+    assert(t.requests.length===1,'切换消耗生成次数');
+    t.d.querySelectorAll('.qz-practice-list .qz-item').forEach(item=>item.querySelector('.qz-choice').click());
+    t.d.querySelector('.qz-practice-root .qz-submit-btn').click();
+    t.d.querySelectorAll('.qz-mode')[0].click();t.d.querySelectorAll('.qz-mode')[1].click();
+    assert(t.d.querySelector('.qz-practice-root .qz-score-num').textContent==='10','切换丢失成绩');
+    assert(t.store.get('shimais-daming:progress:v1')===before,'练习污染正式记录');
+  } finally {t.close();}
+});
+for (const [status,code,word] of [[429,'rate_limited','次数'],[503,'generation_failed','校验'],[503,'materials_unavailable','资料'],[502,'upstream_error','服务']]) {
+ await test('T20 练习错误分类 '+code,async()=>{
+  const t=await setup('quiz');
+  try {
+    t.d.querySelectorAll('.qz-mode')[1].click();t.d.querySelector('.qz-gen-btn').click();
+    t.requests[0].fail({code,detail:'模拟错误',retry_after:120},status);await tick();
+    assert(t.d.querySelector('.qz-practice-panel').textContent.includes(word),'错误分类不符');
+    assert(t.d.querySelector('.qz-fallback-btn'),'缺固定题入口');
+    assert(t.d.querySelector('.qz-gen-btn'),'缺重试入口');
+  } finally {t.close();}
+ });
+}
+await test('T21 等待可取消，晚到响应不覆盖固定题',async()=>{
+  const t=await setup('quiz');
+  try {
+    t.d.querySelectorAll('.qz-mode')[1].click();t.d.querySelector('.qz-gen-btn').click();
+    assert(t.d.querySelector('.qz-cancel-btn'),'等待没有取消操作');
+    t.d.querySelector('.qz-fallback-btn').click();
+    const stem=t.d.querySelector('.qz-practice-list .qz-stem').textContent;
+    t.requests[0].resolve({questions:fixtures});await tick();
+    assert(t.d.querySelector('.qz-practice-list .qz-stem').textContent===stem,'取消后响应覆盖题组');
+    assert(t.requests[0].init.signal.aborted,'请求未取消');
+  } finally {t.close();}
+});
+await test('T21 超时显示明确恢复操作',async()=>{
+  const t=await setup('quiz');
+  try {
+    t.d.querySelectorAll('.qz-mode')[1].click();t.d.querySelector('.qz-gen-btn').click();
+    assert(t.timeouts.length,'未设置总等待上限');
+    t.timeouts.at(-1).fn();await tick();
+    assert(t.d.querySelector('.qz-practice-panel').textContent.includes('超时'),'超时原因不明确');
+    assert(!t.d.querySelector('.qz-gen-btn').disabled,'超时无法重试');
+  } finally {t.close();}
+});
+await test('F07 离线模式不发请求且允许剧本与固定练习',async()=>{
+  const t=await setup('chat',{offline:true});
+  try {t.d.querySelector('.ct-chip').click();await tick();assert(t.requests.length===0,'离线仍请求后端');assert(t.d.querySelectorAll('.ct-flow .ct-msg').length===2,'离线剧本不可用');}finally{t.close();}
+  const q=await setup('quiz',{offline:true});
+  try {q.d.querySelectorAll('.qz-mode')[1].click();assert(q.d.querySelector('.qz-gen-btn').disabled,'离线生成入口未禁用');q.d.querySelector('.qz-fallback-btn').click();assert(q.d.querySelectorAll('.qz-practice-list .qz-item').length===10,'离线固定题不可用');}finally{q.close();}
+});
+await test('F01 切回等待中的人物仍显示等待，失败后可再发',async()=>{
+ const t=await setup('chat');
+ try {
+   t.d.querySelector('.ct-chip').click();t.d.querySelectorAll('.ct-picker button')[1].click();t.d.querySelectorAll('.ct-picker button')[0].click();
+   assert(t.d.querySelector('.ct-pending') && t.d.querySelector('.ct-send').disabled,'切回丢失等待状态');
+   t.requests[0].reject(new TypeError('network'));await tick();
+   t.d.querySelector('.ct-chip').click();assert(t.requests.length===2,'失败后未释放请求锁');
+   const body=JSON.parse(t.requests[1].init.body);assert(body.history.length===2,'重试没有完整的上轮问答');
+ }finally{t.close();}
+});
+await test('F05/F06 生成中切换不重发，主动替换失败保留已有结果',async()=>{
+ const t=await setup('quiz');
+ try {
+   t.d.querySelectorAll('.qz-mode')[1].click();t.d.querySelector('.qz-gen-btn').click();
+   t.d.querySelectorAll('.qz-mode')[0].click();t.requests[0].resolve({questions:fixtures});await tick();
+   t.d.querySelectorAll('.qz-mode')[1].click();assert(t.d.querySelectorAll('.qz-practice-list .qz-item').length===10,'后台生成返回后题组丢失');
+   t.d.querySelectorAll('.qz-practice-list .qz-item').forEach(n=>n.querySelector('.qz-choice').click());t.d.querySelector('.qz-practice-root .qz-submit-btn').click();
+   const again=t.d.querySelector('.qz-again-btn');again.click();again.click();
+   assert(t.requests.length===2,'再次生成可并行请求');t.requests[1].fail({code:'upstream_error'},502);await tick();
+   assert(t.d.querySelector('.qz-practice-root .qz-score-num').textContent==='10','替换失败丢失旧结果');
+ }finally{t.close();}
+});
+await test('T06 亲历末场刷新不重复计分',async()=>{
+  const t=await setup('qinli',{progress:{qinli:{done:[],current:{storyId:'q1644',sceneIndex:8,prestige:100,morale:5}}}});
+  try {
+    assert(t.d.querySelector('.ql-ending'),'末场没有直接判定结局');
+    assert(Array.from(t.d.querySelectorAll('.ql-stat-val')).map(n=>n.textContent).join('/')==='100/5','末场重算分数');
+    const progress=JSON.parse(t.store.get('shimais-daming:progress:v1'));
+    assert(progress.qinli.current===null && progress.qinli.done.includes('q1644'),'末场完成记录不一致');
+  } finally {t.close();}
+});
+await test('T07 普通场次续读与提前结局',async()=>{
+  const t=await setup('qinli',{progress:{qinli:{done:[],current:{storyId:'q1380',sceneIndex:1,prestige:65,morale:40}}}});
+  try {
+    assert(t.d.querySelector('.ql-scene-label').textContent===t.w.fixtureData.qinli.find(s=>s.id==='q1380').scenes[1].label,'续读场次错误');
+    assert(Array.from(t.d.querySelectorAll('.ql-stat-val')).map(n=>n.textContent).join('/')==='65/40','续读数值变化');
+  } finally {t.close();}
+  const probe=await setup('qinli');
+  const story=probe.w.fixtureData.qinli.find(s=>s.playable && s.scenes.some(sc=>sc.choices.some(c=>c.ending)));
+  const sceneIndex=story.scenes.findIndex(sc=>sc.choices.some(c=>c.ending));
+  const choiceIndex=story.scenes[sceneIndex].choices.findIndex(c=>c.ending);
+  probe.close();
+  const e=await setup('qinli',{progress:{qinli:{done:[],current:{storyId:story.id,sceneIndex,prestige:50,morale:50}}}});
+  try {
+    e.d.querySelectorAll('.ql-choice')[choiceIndex].click();
+    assert(e.d.querySelector('.ql-ending'),'提前结局未显示');
+    assert(JSON.parse(e.store.get('shimais-daming:progress:v1')).qinli.done.includes(story.id),'提前结局未完成');
+    assert(e.d.querySelector('.ql-ending a[href]'),'结局缺少相关后续');
+  } finally {e.close();}
+});
+await test('T08 满分无弱项并提供深入研读',async()=>{
+  const t=await setup('profile',{progress:{quiz:{score:10,picks:[1,1,2,1,0,1,2,0,2,1],dims:{timeline:{hit:4,total:4},person:{hit:3,total:3},institution:{hit:3,total:3}}}}});
+  try {assert(!t.d.querySelector('.pf-content').textContent.includes('最弱'),'满分仍报弱项');assert(t.d.querySelector('.pf-content a[href*="topic=yitiaobian"]'),'满分缺深入入口');}finally{t.close();}
+});
+await test('T09 非满分推荐具体错题材料',async()=>{
+  const t=await setup('profile',{progress:{quiz:{score:9,picks:[0,1,2,1,0,1,2,0,2,1],dims:{timeline:{hit:3,total:4},person:{hit:3,total:3},institution:{hit:3,total:3}}}}});
+  try {assert(t.d.querySelector('.pf-content a[href*="event=e1380"]'),'错题未连接具体事件');}finally{t.close();}
+});
+await test('T26 390px 窄屏小测和画像当前导航可见',async()=>{
+ for (const page of ['quiz','profile']) {
+  const t=await setup(page);
+  try {
+   t.frame.style.width='390px';t.frame.style.height='700px';
+   const link=t.d.createElement('link');link.rel='stylesheet';link.href=new URL('styles.css',location.href).href;
+   await new Promise((resolve,reject)=>{link.onload=resolve;link.onerror=reject;t.d.head.append(link);});await tick();
+   t.w.dispatchEvent(new t.w.Event('resize'));await tick();
+   const active=t.d.querySelector('.nav-link.is-current').getBoundingClientRect();
+   const nav=t.d.querySelector('.nav-links').getBoundingClientRect();
+   assert(active.left>=nav.left-1 && active.right<=nav.right+1,'当前栏目不在导航可见区');
+   assert(t.d.documentElement.scrollWidth<=t.w.innerWidth,'页面水平溢出');
+  }finally{t.close();}
+ }
+});
+await test('清空其他标签页正式记录后移除旧成绩并允许重新提交',async()=>{
+ const t=await setup('quiz',{progress:{quiz:{score:10,picks:[1,1,2,1,0,1,2,0,2,1],dims:{timeline:{hit:4,total:4},person:{hit:3,total:3},institution:{hit:3,total:3}}}}});
+ try {
+  t.d.querySelectorAll('.qz-mode')[1].click();t.store.delete('shimais-daming:progress:v1');
+  t.w.dispatchEvent(new t.w.StorageEvent('storage',{key:'shimais-daming:progress:v1'}));t.d.querySelectorAll('.qz-mode')[0].click();
+  assert(!t.d.querySelector('.qz-formal-root .qz-result'),'清空后仍残留旧结果');
+  assert(t.d.querySelector('.qz-formal-root .qz-submit').checkVisibility(),'清空后提交区不可见');
+  t.d.querySelectorAll('.qz-formal-root .qz-item').forEach(n=>n.querySelector('.qz-choice').click());
+  assert(!t.d.querySelector('.qz-formal-root .qz-submit-btn').disabled,'重新作答无法提交');
+ }finally{t.close();}
+});
+await test('网关 HTML 限流保留 HTTP 分类与 Retry-After',async()=>{
+ for (const page of ['chat','quiz']) {
+  const t=await setup(page);
+  try {
+   if(page==='chat') t.d.querySelector('.ct-chip').click();
+   else {t.d.querySelectorAll('.qz-mode')[1].click();t.d.querySelector('.qz-gen-btn').click();}
+   t.requests[0].raw('<html>Too many requests</html>',429,{'Retry-After':'120'});await tick();
+   if(page==='chat') {
+    assert(t.d.querySelectorAll('.ct-flow .ct-msg').length===0,'网关限流错误计入回合');
+    assert(t.d.querySelector('.ct-status').textContent.includes('次数'),'聊天限流未区分');
+   } else {assert(t.d.querySelector('.qz-practice-panel').textContent.includes('次数'),'练习限流未区分');assert(t.d.querySelector('.qz-practice-panel').textContent.includes('2 分钟'),'恢复时间丢失');}
+  }finally{t.close();}
+ }
+});
+await test('切换人物后被拒的问题保留为原人物草稿',async()=>{
+ const t=await setup('chat');
+ try {
+  const input=t.d.querySelector('textarea');input.value='需要保留的原问题';t.d.querySelector('.ct-send').click();
+  t.d.querySelectorAll('.ct-picker button')[1].click();input.value='另一人物的草稿';
+  t.requests[0].fail({code:'rate_limited',detail:'次数已用尽'},429);await tick();
+  assert(input.value==='另一人物的草稿','当前人物草稿被覆盖');
+  t.d.querySelectorAll('.ct-picker button')[0].click();assert(input.value==='需要保留的原问题','被拒问题丢失');
+  t.d.querySelectorAll('.ct-picker button')[1].click();assert(input.value==='另一人物的草稿','切换丢失独立草稿');
+ }finally{t.close();}
+});
+await test('往返缓存恢复后不残留已取消的生成等待',async()=>{
+ const t=await setup('quiz');
+ try {
+  t.d.querySelectorAll('.qz-mode')[1].click();t.d.querySelector('.qz-gen-btn').click();
+  t.w.dispatchEvent(new t.w.PageTransitionEvent('pagehide',{persisted:true}));await tick();
+  t.w.dispatchEvent(new t.w.PageTransitionEvent('pageshow',{persisted:true}));await tick();
+  assert(!t.d.querySelector('.qz-cancel-btn'),'恢复页面仍显示不存在的请求');
+  assert(t.d.querySelector('.qz-gen-btn') && !t.d.querySelector('.qz-gen-btn').disabled,'恢复页面无法重新生成');
+ }finally{t.close();}
+});
+window.testResults = results;
+document.title = results.some(r=>!r.pass)?'FAIL 浏览器回归':'PASS 浏览器回归';
+</script>
+</html>
