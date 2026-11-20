@@ -461,6 +461,16 @@ const SITE_DATA = {
     resultTitle: "小测成绩",
     submittedNote: "成绩已存入本机，可在研读画像中查看三维得分率。",
     viewProfile: "查看我的研读画像",
+    modeFormal: "正式小测",
+    modePractice: "AI 练习",
+    practiceHint: "AI 依据本站史料卡现场出题，练习成绩不计入研读画像。",
+    genBtn: "生成一组练习题",
+    generating: "正在出题并交叉核对，请稍候…",
+    genFail: "这次出题没通过校验，可重试，或先用固定题库练习。",
+    fallbackBtn: "用固定题库练习",
+    againBtn: "再来一组",
+    practiceSourceLabel: "出处",
+    practiceResultNote: "这是练习结果，不计入研读画像。",
   },
   quiz: [
     {

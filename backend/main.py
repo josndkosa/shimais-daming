@@ -197,6 +197,136 @@ async def chat(req: ChatRequest, request: Request):
     return {"reply": reply, "note": note}
 
 
+PRACTICE_RATE_LIMIT = 6  # 练习出题独立限流：同一 IP 每小时 6 次，与 /api/chat 的桶互不相干
+_practice_hits = defaultdict(deque)
+
+PRACTICE_FIGURES = ["zhuyuanzhang", "zhudi", "yuqian", "hairui", "zhangjuzheng", "chongzhen"]
+
+PRACTICE_RULES = (
+    "你是明史练习题出题员。只能依据下方「事实来源池」中的事实出题，不得引入池外知识。\n"
+    "输出且仅输出一个 JSON 对象，格式：\n"
+    '{"questions":[{"dim":"timeline|person|institution","stem":"题干","options":["A","B","C","D"],'
+    '"answer":0,"explain":"解析","source":"出处"}]}\n'
+    "约束：恰好 10 题；dim 分布为 timeline 4 题、person 3 题、institution 3 题；\n"
+    "每题 4 个选项且互不重复；answer 为 0–3 的选项下标；\n"
+    "每题的 source 填所依据史料卡自带的出处文字列（原样抄录，不得改写）；\n"
+    "explain 不超过 40 字，点明与本站主线问题（制度如何运转、人如何在其中抉择）的关联更好；\n"
+    "年份类题目的干扰项用相邻年份；题干不得出现「根据史料卡」「池」之类字眼；\n"
+    "不要输出 JSON 以外的任何文字。"
+)
+
+BLIND_RULES = (
+    "你是明史答题员。只依据题目本身作答。"
+    "输出且仅输出一个 JSON 数组：10 个 0–3 的整数，依次为每题正确选项的下标。"
+    "不要任何其它文字。"
+)
+
+
+def _practice_rate_limited(ip: str) -> bool:
+    now = time.monotonic()
+    window = _practice_hits[ip]
+    while window and now - window[0] > RATE_WINDOW_SECONDS:
+        window.popleft()
+    if len(window) >= PRACTICE_RATE_LIMIT:
+        return True
+    window.append(now)
+    return False
+
+
+def _practice_pool() -> str:
+    lines = []
+    for fig in PRACTICE_FIGURES:
+        chunks = json.loads((DATA_DIR / (fig + ".json")).read_text(encoding="utf-8"))["chunks"]
+        for c in chunks:
+            lines.append(
+                "- [" + fig + "/" + c["id"] + "] " + c["title"] + "：" + c["text"] + "（出处：" + c["source"] + "）"
+            )
+    return "\n".join(lines)
+
+
+def _parse_json(raw: str):
+    text = raw.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else ""
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+    return json.loads(text.strip())
+
+
+def _validate_practice(payload):
+    qs = payload.get("questions") if isinstance(payload, dict) else None
+    if not isinstance(qs, list) or len(qs) != 10:
+        return None
+    counts = {"timeline": 0, "person": 0, "institution": 0}
+    for q in qs:
+        if not isinstance(q, dict):
+            return None
+        dim = q.get("dim")
+        if dim not in counts:
+            return None
+        counts[dim] += 1
+        stem, opts, ans = q.get("stem"), q.get("options"), q.get("answer")
+        explain, source = q.get("explain"), q.get("source")
+        if not isinstance(stem, str) or not stem.strip():
+            return None
+        if not isinstance(opts, list) or len(opts) != 4 or len(set(opts)) != 4:
+            return None
+        if not all(isinstance(o, str) and o.strip() for o in opts):
+            return None
+        if not isinstance(ans, int) or isinstance(ans, bool) or not 0 <= ans <= 3:
+            return None
+        if not isinstance(explain, str) or not explain.strip():
+            return None
+        if not isinstance(source, str) or not source.strip():
+            return None
+    if counts != {"timeline": 4, "person": 3, "institution": 3}:
+        return None
+    return qs
+
+
+async def _blind_answers(qs):
+    blocks = []
+    for i, q in enumerate(qs):
+        opts = "\n".join("ABCD"[j] + ". " + o for j, o in enumerate(q["options"]))
+        blocks.append(str(i + 1) + ". " + q["stem"] + "\n" + opts)
+    messages = [
+        {"role": "system", "content": BLIND_RULES},
+        {"role": "user", "content": "\n\n".join(blocks)},
+    ]
+    arr = _parse_json(await call_deepseek(messages, 0.0))
+    if not isinstance(arr, list) or len(arr) != 10:
+        return None
+    if not all(isinstance(a, int) and not isinstance(a, bool) and 0 <= a <= 3 for a in arr):
+        return None
+    return arr
+
+
+@app.post("/api/quiz/practice")
+async def quiz_practice(request: Request):
+    ip = _client_ip(request)
+    if _practice_rate_limited(ip):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": "出题过频：同一地址每小时最多 6 次，请稍后再试。"},
+        )
+    gen_messages = [
+        {"role": "system", "content": PRACTICE_RULES},
+        {"role": "user", "content": "# 事实来源池\n" + _practice_pool() + "\n\n请出题。"},
+    ]
+    for _attempt in range(2):
+        try:
+            qs = _validate_practice(_parse_json(await call_deepseek(gen_messages, 0.7)))
+            if qs is None:
+                continue
+            blind = await _blind_answers(qs)
+            if blind is None or any(blind[i] != qs[i]["answer"] for i in range(10)):
+                continue
+            return {"questions": qs}
+        except (UpstreamError, httpx.HTTPError, ValueError, TypeError, KeyError):
+            continue
+    return JSONResponse(status_code=503, content={"detail": "generation_failed"})
+
+
 if __name__ == "__main__":
     import uvicorn
 

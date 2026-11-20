@@ -3612,3 +3612,51 @@ textarea.ct-text {
   font-size: calc(13px * var(--site-type, 1));
   color: #6d5f43;
 }
+
+/* ---------- 小测模式切换与 AI 练习 ---------- */
+
+.qz-modes {
+  display: flex;
+  gap: 10px;
+  margin-bottom: calc(var(--gap) * 0.9);
+}
+
+.qz-mode {
+  padding: 8px 18px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--site-muted);
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.qz-mode.is-on {
+  color: var(--site-fg);
+  border-color: var(--vermilion-bright);
+  box-shadow: inset 0 -2px 0 var(--site-accent);
+}
+
+.qz-practice-panel {
+  margin-bottom: calc(var(--gap) * 0.8);
+}
+
+.qz-practice-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  color: var(--site-muted);
+}
+
+.qz-source-line {
+  margin: 6px 0 0;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+}
+
+.qz-again-btn {
+  margin-top: 12px;
+}
