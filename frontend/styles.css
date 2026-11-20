@@ -3568,3 +3568,47 @@ textarea.ct-text {
 .sr-book-link:hover {
   color: var(--site-fg);
 }
+
+/* ---------- 人物卡纸面引文块（仅 cards 页渲染） ---------- */
+
+.cw-paper {
+  background: linear-gradient(160deg, #efe4c8, #e7d9b8);
+  padding: 7px;
+}
+
+.cw-paper-mid {
+  border: 1.6px solid #2a2417;
+  padding: 5px;
+}
+
+.cw-paper-in {
+  border: 0.7px solid #2a2417;
+  padding: 14px 16px 10px;
+}
+
+.cw-paper-fish {
+  display: block;
+  width: 30px;
+  height: 13px;
+  margin: 0 auto 6px;
+}
+
+.cw-paper-fish path {
+  fill: #2a2417;
+}
+
+.cw-paper-quote {
+  margin: 0;
+  font-family: var(--site-font);
+  font-size: calc(17px * var(--site-type, 1));
+  line-height: 1.9;
+  letter-spacing: 0.03em;
+  color: #2a2417;
+}
+
+.cw-paper-from {
+  margin: 6px 0 0;
+  text-align: right;
+  font-size: calc(13px * var(--site-type, 1));
+  color: #6d5f43;
+}

@@ -1073,6 +1073,25 @@
         facts.appendChild(ul);
         body.appendChild(facts);
 
+        if (c.quote) {
+          const paper = el("div", "cw-paper");
+          const mid = el("div", "cw-paper-mid");
+          const inner = el("div", "cw-paper-in");
+          const fish = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          fish.setAttribute("viewBox", "0 0 30 13");
+          fish.setAttribute("class", "cw-paper-fish");
+          fish.setAttribute("aria-hidden", "true");
+          const fishPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          fishPath.setAttribute("d", "M1 1 L15 12 L29 1 L29 4.5 L15 13 L1 4.5 Z");
+          fish.appendChild(fishPath);
+          inner.appendChild(fish);
+          inner.appendChild(el("p", "cw-paper-quote", "「" + c.quote + "」"));
+          inner.appendChild(el("p", "cw-paper-from", "—— " + c.quoteFrom));
+          mid.appendChild(inner);
+          paper.appendChild(mid);
+          body.appendChild(paper);
+        }
+
         const comment = el("div", "cw-comment");
         comment.appendChild(el("span", "cw-comment-label", ui.commentLabel));
         comment.appendChild(el("p", "cw-comment-p", c.comment));
