@@ -1340,6 +1340,22 @@ body[data-page="index"] {
   display: block;
   width: 100%;
   height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: contain;
+  background: var(--site-surface);
+  border: 1px solid var(--line);
+}
+
+/* 无注卡的相框下预留与 figcaption 等高的空槽，保证两列正文起点对齐 */
+.cw-photo:not(:has(.cw-note))::after {
+  content: "";
+  display: block;
+  height: calc(8px * var(--site-space, 1) + 23.4px * var(--site-type, 1));
+}
+
+/* 首卡被 :first-child 去掉的 20px 内 padding 与 1px 顶线，在相框上补回，保持两列起点齐平 */
+.cw-card:first-child .cw-photo {
+  margin-top: calc(20px * var(--site-space, 1) + 1px);
 }
 
 .cw-photo .cw-note {
