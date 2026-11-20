@@ -273,6 +273,37 @@ await test('往返缓存恢复后不残留已取消的生成等待',async()=>{
   assert(t.d.querySelector('.qz-gen-btn') && !t.d.querySelector('.qz-gen-btn').disabled,'恢复页面无法重新生成');
  }finally{t.close();}
 });
+for (const [id,label,href] of [
+ ['q1380','去跟朱元璋聊聊','chat.html?figure=zhuyuanzhang'],
+ ['q1402','去跟朱棣聊聊','chat.html?figure=zhudi'],
+ ['q1449','去跟于谦聊聊','chat.html?figure=yuqian'],
+ ['q1548','去跟海瑞聊聊','chat.html?figure=hairui'],
+ ['q1581','去跟张居正聊聊','chat.html?figure=zhangjuzheng'],
+ ['q1644','去跟崇祯聊聊','chat.html?figure=chongzhen'],
+]) {
+ await test('六剧本结局入口 '+id,async()=>{
+  const t=await setup('qinli');
+  try {
+   const index=t.w.fixtureData.qinli.findIndex(s=>s.id===id);
+   t.d.querySelectorAll('.ql-play-btn')[index].click();
+   let steps=0;
+   while(!t.d.querySelector('.ql-ending') && steps++<20) {
+    const choice=t.d.querySelector('.ql-choice:not(:disabled)');assert(choice,'缺少可选剧情');choice.click();
+    const next=t.d.querySelector('.ql-next:not([hidden])');if(next)next.click();
+   }
+   assert(t.d.querySelector('.ql-ending'),'剧本未抵达结局');
+   const link=t.d.querySelector('.ql-ending .ql-tochat');
+   assert(link?.textContent===label,'结局聊天文案不符');
+   assert(link.getAttribute('href')===href,'结局聊天人物不符');
+   assert(t.d.querySelectorAll('.ql-ending .ql-tochat').length===1,'聊天入口重复');
+   assert(t.d.querySelector('.ql-again').textContent===t.w.fixtureData.qinliUI.restart,'重玩文案改变');
+   const saved=JSON.parse(t.store.get('shimais-daming:progress:v1'));
+   assert(saved.qinli.current===null && saved.qinli.done.includes(id),'结局记录异常');
+   t.d.querySelector('.ql-again').click();
+   assert(!t.d.querySelector('.ql-ending') && t.d.querySelector('.ql-choice:not(:disabled)'),'重玩不可用');
+  }finally{t.close();}
+ });
+}
 window.testResults = results;
 document.title = results.some(r=>!r.pass)?'FAIL 浏览器回归':'PASS 浏览器回归';
 </script>

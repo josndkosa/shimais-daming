@@ -936,6 +936,10 @@
         play.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "start" });
       });
       btns.appendChild(again);
+      const chatLink = run.story.chatLink || { label: qu.toChat, href: "chat.html?figure=yuqian" };
+      const toChat = el("a", "cta-button cta-gold ql-tochat", chatLink.label);
+      toChat.href = chatLink.href;
+      btns.appendChild(toChat);
       run.story.followups.forEach((followup) => {
         const link = el("a", "cta-button cta-gold", followup.label);
         link.href = followup.href;
@@ -1186,6 +1190,13 @@
         body.appendChild(headRow);
         if (c.sub) body.appendChild(el("p", "cw-sub", c.sub));
         body.appendChild(el("p", "cw-position", c.position));
+        if (c.cbdbUrl) {
+          const link = el("a", "topic-next cbdb-link", "CBDB 人物条目 ↗");
+          link.href = c.cbdbUrl;
+          link.target = "_blank";
+          link.rel = "noopener";
+          body.appendChild(link);
+        }
 
         const facts = el("div", "cw-facts");
         facts.appendChild(el("p", "cw-facts-label", ui.factsLabel));
@@ -2319,6 +2330,13 @@
         row.appendChild(el("span", "rl-card-value", value));
         dialog.appendChild(row);
       });
+      if (p.cbdbUrl) {
+        const link = el("a", "topic-next cbdb-link", "CBDB 人物条目 ↗");
+        link.href = p.cbdbUrl;
+        link.target = "_blank";
+        link.rel = "noopener";
+        dialog.appendChild(link);
+      }
       overlay.hidden = false;
       closeBtn.focus();
     }

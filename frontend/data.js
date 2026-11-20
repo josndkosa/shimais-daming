@@ -358,6 +358,7 @@ const SITE_DATA = {
       kind: "person",
       img: "images/people/p3-yu-qian.jpg",
       name: "于谦",
+      cbdbUrl: "https://newarchive.ihp.sinica.edu.tw/sncaccgi/sncacFtp?ACTION=TQ%2CsncacFtpqf%2CSN%3D011187%2C2nd%2Csearch_simple",
       role: "兵部尚书",
       era: "景泰",
       position: "危机中的孤臣",
@@ -372,6 +373,7 @@ const SITE_DATA = {
       kind: "person",
       img: "images/people/p4-hai-rui.jpg",
       name: "海瑞",
+      cbdbUrl: "https://newarchive.ihp.sinica.edu.tw/sncaccgi/sncacFtp?ACTION=TQ,sncacFtpqf,SN=015737,2nd,search_simple",
       role: "户部主事等",
       era: "嘉靖",
       position: "以死谏君的清官",
@@ -1045,7 +1047,7 @@ const SITE_DATA = {
       { name: "王守仁", office: "南赣巡抚、两广总督", segments: [[1516, 1521], [1527, 1528]], lord: "武宗–世宗", tag: "平叛功臣、心学宗师带兵", end: "病逝归途（1529）", note: "1519 年平宁王只用了 35 天，文人带兵的天花板。" },
       { name: "戚继光", office: "蓟州总兵", segments: [[1568, 1582]], lord: "穆宗–神宗", tag: "神宗初宠信（张居正后盾）", end: "罢免回乡，病逝（1588）", note: "蓟镇十四年、长城固若金汤，靠山一倒就被调走。" },
       { name: "李如松", office: "辽东总兵（1597–1598；此前为东征提督等）", segments: [[1592, 1598]], lord: "神宗", tag: "神宗倚重的边将", end: "出塞中伏阵亡（1598）", note: "万历三大征占了两个，死在最后一次出塞上。本条画其统兵主段 1592–1598，辽东总兵本任仅 1597–1598。" },
-      { name: "卢象升", office: "宣大总督、督师", segments: [[1636, 1639]], lord: "思宗", tag: "崇祯倚重又孤立的主战派", end: "巨鹿战死（1639）", note: "督师名下不到两万人，援军五十里外见死不救。" },
+      { name: "卢象升", cbdbUrl: "https://newarchive.ihp.sinica.edu.tw/sncaccgi/sncacFtp?ACTION=TQ,sncacFtpqf,SN=006306,2nd,search_simple", office: "宣大总督、督师", segments: [[1636, 1639]], lord: "思宗", tag: "崇祯倚重又孤立的主战派", end: "巨鹿战死（1639）", note: "督师名下不到两万人，援军五十里外见死不救。" },
       { name: "孙传庭", office: "陕西总督、督师", segments: [[1642, 1643]], lord: "思宗", tag: "崇祯催战的最后督师", end: "潼关战死（1643）", note: "「传庭死而明亡」——他自己出关前就说过此去不返。此前 1636–1639 年任陕西巡抚、1639–1642 年下狱，与本段不连续。" },
       { name: "袁崇焕", office: "蓟辽督师", segments: [[1628, 1630]], lord: "思宗", tag: "崇祯初宠信（平台召对）", end: "被磔（1630）", note: "五年复辽的豪言只兑现了两年，死于猜忌与反间。" },
       { name: "杨嗣昌", office: "兵部尚书、督师", segments: [[1637, 1641]], lord: "思宗", tag: "崇祯最信任的阁臣督师", end: "忧悸病卒（1641）", note: "「四正六隅」一度见效，但福王、襄王一死，他先垮了。正式督师仅 1640–1641，此前为兵部尚书在京主持。" },
@@ -1176,6 +1178,7 @@ const SITE_DATA = {
   qinli: [
     {
       id: "q1380",
+      chatLink: { label: "去跟朱元璋聊聊", href: "chat.html?figure=zhuyuanzhang" },
       followups: [
         { label: "回看废丞相材料", href: "search.html?source=zhuyuanzhang%2Fc3" },
         { label: "定位锦衣卫事件", href: "timeline.html?event=e1382" },
@@ -1294,6 +1297,7 @@ const SITE_DATA = {
     },
     {
       id: "q1402",
+      chatLink: { label: "去跟朱棣聊聊", href: "chat.html?figure=zhudi" },
       followups: [
         { label: "回看靖难之役材料", href: "search.html?source=zhudi%2Fc2" },
         { label: "阅读建文旧臣材料", href: "search.html?source=zhudi%2Fc3" },
@@ -1412,6 +1416,7 @@ const SITE_DATA = {
     },
     {
       id: "q1449",
+      chatLink: { label: "去跟于谦聊聊", href: "chat.html?figure=yuqian" },
       followups: [
         { label: "回看北京保卫战材料", href: "search.html?source=yuqian%2Fc4" },
         { label: "阅读战后整军材料", href: "search.html?source=yuqian%2Fc6" },
@@ -1529,6 +1534,7 @@ const SITE_DATA = {
     },
     {
       id: "q1548",
+      chatLink: { label: "去跟海瑞聊聊", href: "chat.html?figure=hairui" },
       followups: [
         { label: "回看内阁形成的背景材料", href: "search.html?source=zhudi%2Fc8" },
         { label: "理解票拟与批红", href: "cards.html?card=i1" },
@@ -1654,6 +1660,7 @@ const SITE_DATA = {
     },
     {
       id: "q1581",
+      chatLink: { label: "去跟张居正聊聊", href: "chat.html?figure=zhangjuzheng" },
       followups: [
         { label: "回看一条鞭法的材料与边界", href: "search.html?source=zhangjuzheng%2Fc4" },
         { label: "下一步：做两道专题题", href: "quiz.html?topic=yitiaobian" },
@@ -1786,6 +1793,7 @@ const SITE_DATA = {
     },
     {
       id: "q1644",
+      chatLink: { label: "去跟崇祯聊聊", href: "chat.html?figure=chongzhen" },
       followups: [
         { label: "回看三饷加派材料", href: "search.html?source=chongzhen%2Fc4" },
         { label: "定位甲申之变", href: "timeline.html?event=e1644" },

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const { createHash } = require('node:crypto');
 const root = __dirname;
 const context = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(root, 'data.js'), 'utf8') + '\nthis.data = SITE_DATA; this.index = SEARCH_INDEX;', context);
@@ -24,6 +25,13 @@ test('formal quiz preserves ten IDs, indexes and answer meanings', () => {
   assert.deepEqual(Array.from(data.quiz, q => q.id), Array.from({ length: 10 }, (_, i) => 'q' + (i + 1)));
   assert.deepEqual(Array.from(data.quiz, q => q.answer), [1, 1, 2, 1, 0, 1, 2, 0, 2, 1]);
   assert.deepEqual(Array.from(data.quiz, q => q.options[q.answer]), ['1380', '1405', '福建月港', '1619', '英宗', '于谦', '张居正', '内阁票拟＋司礼监批红', '皇帝本人', '赋役合并、按亩折银征收']);
+});
+test('formal quiz fields and all 99 search entries remain unchanged', () => {
+  const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
+  assert.equal(data.quiz.length, 10);
+  assert.equal(digest(data.quiz.map(({ stem, options, answer, dim }) => ({ stem, options, answer, dim }))), '4cbac0f4167d64021084d9d54282f5e1d0075a8ee84512563366c3d3a1e98fbf');
+  assert.equal(context.index.length, 99);
+  assert.equal(digest(context.index), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
 });
 test('topic connects five exact destinations and two sourced questions', () => {
   assert.ok(data.topic, 'topic path is missing');
@@ -90,7 +98,7 @@ test('lastRead accepts only known kind/id, never an arbitrary URL or score mutat
 });
 class Node {
   constructor(tag, className = '', text = '') {
-    this.tag = tag; this.className = className; this.children = []; this.listeners = {}; this.textContent = text; this.hidden = false; this.value = ''; this.style = {}; this.dataset = {};
+    this.tag = tag; this.className = className; this.children = []; this.listeners = {}; this.textContent = text; this.hidden = false; this.value = ''; this.style = { setProperty(name, value) { this[name] = value; } }; this.dataset = {};
     this.classList = {
       add: (...names) => { this.className += ' ' + names.join(' '); },
       toggle: (name, enabled) => { this.className = this.className.split(' ').filter(n => n !== name).concat(enabled ? [name] : []).join(' '); },
@@ -99,6 +107,7 @@ class Node {
   querySelector(selector) { return walk(this, selector.slice(1))[0]; }
   querySelectorAll(selector) { return walk(this, selector.slice(1)); }
   scrollIntoView() {}
+  focus() {}
   appendChild(node) { this.children.push(node); return node; }
   append(...nodes) { nodes.forEach(n => this.appendChild(n)); }
   replaceChildren(...nodes) { this.children = nodes; this.textContent = ''; }
@@ -198,6 +207,90 @@ test('all story final-scene resumes preserve numbers and finish without applying
     assert.match(textOf(app), /游戏推演/);
     assert.ok(walk(app, 'cta-button').some(a => a.href === story.followups[0].href));
   }
+});
+const storyChats = {
+  q1380: { label: '去跟朱元璋聊聊', href: 'chat.html?figure=zhuyuanzhang' },
+  q1402: { label: '去跟朱棣聊聊', href: 'chat.html?figure=zhudi' },
+  q1449: { label: '去跟于谦聊聊', href: 'chat.html?figure=yuqian' },
+  q1548: { label: '去跟海瑞聊聊', href: 'chat.html?figure=hairui' },
+  q1581: { label: '去跟张居正聊聊', href: 'chat.html?figure=zhangjuzheng' },
+  q1644: { label: '去跟崇祯聊聊', href: 'chat.html?figure=chongzhen' },
+};
+function renderEnding(story, qinliUI = data.qinliUI) {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderQinli()'), source.indexOf('  function renderCards()'));
+  const app = new Node('main');
+  const progress = { qinli: { done: [], current: { storyId: story.id, sceneIndex: story.scenes.length, prestige: 80, morale: 45 } } };
+  const ctx = vm.createContext({ data: { ...data, qinli: [story], qinliUI }, app, URLSearchParams, location: { search: '?story=' + story.id }, reducedMotion: { matches: true },
+    loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {},
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'), window: { addEventListener() {} },
+  });
+  vm.runInContext(code + '\nrenderQinli();', ctx);
+  return app;
+}
+test('all six endings render the exact configured chat label and destination', () => {
+  assert.equal(data.qinli.length, 6);
+  for (const story of data.qinli) {
+    assert.deepEqual(JSON.parse(JSON.stringify(story.chatLink || null)), storyChats[story.id], story.id);
+    const app = renderEnding(story);
+    const links = walk(app, 'ql-tochat');
+    assert.equal(links.length, 1, story.id);
+    assert.equal(links[0].textContent, storyChats[story.id].label);
+    assert.equal(links[0].href, storyChats[story.id].href);
+    assert.equal(walk(app, 'ql-again')[0].textContent, data.qinliUI.restart);
+  }
+});
+test('ending without a configured chat uses qinliUI.toChat and Yu Qian', () => {
+  const story = { ...data.qinli[0], chatLink: undefined };
+  const link = walk(renderEnding(story, { ...data.qinliUI, toChat: '缺省聊天文案' }), 'ql-tochat')[0];
+  assert.ok(link, 'missing default chat link');
+  assert.equal(link.textContent, '缺省聊天文案');
+  assert.equal(link.href, 'chat.html?figure=yuqian');
+});
+const cbdbUrls = {
+  '于谦': 'https://newarchive.ihp.sinica.edu.tw/sncaccgi/sncacFtp?ACTION=TQ%2CsncacFtpqf%2CSN%3D011187%2C2nd%2Csearch_simple',
+  '海瑞': 'https://newarchive.ihp.sinica.edu.tw/sncaccgi/sncacFtp?ACTION=TQ,sncacFtpqf,SN=015737,2nd,search_simple',
+  '卢象升': 'https://newarchive.ihp.sinica.edu.tw/sncaccgi/sncacFtp?ACTION=TQ,sncacFtpqf,SN=006306,2nd,search_simple',
+};
+test('only the three requested people have verbatim CBDB URLs', () => {
+  const people = [...data.cards, ...data.relations.emperors, ...data.relations.chiefs, ...data.relations.guests];
+  const linked = people.filter(p => p.cbdbUrl);
+  assert.deepEqual(linked.map(p => [p.name, p.cbdbUrl]), Object.entries(cbdbUrls));
+});
+test('CBDB links render beside person details with safe new-window attributes', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const app = new Node('main');
+  const body = new Node('body');
+  const ctx = vm.createContext({ data, app, currentModule: { title: '人物' }, URLSearchParams, location: { search: '' }, reducedMotion: { matches: true },
+    loadProgress: () => ({}), updateProgress: f => f({}), markLastRead() {}, requestAnimationFrame: f => f(),
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'),
+    document: { body, createElementNS: (ns, tag) => new Node(tag), addEventListener() {} }, window: { addEventListener() {} },
+  });
+  vm.runInContext(source.slice(source.indexOf('  function renderCards()'), source.indexOf('  function quizState()')) + '\nrenderCards();', ctx);
+  const cards = walk(app, 'cw-card');
+  for (const [id, name] of [['p3', '于谦'], ['p4', '海瑞']]) {
+    const card = cards.find(n => n.dataset.card === id);
+    const link = walk(card, 'cbdb-link')[0];
+    assert.ok(link, name + ' missing CBDB link');
+    assert.equal(link.href, cbdbUrls[name]);
+    assert.equal(link.textContent, 'CBDB 人物条目 ↗');
+    assert.equal(link.target, '_blank');
+    assert.equal(link.rel, 'noopener');
+  }
+  assert.equal(walk(app, 'cbdb-link').length, 2);
+  app.replaceChildren();
+  vm.runInContext(source.slice(source.indexOf('  function renderRelations()'), source.indexOf('  function renderSearch()')) + '\nrenderRelations();', ctx);
+  const bar = walk(app, 'rl-bar').find(n => n['aria-label'].startsWith('卢象升 '));
+  bar.listeners.click();
+  const link = walk(body, 'cbdb-link')[0];
+  assert.ok(link, '卢象升 missing CBDB link');
+  assert.equal(link.href, cbdbUrls['卢象升']);
+  assert.equal(link.textContent, 'CBDB 人物条目 ↗');
+  assert.equal(link.target, '_blank');
+  assert.equal(link.rel, 'noopener');
+  const other = walk(app, 'rl-bar').find(n => n['aria-label'].startsWith('于谦 '));
+  other.listeners.click();
+  assert.equal(walk(body, 'cbdb-link').length, 0, 'do not add an extra relation-card CBDB link');
 });
 test('static export matches the backend canonical material fields', () => {
   const exported = JSON.parse(fs.readFileSync(path.join(root, 'materials.json'), 'utf8')).sources;
