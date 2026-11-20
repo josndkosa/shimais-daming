@@ -29,7 +29,8 @@
     data.modules.find((m) => m.id === page) ||
     (page === "relations" ? { title: data.relationsUI.headTitle } : null) ||
     (page === "qinli" ? { title: data.qinliUI.sectionTitle } : null) ||
-    (page === "search" ? { title: data.searchUI.navTitle } : null);
+    (page === "search" ? { title: data.searchUI.navTitle } : null) ||
+    (page === "chapter" ? { title: data.chapter.series + " · " + data.chapter.title } : null);
   document.title = currentModule
     ? currentModule.title + " · " + data.meta.title
     : data.meta.title;
@@ -420,6 +421,14 @@
     cta.href = ctaModule ? ctaModule.page : "timeline.html";
     question.appendChild(cta);
     app.appendChild(question);
+
+    const chEntry = el("section", "ch-entry container");
+    chEntry.appendChild(el("h2", "ch-entry-title", data.chapterUI.entryTitle));
+    chEntry.appendChild(el("p", "ch-entry-desc", data.chapterUI.entryDesc));
+    const chBtn = el("a", "cta-button", data.chapterUI.entryBtn);
+    chBtn.href = "chapter.html";
+    chEntry.appendChild(chBtn);
+    app.appendChild(chEntry);
 
     const entries = el("section", "entries-section container");
     const head = el("div", "section-head");
@@ -1238,6 +1247,11 @@
           body.appendChild(source);
         }
         if (c.id === "i3") body.appendChild(buildTopicPath("cards.html?card=i3"));
+        if (c.id === "p1") {
+          const chLink = el("a", "topic-next cw-chapter-link", data.chapterUI.cardLink);
+          chLink.href = "chapter.html";
+          body.appendChild(chLink);
+        }
 
         card.appendChild(body);
         grid.appendChild(card);
@@ -2668,6 +2682,35 @@
     loadMaterials();
   }
 
+  /* ---------- 白话明史 · 长文阅读 ---------- */
+
+  function renderChapter() {
+    const ch = data.chapter;
+    const ui = data.chapterUI;
+    app.appendChild(renderPageHead(ch.series + " · " + ch.title, null));
+
+    const wrap = el("div", "container ch-wrap");
+    const read = el("div", "ch-read");
+    read.appendChild(el("p", "ch-intro", ch.intro));
+    ch.sections.forEach((sec) => {
+      const section = el("section", "ch-section");
+      section.appendChild(el("h2", "ch-sec-title", sec.title));
+      sec.paragraphs.forEach((p) => section.appendChild(el("p", "ch-p", p)));
+      section.appendChild(el("p", "ch-source", ui.sourcePrefix + sec.sourceNote));
+      read.appendChild(section);
+    });
+    const next = el("section", "ch-next");
+    next.appendChild(el("h2", "ch-sec-title", ui.nextTitle));
+    ui.next.forEach((l) => {
+      const a = el("a", "topic-next ch-next-link", l.label);
+      a.href = l.href;
+      next.appendChild(a);
+    });
+    read.appendChild(next);
+    wrap.appendChild(read);
+    app.appendChild(wrap);
+  }
+
   /* ---------- 占位模块页 ---------- */
 
   function renderPlaceholder() {
@@ -2688,6 +2731,7 @@
   else if (page === "decision") renderDecisions();
   else if (page === "cards") renderCards();
   else if (page === "search") renderSearch();
+  else if (page === "chapter") renderChapter();
   else if (page === "quiz") renderQuiz();
   else if (page === "profile") renderProfile();
   else if (page === "relations") renderRelations();

@@ -311,3 +311,74 @@ test('topic c4 has explicit kind, location, edition and verification limits', ()
   assert.equal(data.cards.find(c => c.id === 'i3').sourceId, 'zhangjuzheng/c4');
   assert.equal(data.timeline.events.find(e => e.id === 'e1581').sourceId, 'zhangjuzheng/c4');
 });
+test('chapter pilot keeps five non-empty sourced sections', () => {
+  const ch = data.chapter;
+  assert.ok(ch && ch.series && ch.title && ch.intro && ch.intro.trim());
+  assert.equal(ch.sections.length, 5);
+  ch.sections.forEach(s => {
+    assert.ok(s.title && s.title.trim());
+    assert.ok(Array.isArray(s.paragraphs) && s.paragraphs.length > 0);
+    s.paragraphs.forEach(p => assert.ok(typeof p === 'string' && p.trim().length > 0));
+    assert.ok(s.sourceNote && s.sourceNote.trim());
+  });
+  assert.equal(data.chapterUI.entryBtn, '开始试读');
+  assert.deepEqual(Array.from(data.chapterUI.next, l => l.href), ['qinli.html?story=q1380', 'chat.html?figure=zhuyuanzhang', 'timeline.html?event=e1380']);
+});
+test('chapter renders intro, sections, source prefixes and next links without writing progress', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const start = source.indexOf('  function renderChapter()');
+  const code = source.slice(start, source.indexOf('  /* ----------', start + 10));
+  const app = new Node('main');
+  let writes = 0;
+  const ctx = vm.createContext({ data, app, currentModule: { title: '白话明史 · 洪武朝' },
+    loadProgress: () => ({}), updateProgress: () => { writes += 1; }, markLastRead() {},
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+    window: { addEventListener() {} },
+  });
+  vm.runInContext(code + '\nrenderChapter();', ctx);
+  assert.equal(writes, 0);
+  assert.equal(walk(app, 'ch-intro').length, 1);
+  assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapter.intro);
+  assert.equal(walk(app, 'ch-section').length, 5);
+  assert.equal(walk(app, 'ch-p').length, data.chapter.sections.reduce((n, s) => n + s.paragraphs.length, 0));
+  const sources = walk(app, 'ch-source');
+  assert.equal(sources.length, 5);
+  sources.forEach((n, i) => assert.equal(textOf(n), data.chapterUI.sourcePrefix + data.chapter.sections[i].sourceNote));
+  const titles = walk(app, 'ch-sec-title').map(n => textOf(n));
+  assert.deepEqual(titles.slice(0, 5), Array.from(data.chapter.sections, s => s.title));
+  const next = walk(app, 'ch-next-link');
+  assert.deepEqual(Array.from(next, a => a.href), Array.from(data.chapterUI.next, l => l.href));
+  assert.deepEqual(Array.from(next, a => textOf(a)), Array.from(data.chapterUI.next, l => l.label));
+});
+test('index entry block and Zhu Yuanzhang card link both reach the chapter', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const indexCode = source.slice(source.indexOf('  function renderIndex()'), source.indexOf('  /* ---------- 时间线'));
+  const app = new Node('main');
+  const ctx = vm.createContext({ data, app, currentModule: { title: '首页' },
+    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, resolveLastRead: () => null,
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildCarousel: () => new Node('section'), buildTopicPath: () => new Node('section'),
+    window: { addEventListener() {} },
+  });
+  vm.runInContext(indexCode + '\nrenderIndex();', ctx);
+  const entry = walk(app, 'ch-entry')[0];
+  assert.ok(entry, 'index chapter entry missing');
+  assert.equal(textOf(walk(entry, 'ch-entry-title')[0]), data.chapterUI.entryTitle);
+  assert.equal(textOf(walk(entry, 'ch-entry-desc')[0]), data.chapterUI.entryDesc);
+  const btn = walk(entry, 'cta-button').find(a => textOf(a) === data.chapterUI.entryBtn);
+  assert.ok(btn && btn.href === 'chapter.html');
+  assert.equal(walk(app, 'entry-block').length, 6, 'module entries unchanged');
+  const cardsCode = source.slice(source.indexOf('  function renderCards()'), source.indexOf('  function quizState()'));
+  const capp = new Node('main');
+  const cctx = vm.createContext({ data, app: capp, currentModule: { title: '人物' }, URLSearchParams, location: { search: '' }, reducedMotion: { matches: true },
+    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, requestAnimationFrame: f => f(),
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'),
+    document: { body: new Node('body'), createElementNS: (ns, tag) => new Node(tag), addEventListener() {} }, window: { addEventListener() {} },
+  });
+  vm.runInContext(cardsCode + '\nrenderCards();', cctx);
+  const p1 = walk(capp, 'cw-card').find(n => n.dataset.card === 'p1');
+  const link = walk(p1, 'cw-chapter-link')[0];
+  assert.ok(link, 'p1 chapter link missing');
+  assert.equal(link.href, 'chapter.html');
+  assert.equal(textOf(link), data.chapterUI.cardLink);
+  assert.equal(walk(capp, 'cw-chapter-link').length, 1, 'only Zhu Yuanzhang card links the chapter');
+});

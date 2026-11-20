@@ -3833,3 +3833,94 @@ textarea.ct-text {
     padding: 14px;
   }
 }
+
+/* ---------- 白话明史 · 长文阅读页与入口 ---------- */
+
+.ch-entry {
+  padding: calc(var(--gap) * 1.2) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.ch-entry-title {
+  margin: 0;
+  font-family: var(--site-font);
+  font-size: calc(20px * var(--site-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--site-fg);
+}
+
+.ch-entry-desc {
+  margin: 8px 0 0;
+  max-width: 46em;
+  font-size: calc(13.5px * var(--site-type, 1));
+  line-height: 1.8;
+  color: var(--site-muted);
+}
+
+.ch-entry .cta-button {
+  margin-top: 14px;
+}
+
+.cw-chapter-link {
+  color: var(--vermilion-bright);
+}
+
+.ch-wrap {
+  padding-top: calc(var(--gap) * 1.4);
+  padding-bottom: calc(var(--gap) * 2.2);
+}
+
+.ch-read {
+  max-width: 720px;
+  margin-inline: auto;
+}
+
+.ch-intro {
+  margin: 0 0 calc(var(--gap) * 1.4);
+  padding: 12px 16px;
+  border-left: 2px solid var(--vermilion-bright);
+  background: color-mix(in srgb, var(--site-accent) 7%, var(--site-bg));
+  font-size: calc(14px * var(--site-type, 1));
+  line-height: 1.9;
+  color: var(--body-fg);
+}
+
+.ch-section {
+  margin-top: calc(var(--gap) * 1.6);
+}
+
+.ch-sec-title {
+  margin: 0 0 calc(var(--gap) * 0.7);
+  font-family: var(--site-font);
+  font-size: calc(22px * var(--site-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+  color: var(--site-fg);
+}
+
+.ch-p {
+  margin: 0 0 calc(var(--gap) * 0.7);
+  font-family: var(--font-body);
+  font-size: calc(16px * var(--site-type, 1));
+  line-height: 1.9;
+  letter-spacing: 0.01em;
+  color: var(--body-fg);
+  text-align: justify;
+}
+
+.ch-source {
+  margin: calc(var(--gap) * 0.4) 0 0;
+  font-size: 13px;
+  line-height: 1.8;
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+}
+
+.ch-next {
+  margin-top: calc(var(--gap) * 2);
+  padding-top: calc(var(--gap) * 0.9);
+  border-top: 1px solid var(--line);
+}
