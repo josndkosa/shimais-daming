@@ -4012,3 +4012,83 @@ textarea.ct-text {
 .cw-person .cw-paper-verification {
   font-size: calc(16px * var(--site-type, 1));
 }
+
+/* ---------- 卡片页通栏横幅：白话明史入口（纸面语言） ---------- */
+
+.cw-chapter-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(18px * var(--site-space, 1));
+  margin-bottom: calc(var(--gap) * 1.2);
+  padding: calc(18px * var(--site-space, 1)) calc(20px * var(--site-space, 1));
+  background: linear-gradient(180deg, #efe4c8, #e7d9b8);
+  border: 1.6px solid #2a2417;
+  color: #2a2417;
+  text-decoration: none;
+  transition: filter var(--dur) ease;
+}
+
+.cw-chapter-banner::before {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  border: 0.7px solid #2a2417;
+  pointer-events: none;
+}
+
+.cw-chapter-banner:hover {
+  filter: brightness(1.04);
+}
+
+.cw-banner-copy {
+  min-width: 0;
+}
+
+.cw-banner-eyebrow {
+  display: block;
+  font-size: calc(12px * var(--site-type, 1));
+  letter-spacing: 0.18em;
+  color: #6d5f43;
+}
+
+.cw-banner-title {
+  margin: 2px 0 0;
+  font-family: var(--site-font);
+  font-size: calc(26px * var(--site-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #2a2417;
+}
+
+.cw-banner-desc {
+  margin: 6px 0 0;
+  max-width: 46em;
+  font-size: calc(13.5px * var(--site-type, 1));
+  line-height: 1.8;
+  color: #57492f;
+}
+
+.cw-banner-btn {
+  flex: none;
+  padding: 9px 20px;
+  border: 1px solid #2a2417;
+  background: #2a2417;
+  color: #efe4c8;
+  font-size: calc(14px * var(--site-type, 1));
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cw-chapter-banner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .cw-banner-btn {
+    text-align: center;
+  }
+}

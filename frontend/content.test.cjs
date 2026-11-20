@@ -375,10 +375,15 @@ test('index entry block and Zhu Yuanzhang card link both reach the chapter', () 
     document: { body: new Node('body'), createElementNS: (ns, tag) => new Node(tag), addEventListener() {} }, window: { addEventListener() {} },
   });
   vm.runInContext(cardsCode + '\nrenderCards();', cctx);
-  const p1 = walk(capp, 'cw-card').find(n => n.dataset.card === 'p1');
-  const link = walk(p1, 'cw-chapter-link')[0];
-  assert.ok(link, 'p1 chapter link missing');
-  assert.equal(link.href, 'chapter.html');
-  assert.equal(textOf(link), data.chapterUI.cardLink);
-  assert.equal(walk(capp, 'cw-chapter-link').length, 1, 'only Zhu Yuanzhang card links the chapter');
+  const banner = walk(capp, 'cw-chapter-banner')[0];
+  assert.ok(banner, 'cards chapter banner missing');
+  assert.equal(banner.href, 'chapter.html');
+  assert.equal(textOf(walk(banner, 'cw-banner-eyebrow')[0]), data.chapterUI.bannerEyebrow);
+  assert.equal(textOf(walk(banner, 'cw-banner-title')[0]), data.chapterUI.bannerTitle);
+  assert.equal(textOf(walk(banner, 'cw-banner-desc')[0]), data.chapterUI.bannerDesc);
+  assert.equal(textOf(walk(banner, 'cw-banner-btn')[0]), data.chapterUI.bannerBtn);
+  const cwWrap = walk(capp, 'cw-wrap')[0];
+  assert.ok(cwWrap.children.indexOf(banner) < cwWrap.children.findIndex(n => n.className.includes('cw-group')), 'banner sits above the person grid');
+  assert.equal(walk(capp, 'cw-chapter-link').length, 0, 'old in-card link removed');
+  assert.equal(data.chapterUI.cardLink, undefined, 'cardLink field removed');
 });

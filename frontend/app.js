@@ -1149,6 +1149,15 @@
     }
 
     const wrap = el("div", "container cw-wrap");
+    const banner = el("a", "cw-chapter-banner");
+    banner.href = "chapter.html";
+    const bannerCopy = el("div", "cw-banner-copy");
+    bannerCopy.appendChild(el("span", "cw-banner-eyebrow", data.chapterUI.bannerEyebrow));
+    bannerCopy.appendChild(el("h2", "cw-banner-title", data.chapterUI.bannerTitle));
+    bannerCopy.appendChild(el("p", "cw-banner-desc", data.chapterUI.bannerDesc));
+    banner.appendChild(bannerCopy);
+    banner.appendChild(el("span", "cw-banner-btn", data.chapterUI.bannerBtn));
+    wrap.appendChild(banner);
     const reveal = [];
     const groups = [
       { kind: "person", title: ui.peopleTitle, hint: ui.peopleHint },
@@ -1247,11 +1256,6 @@
           body.appendChild(source);
         }
         if (c.id === "i3") body.appendChild(buildTopicPath("cards.html?card=i3"));
-        if (c.id === "p1") {
-          const chLink = el("a", "topic-next cw-chapter-link", data.chapterUI.cardLink);
-          chLink.href = "chapter.html";
-          body.appendChild(chLink);
-        }
 
         card.appendChild(body);
         grid.appendChild(card);

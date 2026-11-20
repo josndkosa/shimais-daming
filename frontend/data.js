@@ -1992,7 +1992,10 @@ const SITE_DATA = {
       { label: "跟朱元璋聊聊", href: "chat.html?figure=zhuyuanzhang" },
       { label: "回看时间线 1380", href: "timeline.html?event=e1380" },
     ],
-    cardLink: "读白话明史 · 洪武朝 →",
+    bannerEyebrow: "白话明史 · 试点章",
+    bannerTitle: "洪武朝",
+    bannerDesc: "用白话把洪武朝从头讲一遍：建国、废相、锦衣卫与晚年大狱，全文依据本站已核材料。",
+    bannerBtn: "开始读 →",
   },
 
   footer: {
