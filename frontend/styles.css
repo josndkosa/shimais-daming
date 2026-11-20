@@ -1350,7 +1350,7 @@ body[data-page="index"] {
 .cw-photo:not(:has(.cw-note))::after {
   content: "";
   display: block;
-  height: calc(8px * var(--site-space, 1) + 23.4px * var(--site-type, 1));
+  height: calc(8px * var(--site-space, 1) + 30.6px * var(--site-type, 1));
 }
 
 /* 首卡被 :first-child 去掉的 20px 内 padding 与 1px 顶线，在相框上补回，保持两列起点齐平 */
@@ -3939,4 +3939,76 @@ textarea.ct-text {
   margin-top: calc(var(--gap) * 2);
   padding-top: calc(var(--gap) * 0.9);
   border-top: 1px solid var(--line);
+}
+
+/* ---------- 人物卡：居中牌面、字号上调两号（仅 .cw-person） ---------- */
+
+.cw-person {
+  text-align: center;
+}
+
+.cw-person .cw-head {
+  justify-content: center;
+}
+
+.cw-person .cw-name {
+  font-size: calc(28px * var(--site-type, 1));
+}
+
+.cw-person .cw-role,
+.cw-person .cw-era {
+  font-size: calc(17px * var(--site-type, 1));
+}
+
+.cw-person .cw-position {
+  font-size: calc(20px * var(--site-type, 1));
+}
+
+.cw-person .cw-note {
+  font-size: calc(17px * var(--site-type, 1));
+}
+
+.cw-person .cw-facts-label,
+.cw-person .cw-comment-label {
+  font-size: calc(15px * var(--site-type, 1));
+}
+
+.cw-person .cw-fact {
+  padding-left: 0;
+  font-size: calc(17.5px * var(--site-type, 1));
+}
+
+.cw-person .cw-fact::before {
+  position: static;
+  display: inline-block;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.cw-person .cw-comment {
+  border-left: 0;
+  border-top: 1px solid var(--line-strong);
+  padding: 10px 8px 0;
+}
+
+.cw-person .cw-comment-p {
+  font-size: calc(17.5px * var(--site-type, 1));
+}
+
+.cw-person .topic-next {
+  margin-inline: auto;
+  font-size: calc(18px * var(--site-type, 1));
+}
+
+.cw-person .cw-paper-quote {
+  font-size: calc(21px * var(--site-type, 1));
+}
+
+.cw-person .cw-paper-from {
+  text-align: center;
+  font-size: calc(17px * var(--site-type, 1));
+}
+
+.cw-person .cw-paper-verification {
+  font-size: calc(16px * var(--site-type, 1));
 }
