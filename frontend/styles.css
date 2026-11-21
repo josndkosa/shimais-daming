@@ -4233,6 +4233,95 @@ textarea.ct-text {
   border-top: 1px solid var(--line);
 }
 
+/* ---------- 多章切换与章节导航（仅 chapter 页） ---------- */
+
+.ch-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 calc(var(--gap) * 1.2);
+}
+
+.ch-tab {
+  position: relative;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  font-family: var(--site-font);
+  font-size: calc(14px * var(--site-type, 1));
+  letter-spacing: 0.05em;
+  color: var(--site-muted);
+  text-decoration: none;
+}
+
+.ch-tab:hover {
+  color: var(--site-fg);
+  border-color: var(--line-strong);
+}
+
+.ch-tab.is-current {
+  color: var(--gold);
+  font-weight: 700;
+  border-color: var(--line-strong);
+}
+
+.ch-tab.is-current::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 2px;
+  height: 2px;
+  background: var(--site-accent);
+}
+
+.ch-chapter-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: calc(var(--gap) * 1.4);
+}
+
+.ch-chapter-link {
+  font-size: calc(14px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ch-chapter-link:hover {
+  color: var(--site-fg);
+}
+
+.ch-entry-second {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ch-entry-second:hover {
+  color: var(--site-fg);
+}
+
+.cw-banner-second {
+  display: inline-block;
+  margin: calc(var(--gap) * -0.6) 0 calc(var(--gap) * 1.2);
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.cw-banner-second:hover {
+  color: var(--site-fg);
+}
+
 /* ---------- 章节节末史料展开（仅 chapter 页；纸面语言缩小一档） ---------- */
 
 .ch-sources {

@@ -25,12 +25,18 @@
   })();
 
   document.documentElement.lang = data.meta.lang;
+  function chapterById(id) {
+    return data.chapters.find((c) => c.id === id) || data.chapters[0];
+  }
+  function selectedChapter() {
+    return chapterById(new URLSearchParams(location.search).get("ch"));
+  }
   const currentModule =
     data.modules.find((m) => m.id === page) ||
     (page === "relations" ? { title: data.relationsUI.headTitle } : null) ||
     (page === "qinli" ? { title: data.qinliUI.sectionTitle } : null) ||
     (page === "search" ? { title: data.searchUI.navTitle } : null) ||
-    (page === "chapter" ? { title: data.chapter.series + " · " + data.chapter.title } : null);
+    (page === "chapter" ? { title: data.chapterUI.series + " · " + selectedChapter().title } : null);
   document.title = currentModule
     ? currentModule.title + " · " + data.meta.title
     : data.meta.title;
@@ -465,6 +471,11 @@
     chBtn.target = "_blank";
     chBtn.rel = "noopener";
     chEntry.appendChild(chBtn);
+    const chSecond = el("a", "ch-entry-second", data.chapterUI.secondLink);
+    chSecond.href = "chapter.html?ch=" + data.chapters[1].id;
+    chSecond.target = "_blank";
+    chSecond.rel = "noopener";
+    chEntry.appendChild(chSecond);
     app.appendChild(chEntry);
 
     const entries = el("section", "entries-section container");
@@ -1368,6 +1379,11 @@
     banner.appendChild(bannerCopy);
     banner.appendChild(el("span", "cw-banner-btn", data.chapterUI.bannerBtn));
     wrap.appendChild(banner);
+    const bannerSecond = el("a", "cw-banner-second", data.chapterUI.secondLink);
+    bannerSecond.href = "chapter.html?ch=" + data.chapters[1].id;
+    bannerSecond.target = "_blank";
+    bannerSecond.rel = "noopener";
+    wrap.appendChild(bannerSecond);
     const reveal = [];
     const groups = [
       { kind: "person", title: ui.peopleTitle, hint: ui.peopleHint },
@@ -3038,12 +3054,24 @@
   /* ---------- 白话明史 · 长文阅读 ---------- */
 
   function renderChapter() {
-    const ch = data.chapter;
     const ui = data.chapterUI;
-    app.appendChild(renderPageHead(ch.series + " · " + ch.title, null));
+    const ch = selectedChapter();
+    const idx = data.chapters.indexOf(ch);
+    app.appendChild(renderPageHead(ui.series + " · " + ch.title, null));
 
     const wrap = el("div", "container ch-wrap");
     const read = el("div", "ch-read");
+    const tabs = el("div", "ch-tabs");
+    tabs.setAttribute("role", "group");
+    tabs.setAttribute("aria-label", "章节切换");
+    const nums = ["一", "二"];
+    data.chapters.forEach((c, i) => {
+      const tab = el("a", "ch-tab" + (c === ch ? " is-current" : ""), "第" + nums[i] + "章 · " + c.title);
+      tab.href = "chapter.html?ch=" + c.id;
+      if (c === ch) tab.setAttribute("aria-current", "page");
+      tabs.appendChild(tab);
+    });
+    read.appendChild(tabs);
     read.appendChild(el("p", "ch-intro", ch.intro));
     ch.sections.forEach((sec) => {
       const section = el("section", "ch-section");
@@ -3070,9 +3098,25 @@
       section.appendChild(el("p", "ch-source", ui.sourcePrefix + sec.sourceNote));
       read.appendChild(section);
     });
+    const prev = data.chapters[idx - 1];
+    const nextChapter = data.chapters[idx + 1];
+    if (prev || nextChapter) {
+      const chapterNav = el("div", "ch-chapter-nav");
+      if (prev) {
+        const a = el("a", "ch-chapter-link", "← 上一章：" + prev.title);
+        a.href = "chapter.html?ch=" + prev.id;
+        chapterNav.appendChild(a);
+      }
+      if (nextChapter) {
+        const a = el("a", "ch-chapter-link", "下一章：" + nextChapter.title + " →");
+        a.href = "chapter.html?ch=" + nextChapter.id;
+        chapterNav.appendChild(a);
+      }
+      read.appendChild(chapterNav);
+    }
     const next = el("section", "ch-next");
     next.appendChild(el("h2", "ch-sec-title", ui.nextTitle));
-    ui.next.forEach((l) => {
+    ch.nextSteps.forEach((l) => {
       const a = el("a", "topic-next ch-next-link", l.label);
       a.href = l.href;
       if (a.getAttribute("href").startsWith("qinli.html")) { a.target = "_blank"; a.rel = "noopener"; }
