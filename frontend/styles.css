@@ -4235,6 +4235,10 @@ textarea.ct-text {
 
 /* ---------- 多章切换与章节导航（仅 chapter 页） ---------- */
 
+body[data-page="chapter"] .head-title {
+  white-space: normal;
+}
+
 .ch-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -4295,7 +4299,8 @@ textarea.ct-text {
 }
 
 .ch-entry-second {
-  display: inline-block;
+  display: block;
+  width: fit-content;
   margin-top: 10px;
   font-size: calc(13px * var(--site-type, 1));
   letter-spacing: 0.04em;
@@ -4309,7 +4314,8 @@ textarea.ct-text {
 }
 
 .cw-banner-second {
-  display: inline-block;
+  display: block;
+  width: fit-content;
   margin: calc(var(--gap) * -0.6) 0 calc(var(--gap) * 1.2);
   font-size: calc(13px * var(--site-type, 1));
   letter-spacing: 0.04em;
@@ -4320,6 +4326,10 @@ textarea.ct-text {
 
 .cw-banner-second:hover {
   color: var(--site-fg);
+}
+
+.cw-banner-third {
+  margin-top: 0;
 }
 
 /* ---------- 章节节末史料展开（仅 chapter 页；纸面语言缩小一档） ---------- */

@@ -28,6 +28,13 @@
   function chapterById(id) {
     return data.chapters.find((c) => c.id === id) || data.chapters[0];
   }
+  function chapterNum(n) {
+    const d = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+    if (n < 10) return d[n];
+    if (n === 10) return "十";
+    if (n < 20) return "十" + d[n % 10];
+    return d[Math.floor(n / 10)] + "十" + (n % 10 ? d[n % 10] : "");
+  }
   function selectedChapter() {
     return chapterById(new URLSearchParams(location.search).get("ch"));
   }
@@ -476,6 +483,11 @@
     chSecond.target = "_blank";
     chSecond.rel = "noopener";
     chEntry.appendChild(chSecond);
+    const chThird = el("a", "ch-entry-second", data.chapterUI.thirdLink);
+    chThird.href = "chapter.html?ch=" + data.chapters[2].id;
+    chThird.target = "_blank";
+    chThird.rel = "noopener";
+    chEntry.appendChild(chThird);
     app.appendChild(chEntry);
 
     const entries = el("section", "entries-section container");
@@ -1384,6 +1396,11 @@
     bannerSecond.target = "_blank";
     bannerSecond.rel = "noopener";
     wrap.appendChild(bannerSecond);
+    const bannerThird = el("a", "cw-banner-second cw-banner-third", data.chapterUI.thirdLink);
+    bannerThird.href = "chapter.html?ch=" + data.chapters[2].id;
+    bannerThird.target = "_blank";
+    bannerThird.rel = "noopener";
+    wrap.appendChild(bannerThird);
     const reveal = [];
     const groups = [
       { kind: "person", title: ui.peopleTitle, hint: ui.peopleHint },
@@ -3064,9 +3081,8 @@
     const tabs = el("div", "ch-tabs");
     tabs.setAttribute("role", "group");
     tabs.setAttribute("aria-label", "章节切换");
-    const nums = ["一", "二"];
     data.chapters.forEach((c, i) => {
-      const tab = el("a", "ch-tab" + (c === ch ? " is-current" : ""), "第" + nums[i] + "章 · " + c.title);
+      const tab = el("a", "ch-tab" + (c === ch ? " is-current" : ""), "第" + chapterNum(i + 1) + "章 · " + c.title);
       tab.href = "chapter.html?ch=" + c.id;
       if (c === ch) tab.setAttribute("aria-current", "page");
       tabs.appendChild(tab);
