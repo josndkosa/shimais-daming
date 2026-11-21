@@ -115,6 +115,7 @@ class Node {
   append(...nodes) { nodes.forEach(n => this.appendChild(n)); }
   replaceChildren(...nodes) { this.children = nodes; this.textContent = ''; }
   setAttribute(name, value) { this[name] = value; if (name === 'class') this.className = value; }
+  getAttribute(name) { return name in this ? String(this[name]) : null; }
   addEventListener(name, callback) { this.listeners[name] = callback; }
   set innerHTML(value) { throw new Error('Do not render materials as HTML: ' + value); }
 }
@@ -493,6 +494,78 @@ test('chapter sections carry verbatim backend sources and render collapsed slips
       assert.equal(at, -1);
     }
   });
+});
+test('qinli content-area anchors open in a new tab; nav and in-page anchors do not', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const slice = (startMarker, endMarker) => {
+    const start = source.indexOf(startMarker);
+    assert.ok(start >= 0, startMarker + ' missing');
+    return source.slice(start, endMarker ? source.indexOf(endMarker, start + 10) : undefined);
+  };
+  // 专题步骤与「下一步」：仅 qinli 一步带 target/rel
+  const topicCode = slice('  function buildTopicPath(', '  function chatState()');
+  const mkCtx = () => vm.createContext({ data, el: (tag, cls, text) => new Node(tag, cls, text) });
+  const ctxA = mkCtx();
+  vm.runInContext(topicCode + '\nthis.sec = buildTopicPath("cards.html?card=i3");', ctxA);
+  const linksA = walk(ctxA.sec, 'topic-link');
+  assert.equal(linksA.length, data.topic.steps.length);
+  linksA.forEach((a, i) => {
+    const isQinli = data.topic.steps[i].href.startsWith('qinli.html');
+    assert.equal(a.target, isQinli ? '_blank' : undefined);
+    assert.equal(a.rel, isQinli ? 'noopener' : undefined);
+  });
+  const nextA = walk(ctxA.sec, 'topic-next');
+  assert.equal(nextA.length, 1);
+  assert.ok(nextA[0].href.startsWith('qinli.html'));
+  assert.equal(nextA[0].target, '_blank');
+  assert.equal(nextA[0].rel, 'noopener');
+  const ctxB = mkCtx();
+  vm.runInContext(topicCode + '\nthis.sec = buildTopicPath("qinli.html?story=q1581");', ctxB);
+  const nextB = walk(ctxB.sec, 'topic-next');
+  assert.equal(nextB.length, 1);
+  assert.ok(!nextB[0].href.startsWith('qinli.html'));
+  assert.equal(nextB[0].target, undefined);
+  // 章末下一步：亲历链接带 target/rel，另两条不带
+  const chCode = slice('  function renderChapter()', '  /* ----------');
+  const app = new Node('main');
+  const chCtx = vm.createContext({ data, app, currentModule: { title: '白话明史 · 洪武朝' },
+    loadProgress: () => ({}), updateProgress: () => assert.fail('no writes'), markLastRead() {},
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+    window: { addEventListener() {} },
+  });
+  vm.runInContext(chCode + '\nrenderChapter();', chCtx);
+  const chNext = walk(app, 'ch-next-link');
+  assert.equal(chNext.length, 3);
+  assert.equal(chNext[0].target, '_blank');
+  assert.equal(chNext[0].rel, 'noopener');
+  assert.equal(chNext[1].target, undefined);
+  assert.equal(chNext[2].target, undefined);
+  // 其余调用点：href 赋值后必须紧跟 target/rel（无条件或按 qinli 前缀条件）
+  const lines = source.split(/\r?\n/);
+  const guarded = [
+    ['resume.href = last.href;', 'resume.target = "_blank"'],
+    ['begin.href = data.topic.steps[0].href;', 'begin.target = "_blank"'],
+    ['const a = el("a", "entry-block");', 'a.target = "_blank"'],
+    ['entryLink.href = "qinli.html";', 'entryLink.target = "_blank"'],
+    ['link.href = last.href;', 'link.target = "_blank"'],
+    ['qlLink.href = currentStory ? currentStory.href : "qinli.html";', 'qlLink.target = "_blank"'],
+    ['qinliLink.href = "qinli.html?story=" + storyId;', 'qinliLink.target = "_blank"'],
+  ];
+  guarded.forEach(([marker, targetLine]) => {
+    const hits = lines.map((l, i) => l.includes(marker) ? i : -1).filter(i => i >= 0);
+    assert.ok(hits.length >= 1, marker + ' missing');
+    hits.forEach(i => {
+      const window = lines.slice(i + 1, i + 3).join('\n');
+      assert.ok(window.includes(targetLine), marker + ' not followed by target');
+      assert.ok(window.includes('rel = "noopener"'), marker + ' not followed by rel');
+    });
+  });
+  // 导航与亲历页内不新开标签
+  const navCode = slice('  function renderNav()', '  /* ----------');
+  assert.ok(!navCode.includes('.target = "_blank"'), 'nav must stay same-tab');
+  assert.ok(navCode.includes('page: "qinli.html"'), 'qinli nav item missing');
+  const qlCode = slice('  function renderQinli()', '  /* ----------');
+  assert.ok(!qlCode.includes('.target = "_blank"'), 'qinli in-page must stay same-tab');
 });
 test('chapter renders intro, sections, source prefixes and next links without writing progress', () => {
   const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');

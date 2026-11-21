@@ -147,6 +147,7 @@
       const item = el("li", i === active ? "is-current" : "");
       const link = el("a", "topic-link", step.label);
       link.href = step.href;
+      if (link.getAttribute("href").startsWith("qinli.html")) { link.target = "_blank"; link.rel = "noopener"; }
       link.title = step.goal;
       if (i === active) link.setAttribute("aria-current", "step");
       item.appendChild(link);
@@ -157,6 +158,7 @@
       const next = data.topic.steps[active + 1];
       const link = el("a", "topic-next", "下一步：" + next.label + " — " + next.goal);
       link.href = next.href;
+      if (link.getAttribute("href").startsWith("qinli.html")) { link.target = "_blank"; link.rel = "noopener"; }
       section.appendChild(link);
     }
     return section;
@@ -432,11 +434,13 @@
     copy.appendChild(el("p", "topic-goal", data.topic.title + " · 读背景、试处境、做迁移、回材料"));
     const begin = el("a", "cta-button cta-gold", "开始一条鞭法专题");
     begin.href = data.topic.steps[0].href;
+    if (begin.getAttribute("href").startsWith("qinli.html")) { begin.target = "_blank"; begin.rel = "noopener"; }
     start.append(copy, begin);
     const last = resolveLastRead(loadProgress().lastRead);
     if (last) {
       const resume = el("a", "topic-next", "继续上次：" + last.label);
       resume.href = last.href;
+      if (resume.getAttribute("href").startsWith("qinli.html")) { resume.target = "_blank"; resume.rel = "noopener"; }
       start.appendChild(resume);
     }
     app.appendChild(start);
@@ -473,6 +477,7 @@
     data.modules.forEach((m, i) => {
       const a = el("a", "entry-block");
       a.href = m.page;
+      if (a.getAttribute("href").startsWith("qinli.html")) { a.target = "_blank"; a.rel = "noopener"; }
       a.appendChild(el("span", "entry-index", String(i + 1).padStart(2, "0")));
       a.appendChild(el("h3", "entry-title", m.title));
       a.appendChild(el("p", "entry-desc", m.desc));
@@ -985,6 +990,8 @@
     entry.appendChild(el("p", "ql-entry-text", data.qinliUI.entryText));
     const entryLink = el("a", "ql-entry-link", data.qinliUI.entryLink);
     entryLink.href = "qinli.html";
+    entryLink.target = "_blank";
+    entryLink.rel = "noopener";
     entry.appendChild(entryLink);
     wrap.appendChild(entry);
 
@@ -2053,6 +2060,7 @@
       if (last) {
         const link = el("a", "cta-button cta-gold", last.label);
         link.href = last.href;
+        if (link.getAttribute("href").startsWith("qinli.html")) { link.target = "_blank"; link.rel = "noopener"; }
         resumeSection.appendChild(link);
       } else {
         resumeSection.appendChild(el("p", "content-note", ui.resumeEmpty));
@@ -2100,6 +2108,8 @@
       const qlLink = el("a", "pf-link", "继续亲历");
       const currentStory = resolveLastRead({ kind: "qinli", id: p.qinli && p.qinli.current && p.qinli.current.storyId });
       qlLink.href = currentStory ? currentStory.href : "qinli.html";
+      qlLink.target = "_blank";
+      qlLink.rel = "noopener";
       qlStat.appendChild(qlLink);
       stats.appendChild(qlStat);
 
@@ -2410,6 +2420,8 @@
       forgetBtn.hidden = !mem;
       const storyId = figure().qinliStory;
       qinliLink.href = "qinli.html?story=" + storyId;
+      qinliLink.target = "_blank";
+      qinliLink.rel = "noopener";
       const done = loadProgress();
       const doneIds = done.qinli && Array.isArray(done.qinli.done) ? done.qinli.done : [];
       qinliBadge.hidden = !doneIds.includes(storyId);
@@ -3063,6 +3075,7 @@
     ui.next.forEach((l) => {
       const a = el("a", "topic-next ch-next-link", l.label);
       a.href = l.href;
+      if (a.getAttribute("href").startsWith("qinli.html")) { a.target = "_blank"; a.rel = "noopener"; }
       next.appendChild(a);
     });
     read.appendChild(next);
