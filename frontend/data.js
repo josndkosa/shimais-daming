@@ -1019,7 +1019,7 @@ const SITE_DATA = {
       { kind: "chief", label: "首辅 · 任期" },
       { kind: "guest", label: "特邀 · 统兵重臣" },
     ],
-    legendNote: "特邀为非首辅的统兵重臣，官职以小卡为准",
+    legendNote: "特邀：不走内阁线的统兵重臣，及一位布衣旅行家。官职以小卡为准。",
     lanes: { emperor: "皇帝", chief: "首辅", guest: "特邀 · 统兵重臣" },
     laneUnits: { emperor: "段在位", chief: "人任期", guest: "人任职" },
     gapNote: "无内阁——废相之后，皇帝直理天下",
@@ -1086,14 +1086,22 @@ const SITE_DATA = {
       { name: "魏藻德", segments: [[1644, 1644]], lord: "思宗", tag: "崇祯最后一位首辅", end: "1644 年李自成入京后被拷掠死", note: "三月拜相、当月明亡，首辅只当了不到一个月。" },
     ],
     guests: [
+      { name: "徐达", office: "大将军", segments: [[1368,1385]], lord: "太祖", tag: "开国第一名将", end: "病逝（1385）", note: "北伐灭元、镇守北边；功臣宿将中得善终者。" },
+      { name: "常遇春", office: "鄂国公", segments: [[1368,1369]], lord: "太祖", tag: "勇冠三军", end: "暴卒于军中（1369）", note: "「常十万」横行天下；北伐凯旋途中病逝，年四十。" },
+      { name: "李文忠", office: "曹国公", segments: [[1368,1384]], lord: "太祖", tag: "太祖外甥", end: "病逝（1384）", note: "北伐镇边皆能战；功臣中以谨慎闻名。" },
+      { name: "冯胜", office: "宋国公", segments: [[1368,1395]], lord: "太祖", tag: "平辽名将", end: "暴卒（1395）", note: "招降纳哈出、平定辽东；晚年屡遭谴让。" },
+      { name: "傅友德", office: "颍国公", segments: [[1368,1394]], lord: "太祖", tag: "平滇猛将", end: "赐死（1394）", note: "平云南、征漠北；功高终遭赐死。" },
+      { name: "蓝玉", office: "凉国公", segments: [[1379,1393]], lord: "太祖", tag: "捕鱼儿海", end: "蓝玉案被诛（1393）", note: "大破北元于捕鱼儿海；恃功骄横，终以谋反罪族诛。" },
       { name: "于谦", office: "兵部尚书", segments: [[1449, 1457]], lord: "代宗", tag: "景泰帝临危倚重", end: "夺门后被杀（1457）", note: "北京保卫战的主角，救了大明，却没躲过复辟。" },
       { name: "王守仁", office: "南赣巡抚、两广总督", segments: [[1516, 1521], [1527, 1528]], lord: "武宗–世宗", tag: "平叛功臣、心学宗师带兵", end: "病逝归途（1529）", note: "1519 年平宁王只用了 35 天，文人带兵的天花板。" },
       { name: "戚继光", office: "蓟州总兵", segments: [[1568, 1582]], lord: "穆宗–神宗", tag: "神宗初宠信（张居正后盾）", end: "罢免回乡，病逝（1588）", note: "蓟镇十四年、长城固若金汤，靠山一倒就被调走。" },
+      { name: "李成梁", office: "辽东总兵", segments: [[1570,1591],[1601,1608]], lord: "穆宗–神宗", tag: "镇辽三十年", end: "罢职后病逝（1615）", note: "辽东柱石，努尔哈赤早年曾在其麾下；其子李如松亦在本表。" },
       { name: "李如松", office: "辽东总兵（1597–1598；此前为东征提督等）", segments: [[1592, 1598]], lord: "神宗", tag: "神宗倚重的边将", end: "出塞中伏阵亡（1598）", note: "万历三大征占了两个，死在最后一次出塞上。本条画其统兵主段 1592–1598，辽东总兵本任仅 1597–1598。" },
       { name: "卢象升", cbdbUrl: "https://newarchive.ihp.sinica.edu.tw/sncaccgi/sncacFtp?ACTION=TQ,sncacFtpqf,SN=006306,2nd,search_simple", office: "宣大总督、督师", segments: [[1636, 1639]], lord: "思宗", tag: "崇祯倚重又孤立的主战派", end: "巨鹿战死（1639）", note: "督师名下不到两万人，援军五十里外见死不救。" },
       { name: "孙传庭", office: "陕西总督、督师", segments: [[1642, 1643]], lord: "思宗", tag: "崇祯催战的最后督师", end: "潼关战死（1643）", note: "「传庭死而明亡」——他自己出关前就说过此去不返。此前 1636–1639 年任陕西巡抚、1639–1642 年下狱，与本段不连续。" },
       { name: "袁崇焕", office: "蓟辽督师", segments: [[1628, 1630]], lord: "思宗", tag: "崇祯初宠信（平台召对）", end: "被磔（1630）", note: "五年复辽的豪言只兑现了两年，死于猜忌与反间。" },
       { name: "杨嗣昌", office: "兵部尚书、督师", segments: [[1637, 1641]], lord: "思宗", tag: "崇祯最信任的阁臣督师", end: "忧悸病卒（1641）", note: "「四正六隅」一度见效，但福王、襄王一死，他先垮了。正式督师仅 1640–1641，此前为兵部尚书在京主持。" },
+      { name: "徐霞客", office: "布衣 · 旅行家", segments: [[1587,1641]], lord: "神宗–思宗", tag: "布衣", end: "病逝（1641）", note: "一生未仕，三十余年游遍大半个中国，著《徐霞客游记》——在帝王将相之间，他走了自己的路。" },
     ],
   },
 
@@ -2333,7 +2341,7 @@ const SITE_DATA = {
     note: "学习进度保存在本机浏览器。使用在线 AI 时，问题与会话历史会发送至后端及模型服务；保留期限与日志政策尚待部署方核实，请勿输入敏感信息。",
   },
 };
-/* 史料检索索引：99 条（史料 48＋时间线 23＋关系表 28），标题/正文/出处逐字取自仓库，仅新增 keywords 与 target。 */
+/* 史料检索索引：107 条（史料 48＋时间线 23＋关系表 36），标题/正文/出处逐字取自仓库，仅新增 keywords 与 target。 */
 const SEARCH_INDEX = [
   {"kind":"source","id":"c1","title":"出身贫寒","text":"濠州钟离贫农之子，父母兄长饿死于元末灾荒，曾入皇觉寺为僧、行乞三年，后投郭子兴红巾军起兵。","source":"《明史·太祖本纪》","keywords":["乞丐皇帝","和尚","皇觉寺","讨饭","红巾军","濠州"],"target":"chat.html?figure=zhuyuanzhang"},
   {"kind":"source","id":"c2","title":"建国","text":"1364 年自立吴王，1367 年灭张士诚，1368 年正月初四在南京即皇帝位，国号大明、建元洪武；同年北伐攻克大都，元顺帝北逃。","source":"《明史·太祖本纪》","keywords":["开国","南京即位","洪武","大都","吴王"],"target":"chat.html?figure=zhuyuanzhang"},
@@ -2434,4 +2442,12 @@ const SEARCH_INDEX = [
   {"kind":"relation","id":"孙传庭","title":"孙传庭","lord":"思宗","text":"「传庭死而明亡」——他自己出关前就说过此去不返。此前 1636–1639 年任陕西巡抚、1639–1642 年下狱，与本段不连续。崇祯催战的最后督师，潼关战死（1643）","source":"本站帝王首辅表","keywords":["孙传庭","潼关","传庭死而明亡","督师"],"target":"relations.html?person=孙传庭&kind=guest"},
   {"kind":"relation","id":"袁崇焕","title":"袁崇焕","lord":"思宗","text":"五年复辽的豪言只兑现了两年，死于猜忌与反间。崇祯初宠信（平台召对），被磔（1630）","source":"本站帝王首辅表","keywords":["袁崇焕","蓟辽督师","五年复辽","磔杀","平台召对"],"target":"relations.html?person=袁崇焕&kind=guest"},
   {"kind":"relation","id":"杨嗣昌","title":"杨嗣昌","lord":"思宗","text":"「四正六隅」一度见效，但福王、襄王一死，他先垮了。正式督师仅 1640–1641，此前为兵部尚书在京主持。崇祯最信任的阁臣督师，忧悸病卒（1641）","source":"本站帝王首辅表","keywords":["杨嗣昌","四正六隅","督师","兵部尚书"],"target":"relations.html?person=杨嗣昌&kind=guest"},
+  {"kind":"relation","id":"徐达","title":"徐达","lord":"太祖","text":"大将军；北伐灭元、镇守北边；功臣宿将中得善终者。","source":"本站帝王首辅表","keywords":["徐达","大将军","开国第一名将","北伐","善终"],"target":"relations.html?person=徐达&kind=guest"},
+  {"kind":"relation","id":"常遇春","title":"常遇春","lord":"太祖","text":"鄂国公；「常十万」横行天下；北伐凯旋途中病逝，年四十。","source":"本站帝王首辅表","keywords":["常遇春","鄂国公","常十万","勇冠三军","暴卒"],"target":"relations.html?person=常遇春&kind=guest"},
+  {"kind":"relation","id":"李文忠","title":"李文忠","lord":"太祖","text":"曹国公；北伐镇边皆能战；功臣中以谨慎闻名。","source":"本站帝王首辅表","keywords":["李文忠","曹国公","太祖外甥","谨慎","北伐"],"target":"relations.html?person=李文忠&kind=guest"},
+  {"kind":"relation","id":"冯胜","title":"冯胜","lord":"太祖","text":"宋国公；招降纳哈出、平定辽东；晚年屡遭谴让。","source":"本站帝王首辅表","keywords":["冯胜","宋国公","平辽","纳哈出","辽东"],"target":"relations.html?person=冯胜&kind=guest"},
+  {"kind":"relation","id":"傅友德","title":"傅友德","lord":"太祖","text":"颍国公；平云南、征漠北；功高终遭赐死。","source":"本站帝王首辅表","keywords":["傅友德","颍国公","平滇","赐死","漠北"],"target":"relations.html?person=傅友德&kind=guest"},
+  {"kind":"relation","id":"蓝玉","title":"蓝玉","lord":"太祖","text":"凉国公；大破北元于捕鱼儿海；恃功骄横，终以谋反罪族诛。","source":"本站帝王首辅表","keywords":["蓝玉","凉国公","捕鱼儿海","蓝玉案","谋反"],"target":"relations.html?person=蓝玉&kind=guest"},
+  {"kind":"relation","id":"李成梁","title":"李成梁","lord":"穆宗–神宗","text":"辽东总兵；辽东柱石，努尔哈赤早年曾在其麾下；其子李如松亦在本表。","source":"本站帝王首辅表","keywords":["李成梁","辽东总兵","镇辽三十年","努尔哈赤","李如松"],"target":"relations.html?person=李成梁&kind=guest"},
+  {"kind":"relation","id":"徐霞客","title":"徐霞客","lord":"神宗–思宗","text":"布衣 · 旅行家；一生未仕，三十余年游遍大半个中国，著《徐霞客游记》——在帝王将相之间，他走了自己的路。","source":"本站帝王首辅表","keywords":["徐霞客","布衣","旅行家","徐霞客游记","游历"],"target":"relations.html?person=徐霞客&kind=guest"},
 ];

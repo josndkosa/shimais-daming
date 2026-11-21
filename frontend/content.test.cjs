@@ -35,12 +35,13 @@ test('formal quiz preserves ten IDs, indexes and answer meanings', () => {
   assert.deepEqual(Array.from(data.quiz, q => q.answer), [1, 1, 2, 1, 0, 1, 2, 0, 2, 1]);
   assert.deepEqual(Array.from(data.quiz, q => q.options[q.answer]), ['1380', '1405', '福建月港', '1619', '英宗', '于谦', '张居正', '内阁票拟＋司礼监批红', '皇帝本人', '赋役合并、按亩折银征收']);
 });
-test('formal quiz fields and all 99 search entries remain unchanged', () => {
+test('formal quiz fields and all 107 search entries remain unchanged', () => {
   const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   assert.equal(data.quiz.length, 10);
   assert.equal(digest(data.quiz.map(({ stem, options, answer, dim }) => ({ stem, options, answer, dim }))), '4cbac0f4167d64021084d9d54282f5e1d0075a8ee84512563366c3d3a1e98fbf');
-  assert.equal(context.index.length, 99);
-  assert.equal(digest(context.index), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
+  assert.equal(context.index.length, 107);
+  assert.equal(digest(context.index.slice(0, 99)), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
+  assert.equal(digest(context.index), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
 test('topic connects five exact destinations and two sourced questions', () => {
   assert.ok(data.topic, 'topic path is missing');
@@ -361,10 +362,11 @@ test('territory states cover every year exactly once with the specified overlays
   assert.equal(data.territory.disclaimer, '本图为疆域大势示意，非精确疆界；具体疆界以《中国历史地图集》为准。');
   assert.equal(data.territory.legend, '实色为布政司实控，斜线为羁縻名义统辖。');
 });
-test('territory addition leaves all existing site data and the 99 search entries unchanged', () => {
+test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'c4e3ace54c6323ff3c9d23220a78f6159c1c022244ab74cf3749f1bf49698aec');
-  assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '825c19eeed839d8d84a6ac486ceb021fb880c269531b0b9f5ad53974b4859b6d');
+  assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
+  assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
 function territoryFixture(siteData = data) {
   const ctx = vm.createContext({});
@@ -722,8 +724,42 @@ test('emperor entries carry exact fullNames; era label added; other relations da
   assert.ok(emperors.filter(e => e.name === '英宗').every(e => e.fullName === '朱祁镇'));
   assert.equal(data.relationsUI.cardLabels.era, '年号');
   assert.equal(data.relationsUI.cardLabels.identity, '身份');
-  const stripped = { ...data.relations, emperors: emperors.map(({ fullName, ...rest }) => rest) };
-  assert.equal(createHash('sha256').update(JSON.stringify(stripped)).digest('hex'), 'b8b60fa9e112b7f22bc6b625bb9fc79a9ca3aa102d0a6585612179b24eb6be56', 'relations data minus fullName must stay verbatim');
+  const newGuestNames = ['徐达', '常遇春', '李文忠', '冯胜', '傅友德', '蓝玉', '李成梁', '徐霞客'];
+  const stripped = { ...data.relations, emperors: emperors.map(({ fullName, ...rest }) => rest), guests: data.relations.guests.filter(g => !newGuestNames.includes(g.name)) };
+  assert.equal(createHash('sha256').update(JSON.stringify(stripped)).digest('hex'), 'b8b60fa9e112b7f22bc6b625bb9fc79a9ca3aa102d0a6585612179b24eb6be56', 'original 28 relations entries must stay verbatim');
+});
+test('guest lane expands to 16 with eight verbatim new entries and a civilian outlier', () => {
+  const guests = data.relations.guests;
+  assert.equal(guests.length, 16);
+  const table = [
+    ['徐达', '大将军', [[1368, 1385]], '太祖', '开国第一名将', '病逝（1385）', '北伐灭元、镇守北边；功臣宿将中得善终者。'],
+    ['常遇春', '鄂国公', [[1368, 1369]], '太祖', '勇冠三军', '暴卒于军中（1369）', '「常十万」横行天下；北伐凯旋途中病逝，年四十。'],
+    ['李文忠', '曹国公', [[1368, 1384]], '太祖', '太祖外甥', '病逝（1384）', '北伐镇边皆能战；功臣中以谨慎闻名。'],
+    ['冯胜', '宋国公', [[1368, 1395]], '太祖', '平辽名将', '暴卒（1395）', '招降纳哈出、平定辽东；晚年屡遭谴让。'],
+    ['傅友德', '颍国公', [[1368, 1394]], '太祖', '平滇猛将', '赐死（1394）', '平云南、征漠北；功高终遭赐死。'],
+    ['蓝玉', '凉国公', [[1379, 1393]], '太祖', '捕鱼儿海', '蓝玉案被诛（1393）', '大破北元于捕鱼儿海；恃功骄横，终以谋反罪族诛。'],
+    ['李成梁', '辽东总兵', [[1570, 1591], [1601, 1608]], '穆宗–神宗', '镇辽三十年', '罢职后病逝（1615）', '辽东柱石，努尔哈赤早年曾在其麾下；其子李如松亦在本表。'],
+    ['徐霞客', '布衣 · 旅行家', [[1587, 1641]], '神宗–思宗', '布衣', '病逝（1641）', '一生未仕，三十余年游遍大半个中国，著《徐霞客游记》——在帝王将相之间，他走了自己的路。'],
+  ];
+  table.forEach(([name, office, segments, lord, tag, end, note]) => {
+    const g = guests.find(x => x.name === name);
+    assert.ok(g, name + ' missing');
+    assert.deepEqual(JSON.parse(JSON.stringify([g.office, g.segments, g.lord, g.tag, g.end, g.note])), [office, segments, lord, tag, end, note], name);
+  });
+  assert.deepEqual(Array.from(guests.slice(0, 6), g => g.name), ['徐达', '常遇春', '李文忠', '冯胜', '傅友德', '蓝玉']);
+  assert.equal(guests[15].name, '徐霞客');
+  assert.equal(guests.filter(g => g.office.startsWith('布衣')).length, 1);
+  assert.equal(data.relationsUI.legendNote, '特邀：不走内阁线的统兵重臣，及一位布衣旅行家。官职以小卡为准。');
+  const added = context.index.slice(99);
+  assert.equal(added.length, 8);
+  added.forEach((e, i) => {
+    assert.equal(e.kind, 'relation');
+    assert.equal(e.id, table[i][0]);
+    assert.equal(e.title, table[i][0]);
+    assert.equal(e.target, 'relations.html?person=' + table[i][0] + '&kind=guest');
+    assert.ok(e.text.includes(table[i][1]) && e.text.includes(table[i][6]));
+    assert.ok(Array.isArray(e.keywords) && e.keywords.includes(table[i][0]));
+  });
 });
 test('qinli splits into a pure list and a nav-free play page', () => {
   const html = fs.readFileSync(path.join(root, 'qinli-play.html'), 'utf8');

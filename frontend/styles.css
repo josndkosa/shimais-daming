@@ -2551,6 +2551,11 @@ body[data-page="index"] {
   background: var(--site-accent);
 }
 
+.rl-bar-guest.is-civilian {
+  background: color-mix(in srgb, var(--site-muted) 40%, var(--site-bg));
+  border: 1px dashed var(--site-muted);
+}
+
 .rl-bar-label {
   position: absolute;
   top: 50%;

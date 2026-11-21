@@ -2868,6 +2868,7 @@
         segs.forEach((s, si) => {
           const bar = el("button", "rl-bar rl-bar-" + lane.kind);
           bar.type = "button";
+          if (lane.kind === "guest" && p.office.startsWith("布衣")) bar.classList.add("is-civilian");
           const left = pct(s[0]);
           bar.style.left = left + "%";
           bar.style.width = Math.max(pct(s[1]) - left, 0.45) + "%";
