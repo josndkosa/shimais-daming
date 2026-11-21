@@ -111,7 +111,7 @@ await test('T19/T17/T18 练习切换保留题组、答案、成绩且不修改�
     t.d.querySelector('.qz-practice-list .qz-choice').click();
     t.d.querySelectorAll('.qz-mode')[0].click();t.d.querySelectorAll('.qz-mode')[1].click();
     assert(t.d.querySelectorAll('.qz-practice-list .qz-item').length===10,'切换丢失题组');
-    assert(t.d.querySelector('.qz-practice-list .qz-choice').disabled,'切换丢失答案');
+    assert(t.d.querySelector('.qz-practice-list .qz-choice').className.includes('is-picked'),'切换丢失答案');
     assert(t.requests.length===1,'切换消耗生成次数');
     t.d.querySelectorAll('.qz-practice-list .qz-item').forEach(item=>item.querySelector('.qz-choice').click());
     t.d.querySelector('.qz-practice-root .qz-submit-btn').click();

@@ -923,7 +923,7 @@
       hint.textContent = pick ? ui.lockedHint : ui.lockHint;
       node.querySelectorAll(".dc-choice").forEach((btn) => {
         const key = btn.dataset.key;
-        btn.disabled = !!pick;
+        btn.disabled = false;
         btn.classList.toggle("is-picked", pick === key);
         btn.classList.toggle("is-dim", !!pick && pick !== key);
         btn.setAttribute("aria-pressed", pick === key ? "true" : "false");
@@ -983,7 +983,6 @@
         btn.appendChild(el("span", "dc-key", c.key));
         btn.appendChild(el("span", "dc-choice-label", c.label));
         btn.addEventListener("click", () => {
-          if (decisionState().picks[sc.id]) return;
           updateProgress((p) => {
             p.decisions = p.decisions || {};
             p.decisions.done = Array.isArray(p.decisions.done) ? p.decisions.done : [];
@@ -1437,37 +1436,29 @@
     }
 
     const wrap = el("div", "container cw-wrap");
-    const banner = el("a", "cw-chapter-banner");
-    banner.href = "chapter.html";
-    banner.target = "_blank";
-    banner.rel = "noopener";
+    const banner = el("section", "cw-chapter-banner");
+    const bannerMain = el("a", "cw-banner-main");
+    bannerMain.href = "chapter.html";
+    bannerMain.target = "_blank";
+    bannerMain.rel = "noopener";
     const bannerCopy = el("div", "cw-banner-copy");
     bannerCopy.appendChild(el("span", "cw-banner-eyebrow", data.chapterUI.bannerEyebrow));
     bannerCopy.appendChild(el("h2", "cw-banner-title", data.chapterUI.bannerTitle));
     bannerCopy.appendChild(el("p", "cw-banner-desc", data.chapterUI.bannerDesc));
-    banner.appendChild(bannerCopy);
-    banner.appendChild(el("span", "cw-banner-btn", data.chapterUI.bannerBtn));
+    bannerMain.appendChild(bannerCopy);
+    bannerMain.appendChild(el("span", "cw-banner-btn", data.chapterUI.bannerBtn));
+    banner.appendChild(bannerMain);
+    const bannerLinks = el("div", "cw-banner-links");
+    const chapterLinks = [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink];
+    data.chapters.slice(1).forEach((c, i) => {
+      const link = el("a", "cw-banner-second", chapterLinks[i]);
+      link.href = "chapter.html?ch=" + c.id;
+      link.target = "_blank";
+      link.rel = "noopener";
+      bannerLinks.appendChild(link);
+    });
+    banner.appendChild(bannerLinks);
     wrap.appendChild(banner);
-    const bannerSecond = el("a", "cw-banner-second", data.chapterUI.secondLink);
-    bannerSecond.href = "chapter.html?ch=" + data.chapters[1].id;
-    bannerSecond.target = "_blank";
-    bannerSecond.rel = "noopener";
-    wrap.appendChild(bannerSecond);
-    const bannerThird = el("a", "cw-banner-second cw-banner-third", data.chapterUI.thirdLink);
-    bannerThird.href = "chapter.html?ch=" + data.chapters[2].id;
-    bannerThird.target = "_blank";
-    bannerThird.rel = "noopener";
-    wrap.appendChild(bannerThird);
-    const bannerFourth = el("a", "cw-banner-second cw-banner-third", data.chapterUI.fourthLink);
-    bannerFourth.href = "chapter.html?ch=" + data.chapters[3].id;
-    bannerFourth.target = "_blank";
-    bannerFourth.rel = "noopener";
-    wrap.appendChild(bannerFourth);
-    const bannerFifth = el("a", "cw-banner-second cw-banner-third", data.chapterUI.fifthLink);
-    bannerFifth.href = "chapter.html?ch=" + data.chapters[4].id;
-    bannerFifth.target = "_blank";
-    bannerFifth.rel = "noopener";
-    wrap.appendChild(bannerFifth);
     const reveal = [];
     const groups = [
       { kind: "person", title: ui.peopleTitle, hint: ui.peopleHint },
@@ -1671,20 +1662,22 @@
       }
     }
 
-    function applyQuestion(q, node, pick) {
+    function applyQuestion(q, node, pick, revealed) {
       const has = pick != null;
+      const show = has && revealed;
       node.querySelectorAll(".qz-choice").forEach((btn) => {
         const i = Number(btn.dataset.i);
         const badge = btn.querySelector(".qz-badge");
-        btn.disabled = has;
-        btn.classList.toggle("is-correct", has && i === pick && i === q.answer);
-        btn.classList.toggle("is-wrong", has && i === pick && i !== q.answer);
-        btn.classList.toggle("is-answer", has && i === q.answer && pick !== q.answer);
-        btn.classList.toggle("is-mute", has && i !== pick && i !== q.answer);
-        if (has && i === pick) {
+        btn.disabled = show;
+        btn.classList.toggle("is-picked", has && !revealed && i === pick);
+        btn.classList.toggle("is-correct", show && i === pick && i === q.answer);
+        btn.classList.toggle("is-wrong", show && i === pick && i !== q.answer);
+        btn.classList.toggle("is-answer", show && i === q.answer && pick !== q.answer);
+        btn.classList.toggle("is-mute", show && i !== pick && i !== q.answer);
+        if (show && i === pick) {
           badge.textContent = i === q.answer ? ui.correctBadge : ui.wrongBadge;
           badge.hidden = false;
-        } else if (has && i === q.answer) {
+        } else if (show && i === q.answer) {
           badge.textContent = ui.answerLabel;
           badge.hidden = false;
         } else {
@@ -1692,7 +1685,7 @@
         }
       });
       const explain = node.querySelector(".qz-explain");
-      if (has) {
+      if (show) {
         explain.querySelector(".qz-answer-line").textContent =
           ui.answerLabel + " · " + "ABCD"[q.answer] + "　" + q.options[q.answer];
         explain.querySelector(".qz-explain-p").textContent = q.explain;
@@ -1756,6 +1749,16 @@
         });
         sec.appendChild(dims);
         sec.appendChild(el("p", "qz-submitted-note", ui.submittedNote));
+        const retake = el("button", "cta-button qz-retake", ui.retakeLabel);
+        retake.type = "button";
+        retake.addEventListener("click", () => {
+          updateProgress((p) => {
+            p.quiz = { picks: [] };
+          });
+          questions.forEach((q, i) => applyQuestion(q, nodes.get(q.id), undefined, false));
+          refresh();
+        });
+        sec.appendChild(retake);
         const link = el("a", "cta-button cta-gold", ui.viewProfile);
         link.href = "profile.html";
         sec.appendChild(link);
@@ -1810,13 +1813,13 @@
           badge.hidden = true;
           btn.appendChild(badge);
           btn.addEventListener("click", () => {
-            if (quizState().picks[qi] != null || quizState().submitted) return;
+            if (quizState().submitted) return;
             updateProgress((p) => {
               p.quiz = p.quiz || {};
               p.quiz.picks = Array.isArray(p.quiz.picks) ? p.quiz.picks : [];
               p.quiz.picks[qi] = i;
             });
-            applyQuestion(q, item, i);
+            applyQuestion(q, item, i, false);
             refresh();
           });
           choices.appendChild(btn);
@@ -1834,7 +1837,7 @@
 
         root.appendChild(item);
         nodes.set(q.id, item);
-        applyQuestion(q, item, quizState().picks[qi]);
+        applyQuestion(q, item, quizState().picks[qi], quizState().submitted);
       });
 
       root.appendChild(submitWrap);
@@ -1859,6 +1862,7 @@
           p.quiz.score = score;
           p.quiz.dims = dims;
         });
+        questions.forEach((q, i) => applyQuestion(q, nodes.get(q.id), st.picks[i], true));
         refresh();
         resultNode.scrollIntoView({
           behavior: reducedMotion.matches ? "auto" : "smooth",
@@ -1868,7 +1872,7 @@
 
       formalRefresh = () => {
         const st = quizState();
-        questions.forEach((q, i) => applyQuestion(q, nodes.get(q.id), st.picks[i]));
+        questions.forEach((q, i) => applyQuestion(q, nodes.get(q.id), st.picks[i], st.submitted));
         refresh();
       };
     }
@@ -2039,9 +2043,9 @@
             badge.hidden = true;
             btn.appendChild(badge);
             btn.addEventListener("click", () => {
-              if (submitted || picks[qi] != null) return;
+              if (submitted) return;
               picks[qi] = i;
-              applyQuestion(q, item, i);
+              applyQuestion(q, item, i, submitted);
               refresh();
             });
             choices.appendChild(btn);
@@ -2077,6 +2081,7 @@
         });
         submitWrap.hidden = true;
         clearResult();
+        list.querySelectorAll(".qz-item").forEach((item, i) => applyQuestion(questions[i], item, picks[i], true));
         const sec = el("section", "qz-result");
         sec.appendChild(el("h2", "section-title", ui.resultTitle));
         const scoreP = el("p", "qz-score");

@@ -1210,6 +1210,16 @@ body[data-page="index"] {
   opacity: 0.5;
 }
 
+.qz-choice.is-picked {
+  border-color: var(--site-accent);
+  background: color-mix(in srgb, var(--site-accent) 10%, transparent);
+}
+
+.qz-choice.is-picked .qz-key {
+  border-color: var(--site-accent);
+  color: var(--vermilion-bright);
+}
+
 .qz-choice.is-correct {
   border-color: var(--line-strong);
   background: transparent;
@@ -4373,25 +4383,6 @@ body[data-page="chapter"] .head-title {
   color: var(--site-fg);
 }
 
-.cw-banner-second {
-  display: block;
-  width: fit-content;
-  margin: calc(var(--gap) * -0.6) 0 calc(var(--gap) * 1.2);
-  font-size: calc(13px * var(--site-type, 1));
-  letter-spacing: 0.04em;
-  color: var(--site-muted);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.cw-banner-second:hover {
-  color: var(--site-fg);
-}
-
-.cw-banner-third {
-  margin-top: 0;
-}
-
 /* ---------- 章节节末史料展开（仅 chapter 页；纸面语言缩小一档） ---------- */
 
 .ch-sources {
@@ -4552,14 +4543,13 @@ body[data-page="chapter"] .head-title {
 
 .cw-chapter-banner {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(18px * var(--site-space, 1));
+  display: block;
+  margin-top: var(--gap);
   margin-bottom: calc(var(--gap) * 1.2);
   padding: calc(18px * var(--site-space, 1)) calc(20px * var(--site-space, 1));
   background: linear-gradient(180deg, #efe4c8, #e7d9b8);
   border: 1.6px solid #2a2417;
+  border-radius: var(--site-radius);
   color: #2a2417;
   text-decoration: none;
   transition: filter var(--dur) ease;
@@ -4570,11 +4560,43 @@ body[data-page="chapter"] .head-title {
   position: absolute;
   inset: 4px;
   border: 0.7px solid #2a2417;
+  border-radius: var(--site-radius);
   pointer-events: none;
 }
 
 .cw-chapter-banner:hover {
   filter: brightness(1.04);
+}
+
+.cw-banner-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(18px * var(--site-space, 1));
+  color: inherit;
+  text-decoration: none;
+}
+
+.cw-banner-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-top: calc(14px * var(--site-space, 1));
+  padding-top: calc(10px * var(--site-space, 1));
+  border-top: 1px solid rgba(42, 36, 23, 0.35);
+}
+
+.cw-banner-links .cw-banner-second {
+  margin: 0;
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: #6d5f43;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.cw-banner-links .cw-banner-second:hover {
+  color: #2a2417;
 }
 
 .cw-banner-copy {
@@ -4617,7 +4639,7 @@ body[data-page="chapter"] .head-title {
 }
 
 @media (max-width: 640px) {
-  .cw-chapter-banner {
+  .cw-banner-main {
     flex-direction: column;
     align-items: stretch;
     gap: 14px;

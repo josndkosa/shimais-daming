@@ -119,9 +119,10 @@ class Node {
   focus() {}
   click() { this.listeners.click?.({ target: this }); }
   getBoundingClientRect() { return { top: 200, bottom: 258, left: 0, right: 100, width: 100, height: 58 }; }
-  appendChild(node) { this.children.push(node); return node; }
+  appendChild(node) { node.parentNode = this; this.children.push(node); return node; }
   append(...nodes) { nodes.forEach(n => this.appendChild(n)); }
-  replaceChildren(...nodes) { this.children = nodes; this.textContent = ''; }
+  replaceChildren(...nodes) { this.children.forEach(n => { n.parentNode = null; }); this.children = nodes; nodes.forEach(n => { n.parentNode = this; }); this.textContent = ''; }
+  remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter(c => c !== this); this.parentNode = null; }
   setAttribute(name, value) { this[name] = value; if (name === 'class') this.className = value; }
   getAttribute(name) { return name in this ? String(this[name]) : null; }
   addEventListener(name, callback) { this.listeners[name] = callback; }
@@ -362,7 +363,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 99 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '6c3aae3a30372e95e7c4b9088e7401c3f106b7eb21a2ed5f12a06b4cfb99b8a1');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'a80259a1625ccc75bf0e9605f04d3ee83c82ed991da118f8ec280132a447711a');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
 });
 function territoryFixture(siteData = data) {
@@ -626,6 +627,92 @@ test('qinli content-area anchors open in a new tab; nav and in-page anchors do n
   const qlCode = slice('  function renderQinli()', '  /* ----------');
   assert.ok(!qlCode.includes('.target = "_blank"'), 'qinli in-page must stay same-tab');
 });
+test('formal quiz allows re-picks before submit, locks after, and retakes', () => {
+  assert.equal(data.quizUI.retakeLabel, '重新作答');
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderQuiz()'), source.indexOf('  /* ---------- 研读画像'));
+  const progress = {};
+  const app = new Node('main');
+  const ctx = vm.createContext({ data, app, currentModule: { title: '小测' },
+    loadProgress: () => progress, updateProgress: f => f(progress),
+    quizState: () => { const q = progress.quiz && typeof progress.quiz === 'object' ? progress.quiz : {}; return { picks: Array.isArray(q.picks) ? q.picks : [], submitted: typeof q.score === 'number' }; },
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+    buildTopicPath: () => new Node('section'), CHAT_API_BASE: null,
+    location: { search: '' }, URLSearchParams, reducedMotion: { matches: true },
+    requestAnimationFrame: f => f(), window: { addEventListener() {} },
+  });
+  vm.runInContext(code + '\nrenderQuiz();', ctx);
+  const formalRoot = walk(app, 'qz-formal-root')[0];
+  const items = walk(formalRoot, 'qz-item');
+  assert.equal(items.length, 10);
+  const choicesOf = (item) => walk(item, 'qz-choice');
+  const c0 = choicesOf(items[0]);
+  c0[0].click(); c0[1].click(); c0[2].click();
+  assert.equal(progress.quiz.picks[0], 2, 're-picks must replace');
+  assert.ok(c0[2].className.includes('is-picked'));
+  assert.ok(c0.every(b => !b.disabled), 'choices stay enabled before submit');
+  assert.equal(walk(items[0], 'qz-explain')[0].hidden, true, 'no reveal before submit');
+  items.forEach((item, i) => choicesOf(item)[data.quiz[i].answer].click());
+  walk(formalRoot, 'qz-submit-btn')[0].click();
+  assert.equal(progress.quiz.score, 10);
+  const picked = choicesOf(items[0])[data.quiz[0].answer];
+  assert.ok(picked.disabled && picked.className.includes('is-correct'), 'locked + judged after submit');
+  assert.equal(walk(items[0], 'qz-explain')[0].hidden, false);
+  choicesOf(items[0])[0].click();
+  assert.equal(progress.quiz.picks[0], data.quiz[0].answer, 'no re-pick after submit');
+  const retake = walk(app, 'qz-retake')[0];
+  assert.equal(textOf(retake), '重新作答');
+  retake.click();
+  assert.deepEqual(JSON.parse(JSON.stringify(progress.quiz)), { picks: [] }, 'retake clears picks and score');
+  assert.equal(walk(app, 'qz-result').length, 0);
+  assert.ok(choicesOf(items[0]).every(b => !b.disabled && !b.className.includes('is-picked')));
+  items.forEach((item, i) => choicesOf(item)[(data.quiz[i].answer + 1) % 4].click());
+  walk(formalRoot, 'qz-submit-btn')[0].click();
+  assert.equal(progress.quiz.score, 0, 'latest submission wins');
+});
+test('decisions allow changing picks; seal, hint and completion follow current pick', () => {
+  assert.equal(data.decisionLabels.lockedHint, '已记录，可点选其他选项更改');
+  assert.equal(data.decisionLabels.lockHint, '三选一 · 选定即锁定，不可更改');
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderDecisions()'), source.indexOf('  /* ---------- 亲历'));
+  const progress = {};
+  const render = (app) => {
+    const ctx = vm.createContext({ data, app, currentModule: { title: '决策模式' },
+      loadProgress: () => progress, updateProgress: f => f(progress),
+      decisionState: () => { const d = progress.decisions && typeof progress.decisions === 'object' ? progress.decisions : {}; return { done: Array.isArray(d.done) ? d.done : [], picks: d.picks && typeof d.picks === 'object' ? d.picks : {} }; },
+      el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+      reducedMotion: { matches: true }, window: { addEventListener() {} },
+    });
+    vm.runInContext(code + '\nrenderDecisions();', ctx);
+  };
+  const app = new Node('main');
+  render(app);
+  const scenarios = walk(app, 'dc-scenario');
+  assert.equal(scenarios.length, 3);
+  const sc = data.decisions[0];
+  const choices = walk(scenarios[0], 'dc-choice');
+  choices[0].click();
+  assert.equal(progress.decisions.picks[sc.id], sc.choices[0].key);
+  assert.deepEqual(Array.from(progress.decisions.done), [sc.id]);
+  const result = walk(scenarios[0], 'dc-result')[0];
+  assert.equal(result.hidden, false);
+  assert.equal(walk(result, 'dc-consequence-p')[0].textContent, sc.choices[0].consequence);
+  choices[1].click();
+  assert.equal(progress.decisions.picks[sc.id], sc.choices[1].key, 'pick replaced');
+  assert.deepEqual(Array.from(progress.decisions.done), [sc.id], 'completion not doubled');
+  assert.equal(walk(result, 'dc-consequence-p')[0].textContent, sc.choices[1].consequence);
+  assert.equal(walk(result, 'dc-history-p')[0].textContent, sc.choices[1].history);
+  assert.ok(choices.every(b => !b.disabled), 'choices never disabled');
+  assert.ok(choices[1].className.includes('is-picked') && choices[0].className.includes('is-dim'));
+  assert.equal(walk(scenarios[0], 'dc-seal')[0].hidden, false);
+  assert.equal(walk(app, 'dc-count')[0].textContent, '1 / 3');
+  assert.equal(walk(scenarios[0], 'dc-lock-hint')[0].textContent, '已记录，可点选其他选项更改');
+  const app2 = new Node('main');
+  render(app2);
+  const choices2 = walk(walk(app2, 'dc-scenario')[0], 'dc-choice');
+  assert.ok(choices2[1].className.includes('is-picked'), 'refresh keeps latest pick');
+  assert.equal(walk(walk(app2, 'dc-scenario')[0], 'dc-consequence-p')[0].textContent, sc.choices[1].consequence);
+});
 test('qinli splits into a pure list and a nav-free play page', () => {
   const html = fs.readFileSync(path.join(root, 'qinli-play.html'), 'utf8');
   assert.match(html, /data-page="qinli-play"/);
@@ -860,14 +947,20 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   const banner = walk(capp, 'cw-chapter-banner')[0];
   assert.ok(banner, 'cards chapter banner missing');
   assert.equal(walk(capp, 'cw-chapter-banner').length, 1);
-  assert.equal(banner.tag, 'a', 'the entire banner is one link');
-  assert.equal(banner.href, 'chapter.html');
-  assert.equal(banner.target, '_blank');
-  assert.equal(banner.rel, 'noopener');
+  assert.equal(banner.tag, 'section', 'banner is a paper section with links inside');
+  const main = walk(banner, 'cw-banner-main')[0];
+  assert.ok(main && main.tag === 'a' && main.href === 'chapter.html', 'main entry link missing');
+  assert.equal(main.target, '_blank');
+  assert.equal(main.rel, 'noopener');
   assert.equal(textOf(walk(banner, 'cw-banner-eyebrow')[0]), data.chapterUI.bannerEyebrow);
   assert.equal(textOf(walk(banner, 'cw-banner-title')[0]), data.chapterUI.bannerTitle);
   assert.equal(textOf(walk(banner, 'cw-banner-desc')[0]), data.chapterUI.bannerDesc);
   assert.equal(textOf(walk(banner, 'cw-banner-btn')[0]), data.chapterUI.bannerBtn);
+  const bannerLinks = walk(banner, 'cw-banner-second');
+  assert.equal(bannerLinks.length, 4, 'chapter links collected inside the banner');
+  assert.deepEqual(bannerLinks.map(a => a.href), Array.from(data.chapters.slice(1), c => 'chapter.html?ch=' + c.id));
+  assert.deepEqual(bannerLinks.map(a => textOf(a)), [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink]);
+  bannerLinks.forEach(a => { assert.equal(a.target, '_blank'); assert.equal(a.rel, 'noopener'); });
   const bsecond = walk(capp, 'cw-banner-second')[0];
   assert.ok(bsecond && bsecond.href === 'chapter.html?ch=jingnan', 'cards second-chapter link missing');
   assert.equal(textOf(bsecond), data.chapterUI.secondLink);
