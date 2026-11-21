@@ -3077,6 +3077,66 @@ textarea.ct-text {
   background: rgba(232, 232, 230, 0.08);
 }
 
+/* ---------- 亲历独立播放页与整卡链接（AU） ---------- */
+
+.qp-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.qp-back {
+  flex: none;
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+  text-decoration: none;
+}
+
+.qp-back:hover {
+  color: var(--site-fg);
+}
+
+.qp-ident {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.qp-title {
+  font-family: var(--site-font);
+  font-size: calc(15px * var(--site-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--site-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.qp-meta {
+  font-size: calc(12px * var(--site-type, 1));
+  color: var(--site-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+a.ql-card {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.ql-card .ql-play-btn {
+  display: block;
+  text-align: center;
+}
+
 .ql-card.is-locked .ql-play-btn {
   color: var(--site-muted);
   border-color: var(--line);

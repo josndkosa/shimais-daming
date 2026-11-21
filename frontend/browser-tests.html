@@ -33,6 +33,12 @@ async function setup(page, options = {}) {
     });
   };
   if (options.offline) d.querySelector('meta').content = 'offline';
+  if (options.search) {
+    const NativeUPS = w.URLSearchParams;
+    w.URLSearchParams = class extends NativeUPS {
+      constructor(init) { super((init === undefined || init === '') ? options.search : init); }
+    };
+  }
   if (options.progress) store.set('shimais-daming:progress:v1', JSON.stringify(options.progress));
   for (let i=0;i<sources.length;i++) { const script=d.createElement('script'); script.textContent=sources[i]+(i===0?'\nwindow.fixtureData=SITE_DATA;':''); d.body.append(script); }
   await tick();
@@ -177,7 +183,7 @@ await test('F05/F06 生成中切换不重发，主动替换失败保留已有结
  }finally{t.close();}
 });
 await test('T06 亲历末场刷新不重复计分',async()=>{
-  const t=await setup('qinli',{progress:{qinli:{done:[],current:{storyId:'q1644',sceneIndex:8,prestige:100,morale:5}}}});
+  const t=await setup('qinli-play',{search:'?story=q1644',progress:{qinli:{done:[],current:{storyId:'q1644',sceneIndex:8,prestige:100,morale:5}}}});
   try {
     assert(t.d.querySelector('.ql-ending'),'末场没有直接判定结局');
     assert(Array.from(t.d.querySelectorAll('.ql-stat-val')).map(n=>n.textContent).join('/')==='100/5','末场重算分数');
@@ -186,7 +192,7 @@ await test('T06 亲历末场刷新不重复计分',async()=>{
   } finally {t.close();}
 });
 await test('T07 普通场次续读与提前结局',async()=>{
-  const t=await setup('qinli',{progress:{qinli:{done:[],current:{storyId:'q1380',sceneIndex:1,prestige:65,morale:40}}}});
+  const t=await setup('qinli-play',{search:'?story=q1380',progress:{qinli:{done:[],current:{storyId:'q1380',sceneIndex:1,prestige:65,morale:40}}}});
   try {
     assert(t.d.querySelector('.ql-scene-label').textContent===t.w.fixtureData.qinli.find(s=>s.id==='q1380').scenes[1].label,'续读场次错误');
     assert(Array.from(t.d.querySelectorAll('.ql-stat-val')).map(n=>n.textContent).join('/')==='65/40','续读数值变化');
@@ -196,7 +202,7 @@ await test('T07 普通场次续读与提前结局',async()=>{
   const sceneIndex=story.scenes.findIndex(sc=>sc.choices.some(c=>c.ending));
   const choiceIndex=story.scenes[sceneIndex].choices.findIndex(c=>c.ending);
   probe.close();
-  const e=await setup('qinli',{progress:{qinli:{done:[],current:{storyId:story.id,sceneIndex,prestige:50,morale:50}}}});
+  const e=await setup('qinli-play',{search:'?story='+story.id,progress:{qinli:{done:[],current:{storyId:story.id,sceneIndex,prestige:50,morale:50}}}});
   try {
     e.d.querySelectorAll('.ql-choice')[choiceIndex].click();
     assert(e.d.querySelector('.ql-ending'),'提前结局未显示');
@@ -282,10 +288,8 @@ for (const [id,label,href] of [
  ['q1644','去跟崇祯聊聊','chat.html?figure=chongzhen'],
 ]) {
  await test('六剧本结局入口 '+id,async()=>{
-  const t=await setup('qinli');
+  const t=await setup('qinli-play',{search:'?story='+id});
   try {
-   const index=t.w.fixtureData.qinli.findIndex(s=>s.id===id);
-   t.d.querySelectorAll('.ql-play-btn')[index].click();
    let steps=0;
    while(!t.d.querySelector('.ql-ending') && steps++<20) {
     const choice=t.d.querySelector('.ql-choice:not(:disabled)');assert(choice,'缺少可选剧情');choice.click();

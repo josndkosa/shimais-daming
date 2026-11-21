@@ -462,7 +462,7 @@ const SITE_DATA = {
     steps: [
       { label: "看背景", goal: "定位万历九年的改革，区分推广与创制。", href: "timeline.html?event=e1581" },
       { label: "读机制", goal: "解释赋役合并与折银，识别收益和边界。", href: "cards.html?card=i3" },
-      { label: "试处境", goal: "在清丈情境中辨认执行压力与成本承担者。", href: "qinli.html?story=q1581" },
+      { label: "试处境", goal: "在清丈情境中辨认执行压力与成本承担者。", href: "qinli-play.html?story=q1581" },
       { label: "做迁移", goal: "用两道题检验概念和给定银价条件下的推理。", href: "quiz.html?topic=yitiaobian" },
       { label: "回材料", goal: "核对引文、转述和分析，不把推演当成原典。", href: "search.html?source=zhangjuzheng%2Fc4" },
     ],
@@ -2066,7 +2066,7 @@ const SITE_DATA = {
         },
       ],
       nextSteps: [
-        { label: "亲历《诏狱》", href: "qinli.html?story=q1380" },
+        { label: "亲历《诏狱》", href: "qinli-play.html?story=q1380" },
         { label: "跟朱元璋聊聊", href: "chat.html?figure=zhuyuanzhang" },
         { label: "回看时间线 1380", href: "timeline.html?event=e1380" },
       ],
@@ -2123,7 +2123,7 @@ const SITE_DATA = {
         },
       ],
       nextSteps: [
-        { label: "亲历《金陵》", href: "qinli.html?story=q1402" },
+        { label: "亲历《金陵》", href: "qinli-play.html?story=q1402" },
         { label: "跟朱棣聊聊", href: "chat.html?figure=zhudi" },
         { label: "回看时间线 1402", href: "timeline.html?event=e1402" },
       ],
@@ -2180,7 +2180,7 @@ const SITE_DATA = {
         },
       ],
       nextSteps: [
-        { label: "亲历《京师》", href: "qinli.html?story=q1449" },
+        { label: "亲历《京师》", href: "qinli-play.html?story=q1449" },
         { label: "跟于谦聊聊", href: "chat.html?figure=yuqian" },
         { label: "回看时间线 1449", href: "timeline.html?event=e1449" },
       ],
@@ -2239,7 +2239,7 @@ const SITE_DATA = {
         },
       ],
       nextSteps: [
-        { label: "亲历《首辅之局》", href: "qinli.html?story=q1548" },
+        { label: "亲历《首辅之局》", href: "qinli-play.html?story=q1548" },
         { label: "跟海瑞聊聊", href: "chat.html?figure=hairui" },
         { label: "回看时间线 1566", href: "timeline.html?event=e1566" },
       ],
@@ -2303,7 +2303,7 @@ const SITE_DATA = {
         },
       ],
       nextSteps: [
-        { label: "亲历《清丈》", href: "qinli.html?story=q1581" },
+        { label: "亲历《清丈》", href: "qinli-play.html?story=q1581" },
         { label: "跟张居正聊聊", href: "chat.html?figure=zhangjuzheng" },
         { label: "回看时间线 1582", href: "timeline.html?event=e1582" },
       ],

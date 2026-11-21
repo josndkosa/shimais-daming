@@ -42,6 +42,7 @@
     data.modules.find((m) => m.id === page) ||
     (page === "relations" ? { title: data.relationsUI.headTitle } : null) ||
     (page === "qinli" ? { title: data.qinliUI.sectionTitle } : null) ||
+    (page === "qinli-play" ? { title: (data.qinli.find((s) => s.id === new URLSearchParams(location.search).get("story")) || data.qinliUI).title || data.qinliUI.sectionTitle } : null) ||
     (page === "search" ? { title: data.searchUI.navTitle } : null) ||
     (page === "chapter" ? { title: data.chapterUI.series + " · " + selectedChapter().title } : null);
   document.title = currentModule
@@ -139,7 +140,7 @@
     }
     if (record.kind === "qinli") {
       item = data.qinli.find((s) => s.playable && s.id === record.id);
-      return item ? { label: item.title, href: "qinli.html?story=" + item.id } : null;
+      return item ? { label: item.title, href: "qinli-play.html?story=" + item.id } : null;
     }
     return null;
   }
@@ -160,7 +161,7 @@
       const item = el("li", i === active ? "is-current" : "");
       const link = el("a", "topic-link", step.label);
       link.href = step.href;
-      if (link.getAttribute("href").startsWith("qinli.html")) { link.target = "_blank"; link.rel = "noopener"; }
+      if (/^qinli(-play)?\.html/.test(link.getAttribute("href"))) { link.target = "_blank"; link.rel = "noopener"; }
       link.title = step.goal;
       if (i === active) link.setAttribute("aria-current", "step");
       item.appendChild(link);
@@ -171,7 +172,7 @@
       const next = data.topic.steps[active + 1];
       const link = el("a", "topic-next", "下一步：" + next.label + " — " + next.goal);
       link.href = next.href;
-      if (link.getAttribute("href").startsWith("qinli.html")) { link.target = "_blank"; link.rel = "noopener"; }
+      if (/^qinli(-play)?\.html/.test(link.getAttribute("href"))) { link.target = "_blank"; link.rel = "noopener"; }
       section.appendChild(link);
     }
     return section;
@@ -447,13 +448,13 @@
     copy.appendChild(el("p", "topic-goal", data.topic.title + " · 读背景、试处境、做迁移、回材料"));
     const begin = el("a", "cta-button cta-gold", "开始一条鞭法专题");
     begin.href = data.topic.steps[0].href;
-    if (begin.getAttribute("href").startsWith("qinli.html")) { begin.target = "_blank"; begin.rel = "noopener"; }
+    if (/^qinli(-play)?\.html/.test(begin.getAttribute("href"))) { begin.target = "_blank"; begin.rel = "noopener"; }
     start.append(copy, begin);
     const last = resolveLastRead(loadProgress().lastRead);
     if (last) {
       const resume = el("a", "topic-next", "继续上次：" + last.label);
       resume.href = last.href;
-      if (resume.getAttribute("href").startsWith("qinli.html")) { resume.target = "_blank"; resume.rel = "noopener"; }
+      if (/^qinli(-play)?\.html/.test(resume.getAttribute("href"))) { resume.target = "_blank"; resume.rel = "noopener"; }
       start.appendChild(resume);
     }
     app.appendChild(start);
@@ -510,7 +511,7 @@
     data.modules.forEach((m, i) => {
       const a = el("a", "entry-block");
       a.href = m.page;
-      if (a.getAttribute("href").startsWith("qinli.html")) { a.target = "_blank"; a.rel = "noopener"; }
+      if (/^qinli(-play)?\.html/.test(a.getAttribute("href"))) { a.target = "_blank"; a.rel = "noopener"; }
       a.appendChild(el("span", "entry-index", String(i + 1).padStart(2, "0")));
       a.appendChild(el("h3", "entry-title", m.title));
       a.appendChild(el("p", "entry-desc", m.desc));
@@ -1043,7 +1044,91 @@
   function renderQinli() {
     const qu = data.qinliUI;
     const stories = data.qinli;
+    const storyParam = new URLSearchParams(location.search).get("story");
+    if (storyParam) {
+      location.replace("qinli-play.html?story=" + encodeURIComponent(storyParam));
+      return;
+    }
     app.appendChild(renderPageHead(qu.sectionTitle, qu.sectionHint));
+    const wrap = el("div", "container ql-wrap");
+    const cards = el("div", "ql-cards");
+    const cardNodes = new Map();
+    function qinliState() {
+      const p = loadProgress();
+      const q = p.qinli && typeof p.qinli === "object" ? p.qinli : {};
+      return {
+        done: Array.isArray(q.done) ? q.done : [],
+        current: q.current && typeof q.current === "object" ? q.current : null,
+      };
+    }
+    function paintCards() {
+      const st = qinliState();
+      stories.forEach((s) => {
+        const node = cardNodes.get(s.id);
+        if (!node) return;
+        const done = st.done.includes(s.id);
+        node.classList.toggle("is-done", done);
+        node.querySelector(".ql-done").hidden = !done;
+        if (s.playable) {
+          node.querySelector(".ql-play-btn").textContent =
+            st.current && st.current.storyId === s.id ? qu.resume : qu.play;
+        }
+      });
+    }
+    stories.forEach((s) => {
+      const card = el("a", "ql-card" + (s.playable ? "" : " is-locked"));
+      card.href = "qinli-play.html?story=" + s.id;
+      if (s.cover) {
+        const cover = el("img", "ql-cover");
+        cover.alt = s.title + "封面";
+        cover.loading = "lazy";
+        cover.decoding = "async";
+        cover.addEventListener("error", () => cover.remove());
+        cover.src = s.cover;
+        card.appendChild(cover);
+      }
+      card.appendChild(el("span", "ql-year", String(s.year)));
+      card.appendChild(el("h3", "ql-title", s.title));
+      card.appendChild(el("p", "ql-role", s.role));
+      const theme = el("p", "ql-theme", s.theme);
+      if (!s.playable) theme.hidden = true;
+      card.appendChild(theme);
+      const done = el("span", "ql-done", qu.doneBadge);
+      done.hidden = true;
+      card.appendChild(done);
+      card.appendChild(el("span", "ql-play-btn", s.playable ? qu.play : qu.comingSoon));
+      cards.appendChild(card);
+      cardNodes.set(s.id, card);
+    });
+    wrap.appendChild(cards);
+    app.appendChild(wrap);
+    paintCards();
+    window.addEventListener("storage", (e) => {
+      if (e.key !== PROGRESS_KEY) return;
+      paintCards();
+    });
+  }
+
+  /* ---------- 亲历 · 独立播放页（无全站顶栏） ---------- */
+
+  function renderQinliPlay() {
+    const qu = data.qinliUI;
+    const stories = data.qinli;
+    const storyParam = new URLSearchParams(location.search).get("story");
+    const story = stories.find((s) => s.playable && s.id === storyParam);
+    if (!story) {
+      location.replace("qinli.html");
+      return;
+    }
+    const bar = el("div", "qp-bar");
+    const back = el("a", "qp-back", "← 亲历");
+    back.href = "qinli.html";
+    bar.appendChild(back);
+    const ident = el("div", "qp-ident");
+    ident.appendChild(el("span", "qp-title", story.title));
+    ident.appendChild(el("span", "qp-meta", story.year + " · " + story.role));
+    bar.appendChild(ident);
+    app.appendChild(bar);
     const wrap = el("div", "container ql-wrap");
     const clampStat = (v) => Math.max(0, Math.min(100, v));
     const signed = (v) => (v > 0 ? "+" + v : String(v));
@@ -1086,7 +1171,6 @@
       });
     }
 
-    const cards = el("div", "ql-cards");
     const cardNodes = new Map();
     const play = el("div", "ql-play");
     play.hidden = true;
@@ -1124,6 +1208,7 @@
       const st = qinliState();
       stories.forEach((s) => {
         const node = cardNodes.get(s.id);
+        if (!node) return;
         const done = st.done.includes(s.id);
         node.classList.toggle("is-done", done);
         node.querySelector(".ql-done").hidden = !done;
@@ -1146,7 +1231,7 @@
       opening.appendChild(el("span", "ql-story-opening-text", s.opening));
       head.appendChild(opening);
       head.appendChild(el("p", "content-note", qu.mechanismNote));
-      if (s.id === "q1581") head.appendChild(buildTopicPath("qinli.html?story=q1581"));
+      if (s.id === "q1581") head.appendChild(buildTopicPath("qinli-play.html?story=q1581"));
       return head;
     }
 
@@ -1331,47 +1416,9 @@
       }
     }
 
-    stories.forEach((s) => {
-      const card = el("article", "ql-card" + (s.playable ? "" : " is-locked"));
-      if (s.cover) {
-        const cover = el("img", "ql-cover");
-        cover.alt = s.title + "封面";
-        cover.loading = "lazy";
-        cover.decoding = "async";
-        cover.addEventListener("error", () => cover.remove());
-        cover.src = s.cover;
-        card.appendChild(cover);
-      }
-      card.appendChild(el("span", "ql-year", String(s.year)));
-      card.appendChild(el("h3", "ql-title", s.title));
-      card.appendChild(el("p", "ql-role", s.role));
-      const theme = el("p", "ql-theme", s.theme);
-      if (!s.playable) theme.hidden = true;
-      card.appendChild(theme);
-      const done = el("span", "ql-done", qu.doneBadge);
-      done.hidden = true;
-      card.appendChild(done);
-      const btn = el("button", "ql-play-btn", s.playable ? qu.play : qu.comingSoon);
-      btn.type = "button";
-      btn.addEventListener("click", () => {
-        if (s.playable) enter(s);
-        else theme.hidden = !theme.hidden;
-      });
-      card.appendChild(btn);
-      cards.appendChild(card);
-      cardNodes.set(s.id, card);
-    });
-    wrap.appendChild(cards);
     wrap.appendChild(play);
     app.appendChild(wrap);
-    paintCards();
-    const resumeStory = stories.find(
-      (s) => s.playable && qinliState().current && qinliState().current.storyId === s.id
-    );
-    const storyParam = new URLSearchParams(location.search).get("story");
-    const paramStory = stories.find((s) => s.playable && s.id === storyParam);
-    if (paramStory) enter(paramStory);
-    else if (resumeStory) enter(resumeStory, false);
+    enter(story, false);
 
     window.addEventListener("storage", (e) => {
       if (e.key !== PROGRESS_KEY) return;
@@ -2113,7 +2160,7 @@
       if (last) {
         const link = el("a", "cta-button cta-gold", last.label);
         link.href = last.href;
-        if (link.getAttribute("href").startsWith("qinli.html")) { link.target = "_blank"; link.rel = "noopener"; }
+        if (/^qinli(-play)?\.html/.test(link.getAttribute("href"))) { link.target = "_blank"; link.rel = "noopener"; }
         resumeSection.appendChild(link);
       } else {
         resumeSection.appendChild(el("p", "content-note", ui.resumeEmpty));
@@ -2472,7 +2519,7 @@
       });
       forgetBtn.hidden = !mem;
       const storyId = figure().qinliStory;
-      qinliLink.href = "qinli.html?story=" + storyId;
+      qinliLink.href = "qinli-play.html?story=" + storyId;
       qinliLink.target = "_blank";
       qinliLink.rel = "noopener";
       const done = loadProgress();
@@ -3155,7 +3202,7 @@
     ch.nextSteps.forEach((l) => {
       const a = el("a", "topic-next ch-next-link", l.label);
       a.href = l.href;
-      if (a.getAttribute("href").startsWith("qinli.html")) { a.target = "_blank"; a.rel = "noopener"; }
+      if (/^qinli(-play)?\.html/.test(a.getAttribute("href"))) { a.target = "_blank"; a.rel = "noopener"; }
       next.appendChild(a);
     });
     read.appendChild(next);
@@ -3177,7 +3224,7 @@
 
   /* ---------- 组装 ---------- */
 
-  renderNav();
+  if (page !== "qinli-play") renderNav();
   if (page === "index") renderIndex();
   else if (page === "timeline") renderTimeline();
   else if (page === "decision") renderDecisions();
@@ -3189,6 +3236,7 @@
   else if (page === "relations") renderRelations();
   else if (page === "chat") renderChat();
   else if (page === "qinli") renderQinli();
+  else if (page === "qinli-play") renderQinliPlay();
   else renderPlaceholder();
   app.appendChild(renderFooter());
 })();

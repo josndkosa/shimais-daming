@@ -25,6 +25,7 @@ function checkHref(href) {
   if (url.pathname === '/timeline.html') assert.ok(data.timeline.events.some(e => e.id === id.get('event')));
   else if (url.pathname === '/cards.html') assert.ok(data.cards.some(c => c.id === id.get('card')));
   else if (url.pathname === '/qinli.html') assert.ok(data.qinli.some(s => s.id === id.get('story')));
+  else if (url.pathname === '/qinli-play.html') assert.ok(data.qinli.some(s => s.playable && s.id === id.get('story')));
   else if (url.pathname === '/quiz.html') assert.equal(id.get('topic'), 'yitiaobian');
   else if (url.pathname === '/search.html') assert.ok(sources.has(id.get('source')), href);
   else assert.fail('Unexpected destination: ' + href);
@@ -44,7 +45,7 @@ test('formal quiz fields and all 99 search entries remain unchanged', () => {
 test('topic connects five exact destinations and two sourced questions', () => {
   assert.ok(data.topic, 'topic path is missing');
   assert.equal(data.topic.id, 'yitiaobian');
-  assert.deepEqual(Array.from(data.topic.steps, s => s.href), ['timeline.html?event=e1581', 'cards.html?card=i3', 'qinli.html?story=q1581', 'quiz.html?topic=yitiaobian', 'search.html?source=zhangjuzheng%2Fc4']);
+  assert.deepEqual(Array.from(data.topic.steps, s => s.href), ['timeline.html?event=e1581', 'cards.html?card=i3', 'qinli-play.html?story=q1581', 'quiz.html?topic=yitiaobian', 'search.html?source=zhangjuzheng%2Fc4']);
   data.topic.steps.forEach(s => { assert.ok(s.label && s.goal); checkHref(s.href); });
   assert.equal(data.topicQuiz.length, 2);
   assert.equal(data.topicQuiz[0].stem, data.quiz[9].stem);
@@ -99,7 +100,7 @@ test('lastRead accepts only known kind/id, never an arbitrary URL or score mutat
   ctx.markRead('e1581');
   assert.equal(ctx.resolveLastRead(progress.lastRead).href, 'timeline.html?event=e1581');
   ctx.markLastRead('qinli', 'q1581');
-  assert.equal(ctx.resolveLastRead(progress.lastRead).href, 'qinli.html?story=q1581');
+  assert.equal(ctx.resolveLastRead(progress.lastRead).href, 'qinli-play.html?story=q1581');
   assert.equal(progress.quiz.score, 9);
   assert.equal(progress.qinli.current.prestige, 75);
   assert.equal(progress.qinli.current.morale, 40);
@@ -209,7 +210,7 @@ test('all story final-scene resumes preserve numbers and finish without applying
       loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {},
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'), window: { addEventListener() {} },
     });
-    vm.runInContext(code + '\nrenderQinli();', ctx);
+    vm.runInContext(code + '\nrenderQinliPlay();', ctx);
     assert.equal(progress.qinli.current, null, story.id);
     assert.deepEqual(Array.from(progress.qinli.done), [story.id]);
     assert.deepEqual(walk(app, 'ql-stat-val').map(n => n.textContent), ['80', '45']);
@@ -236,7 +237,7 @@ function renderEnding(story, qinliUI = data.qinliUI) {
     loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {},
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'), window: { addEventListener() {} },
   });
-  vm.runInContext(code + '\nrenderQinli();', ctx);
+  vm.runInContext(code + '\nrenderQinliPlay();', ctx);
   return app;
 }
 test('all six endings render the exact configured chat label and destination', () => {
@@ -361,7 +362,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 99 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '16256063517d413e0e80d1233130d58e4589f3b267c26bee79c96eda86073376');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '6c3aae3a30372e95e7c4b9088e7401c3f106b7eb21a2ed5f12a06b4cfb99b8a1');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
 });
 function territoryFixture(siteData = data) {
@@ -453,10 +454,13 @@ test('chapters array carries five chapters with complete sections and nextSteps'
   assert.equal(data.chapterUI.series, '白话明史');
   assert.deepEqual(Array.from(data.chapters, c => c.id), ['hongwu', 'jingnan', 'tumubao', 'jiajing', 'zhangjuzheng']);
   const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
-  assert.equal(digest(data.chapters[0]), '27d2800891573d231bc21fe92773da95ca57668b415bf9a10a9c9eac12194a3b', 'chapter one must stay verbatim');
-  assert.equal(digest(data.chapters[1]), 'c19312bf0a3506b1e0fe8fc98c04ba7de0bae090c421958f1b0cf00d27d52574', 'chapter two must stay verbatim');
-  assert.equal(digest(data.chapters[2]), '95e1609f596d1d328d3a30e380d98bed8e3561c1748873fa86e0a7ee19dd5f78', 'chapter three must stay verbatim');
-  assert.equal(digest(data.chapters[3]), '3e94382bdf029bbb4ed66825536c9d2acaf57970e84fd3924451a97f1551bb2b', 'chapter four must stay verbatim');
+  // AU 起 nextSteps 的亲历 href 改向播放页；正文红线钉 id/title/intro/sections，标签另有逐字断言
+  const proseDigest = ({ id, title, intro, sections }) => digest({ id, title, intro, sections });
+  assert.equal(proseDigest(data.chapters[0]), '61547ab13609376ca496d429ed139213439639c89dcc9398ef979a485de39c74', 'chapter one prose must stay verbatim');
+  assert.equal(proseDigest(data.chapters[1]), 'eba8bff4d20db09787ff47ab43c8b2ecec48e0ba86ea40f207fece9b04ccbb19', 'chapter two prose must stay verbatim');
+  assert.equal(proseDigest(data.chapters[2]), 'e0f9934d38d8871a0cc0de39d57b5aa9151f8eabe558ddc630ab311cf09d69f4', 'chapter three prose must stay verbatim');
+  assert.equal(proseDigest(data.chapters[3]), 'f69e58d1517ba5977d6cfe28e5aecfedb8d354eaaa8820d1f69622c4572c62bd', 'chapter four prose must stay verbatim');
+  assert.equal(proseDigest(data.chapters[4]), 'd43cefb352bdcf59e334d159a4be2e97ea44028a3198e8bfe5fde5c86043eab9', 'chapter five prose must stay verbatim');
   const [c1, c2, c3, c4, c5] = data.chapters;
   assert.equal(c1.title, '洪武朝');
   assert.equal(c2.title, '建文与靖难');
@@ -476,13 +480,13 @@ test('chapters array carries five chapters with complete sections and nextSteps'
     assert.equal(ch.nextSteps.length, 3);
     ch.nextSteps.forEach(l => assert.ok(l.label && l.href));
   });
-  assert.deepEqual(Array.from(c1.nextSteps, l => l.href), ['qinli.html?story=q1380', 'chat.html?figure=zhuyuanzhang', 'timeline.html?event=e1380']);
-  assert.deepEqual(Array.from(c2.nextSteps, l => l.href), ['qinli.html?story=q1402', 'chat.html?figure=zhudi', 'timeline.html?event=e1402']);
-  assert.deepEqual(Array.from(c3.nextSteps, l => l.href), ['qinli.html?story=q1449', 'chat.html?figure=yuqian', 'timeline.html?event=e1449']);
+  assert.deepEqual(Array.from(c1.nextSteps, l => l.href), ['qinli-play.html?story=q1380', 'chat.html?figure=zhuyuanzhang', 'timeline.html?event=e1380']);
+  assert.deepEqual(Array.from(c2.nextSteps, l => l.href), ['qinli-play.html?story=q1402', 'chat.html?figure=zhudi', 'timeline.html?event=e1402']);
+  assert.deepEqual(Array.from(c3.nextSteps, l => l.href), ['qinli-play.html?story=q1449', 'chat.html?figure=yuqian', 'timeline.html?event=e1449']);
   assert.deepEqual(Array.from(c3.nextSteps, l => l.label), ['亲历《京师》', '跟于谦聊聊', '回看时间线 1449']);
-  assert.deepEqual(Array.from(c4.nextSteps, l => l.href), ['qinli.html?story=q1548', 'chat.html?figure=hairui', 'timeline.html?event=e1566']);
+  assert.deepEqual(Array.from(c4.nextSteps, l => l.href), ['qinli-play.html?story=q1548', 'chat.html?figure=hairui', 'timeline.html?event=e1566']);
   assert.deepEqual(Array.from(c4.nextSteps, l => l.label), ['亲历《首辅之局》', '跟海瑞聊聊', '回看时间线 1566']);
-  assert.deepEqual(Array.from(c5.nextSteps, l => l.href), ['qinli.html?story=q1581', 'chat.html?figure=zhangjuzheng', 'timeline.html?event=e1582']);
+  assert.deepEqual(Array.from(c5.nextSteps, l => l.href), ['qinli-play.html?story=q1581', 'chat.html?figure=zhangjuzheng', 'timeline.html?event=e1582']);
   assert.deepEqual(Array.from(c5.nextSteps, l => l.label), ['亲历《清丈》', '跟张居正聊聊', '回看时间线 1582']);
   assert.equal(c2.sections.some(s => s.sources), false, 'chapter two has no AJ slips this batch');
   assert.equal(c3.sections.some(s => s.sources), false, 'chapter three has no AJ slips this batch');
@@ -564,17 +568,17 @@ test('qinli content-area anchors open in a new tab; nav and in-page anchors do n
   const linksA = walk(ctxA.sec, 'topic-link');
   assert.equal(linksA.length, data.topic.steps.length);
   linksA.forEach((a, i) => {
-    const isQinli = data.topic.steps[i].href.startsWith('qinli.html');
+    const isQinli = /^qinli(-play)?\.html/.test(data.topic.steps[i].href);
     assert.equal(a.target, isQinli ? '_blank' : undefined);
     assert.equal(a.rel, isQinli ? 'noopener' : undefined);
   });
   const nextA = walk(ctxA.sec, 'topic-next');
   assert.equal(nextA.length, 1);
-  assert.ok(nextA[0].href.startsWith('qinli.html'));
+  assert.ok(/^qinli(-play)?\.html/.test(nextA[0].href));
   assert.equal(nextA[0].target, '_blank');
   assert.equal(nextA[0].rel, 'noopener');
   const ctxB = mkCtx();
-  vm.runInContext(topicCode + '\nthis.sec = buildTopicPath("qinli.html?story=q1581");', ctxB);
+  vm.runInContext(topicCode + '\nthis.sec = buildTopicPath("qinli-play.html?story=q1581");', ctxB);
   const nextB = walk(ctxB.sec, 'topic-next');
   assert.equal(nextB.length, 1);
   assert.ok(!nextB[0].href.startsWith('qinli.html'));
@@ -604,7 +608,7 @@ test('qinli content-area anchors open in a new tab; nav and in-page anchors do n
     ['entryLink.href = "qinli.html";', 'entryLink.target = "_blank"'],
     ['link.href = last.href;', 'link.target = "_blank"'],
     ['qlLink.href = currentStory ? currentStory.href : "qinli.html";', 'qlLink.target = "_blank"'],
-    ['qinliLink.href = "qinli.html?story=" + storyId;', 'qinliLink.target = "_blank"'],
+    ['qinliLink.href = "qinli-play.html?story=" + storyId;', 'qinliLink.target = "_blank"'],
   ];
   guarded.forEach(([marker, targetLine]) => {
     const hits = lines.map((l, i) => l.includes(marker) ? i : -1).filter(i => i >= 0);
@@ -621,6 +625,54 @@ test('qinli content-area anchors open in a new tab; nav and in-page anchors do n
   assert.ok(navCode.includes('page: "qinli.html"'), 'qinli nav item missing');
   const qlCode = slice('  function renderQinli()', '  /* ----------');
   assert.ok(!qlCode.includes('.target = "_blank"'), 'qinli in-page must stay same-tab');
+});
+test('qinli splits into a pure list and a nav-free play page', () => {
+  const html = fs.readFileSync(path.join(root, 'qinli-play.html'), 'utf8');
+  assert.match(html, /data-page="qinli-play"/);
+  assert.match(html, /src="data\.js"/);
+  assert.match(html, /src="app\.js"/);
+  assert.match(html, /href="styles\.css"/);
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  assert.ok(source.includes('if (page !== "qinli-play") renderNav();'), 'play page must skip the site nav');
+  assert.ok(source.includes('else if (page === "qinli-play") renderQinliPlay();'), 'play route missing');
+  const listStart = source.indexOf('  function renderQinli()');
+  const listCode = source.slice(listStart, source.indexOf('  /* ----------', listStart + 10));
+  assert.ok(!listCode.includes('ql-choice'), 'list must not embed the player');
+  assert.ok(listCode.includes('location.replace("qinli-play.html?story="'), 'old deep links must redirect');
+  assert.ok(listCode.includes('el("a", "ql-card"'), 'cards must be whole-card links');
+  const playStart = source.indexOf('  function renderQinliPlay()');
+  const playCode = source.slice(playStart, source.indexOf('  /* ----------', playStart + 10));
+  assert.ok(playCode.includes('location.replace("qinli.html")'), 'invalid story must fall back to the list');
+  assert.ok(playCode.includes('qp-bar') && playCode.includes('← 亲历'), 'thin top bar missing');
+  assert.ok(playCode.includes('enter(story, false)'), 'player must start without scroll');
+  assert.ok(!playCode.includes('renderNav('), 'play page must not render nav');
+  const app = new Node('main');
+  const replaced = [];
+  const ctx = vm.createContext({ data, app, URLSearchParams, location: { search: '', replace: (u) => replaced.push(u) },
+    loadProgress: () => ({}), updateProgress: () => assert.fail('list must not write progress'),
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+    window: { addEventListener() {} }, PROGRESS_KEY: 'shimais-daming:progress:v1',
+  });
+  vm.runInContext(listCode + '\nrenderQinli();', ctx);
+  const cards = walk(app, 'ql-card');
+  assert.equal(cards.length, 6);
+  cards.forEach((c, i) => {
+    assert.equal(c.tag, 'a');
+    assert.equal(c.href, 'qinli-play.html?story=' + data.qinli[i].id);
+    assert.equal(c.target, undefined);
+  });
+  assert.equal(walk(app, 'ql-play').length, 0);
+  assert.deepEqual(replaced, []);
+  const app2 = new Node('main');
+  const replaced2 = [];
+  const ctx2 = vm.createContext({ data, app: app2, URLSearchParams, location: { search: '?story=q1449', replace: (u) => replaced2.push(u) },
+    loadProgress: () => ({}), updateProgress: () => {},
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+    window: { addEventListener() {} },
+  });
+  vm.runInContext(listCode + '\nrenderQinli();', ctx2);
+  assert.deepEqual(replaced2, ['qinli-play.html?story=q1449']);
+  assert.equal(app2.children.length, 0);
 });
 test('chapter renders intro, sections, source prefixes and next links without writing progress', () => {
   const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
