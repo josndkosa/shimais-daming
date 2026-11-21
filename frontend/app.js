@@ -488,6 +488,11 @@
     chThird.target = "_blank";
     chThird.rel = "noopener";
     chEntry.appendChild(chThird);
+    const chFourth = el("a", "ch-entry-second", data.chapterUI.fourthLink);
+    chFourth.href = "chapter.html?ch=" + data.chapters[3].id;
+    chFourth.target = "_blank";
+    chFourth.rel = "noopener";
+    chEntry.appendChild(chFourth);
     app.appendChild(chEntry);
 
     const entries = el("section", "entries-section container");
@@ -1401,6 +1406,11 @@
     bannerThird.target = "_blank";
     bannerThird.rel = "noopener";
     wrap.appendChild(bannerThird);
+    const bannerFourth = el("a", "cw-banner-second cw-banner-third", data.chapterUI.fourthLink);
+    bannerFourth.href = "chapter.html?ch=" + data.chapters[3].id;
+    bannerFourth.target = "_blank";
+    bannerFourth.rel = "noopener";
+    wrap.appendChild(bannerFourth);
     const reveal = [];
     const groups = [
       { kind: "person", title: ui.peopleTitle, hint: ui.peopleHint },

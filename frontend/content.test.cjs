@@ -361,7 +361,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 99 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '8f2742f220bdb3e97e80bd674f1230493c7f0ab7d2053d011f16f728578a8d60');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'f4f04eacbb2faba26ddb89467fb04eff84947f167f758c8e42fd3ba8751ed514');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
 });
 function territoryFixture(siteData = data) {
@@ -446,20 +446,22 @@ test('territory geometry has independent geographic paths, labels and source att
   assert.ok(timeline.indexOf('renderTerritory()') < timeline.indexOf('const strip'));
   assert.match(timeline, /try\s*{[\s\S]*?renderTerritory\(\)[\s\S]*?}\s*catch/);
 });
-test('chapters array carries three chapters with complete sections and nextSteps', () => {
-  assert.ok(Array.isArray(data.chapters) && data.chapters.length === 3);
+test('chapters array carries four chapters with complete sections and nextSteps', () => {
+  assert.ok(Array.isArray(data.chapters) && data.chapters.length === 4);
   assert.equal(data.chapter, undefined, 'old chapter field removed');
   assert.equal(data.chapterUI.next, undefined, 'old next field removed');
   assert.equal(data.chapterUI.series, '白话明史');
-  assert.deepEqual(Array.from(data.chapters, c => c.id), ['hongwu', 'jingnan', 'tumubao']);
+  assert.deepEqual(Array.from(data.chapters, c => c.id), ['hongwu', 'jingnan', 'tumubao', 'jiajing']);
   const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   assert.equal(digest(data.chapters[0]), '27d2800891573d231bc21fe92773da95ca57668b415bf9a10a9c9eac12194a3b', 'chapter one must stay verbatim');
   assert.equal(digest(data.chapters[1]), 'c19312bf0a3506b1e0fe8fc98c04ba7de0bae090c421958f1b0cf00d27d52574', 'chapter two must stay verbatim');
-  const [c1, c2, c3] = data.chapters;
+  assert.equal(digest(data.chapters[2]), '95e1609f596d1d328d3a30e380d98bed8e3561c1748873fa86e0a7ee19dd5f78', 'chapter three must stay verbatim');
+  const [c1, c2, c3, c4] = data.chapters;
   assert.equal(c1.title, '洪武朝');
   assert.equal(c2.title, '建文与靖难');
   assert.equal(c3.title, '土木堡与北京保卫战');
-  [c1, c2, c3].forEach(ch => {
+  assert.equal(c4.title, '嘉靖与海瑞');
+  [c1, c2, c3, c4].forEach(ch => {
     assert.ok(ch.intro && ch.intro.trim());
     assert.equal(ch.sections.length, 5);
     ch.sections.forEach(s => {
@@ -475,16 +477,23 @@ test('chapters array carries three chapters with complete sections and nextSteps
   assert.deepEqual(Array.from(c2.nextSteps, l => l.href), ['qinli.html?story=q1402', 'chat.html?figure=zhudi', 'timeline.html?event=e1402']);
   assert.deepEqual(Array.from(c3.nextSteps, l => l.href), ['qinli.html?story=q1449', 'chat.html?figure=yuqian', 'timeline.html?event=e1449']);
   assert.deepEqual(Array.from(c3.nextSteps, l => l.label), ['亲历《京师》', '跟于谦聊聊', '回看时间线 1449']);
+  assert.deepEqual(Array.from(c4.nextSteps, l => l.href), ['qinli.html?story=q1548', 'chat.html?figure=hairui', 'timeline.html?event=e1566']);
+  assert.deepEqual(Array.from(c4.nextSteps, l => l.label), ['亲历《首辅之局》', '跟海瑞聊聊', '回看时间线 1566']);
   assert.equal(c2.sections.some(s => s.sources), false, 'chapter two has no AJ slips this batch');
   assert.equal(c3.sections.some(s => s.sources), false, 'chapter three has no AJ slips this batch');
+  assert.equal(c4.sections.some(s => s.sources), false, 'chapter four has no AJ slips this batch');
   const text2 = c2.sections.map(s => s.paragraphs.join('')).join('');
   ['1370', '1380', '1392', '1399', '1402', '1420', '1457', '五十五年', '洪武三十五年', '三百年'].forEach(n => assert.ok(text2.includes(n), 'key figure missing: ' + n));
   const text3 = c3.sections.map(s => s.paragraphs.join('')).join('');
   ['1421', '1435', '1449', '二十二万', '十九年', '1450', '1457'].forEach(n => assert.ok(text3.includes(n), 'key figure missing: ' + n));
   assert.ok(!JSON.stringify(c3).includes('石灰吟'), 'chapter three must not quote 石灰吟');
+  const text4 = c4.sections.map(s => s.title + s.paragraphs.join('')).join('');
+  ['1521', '三年', '百余', '二十余年', '1550', '八日', '1553', '1555', '1562', '1565', '1566', '二斤', '十九年'].forEach(n => assert.ok(text4.includes(n), 'key figure missing: ' + n));
+  assert.ok(!JSON.stringify(c4).includes('盖天下之人不直陛下久矣'), 'chapter four must not quote the unverified line');
   assert.equal(data.chapterUI.entryBtn, '开始试读');
   assert.equal(data.chapterUI.secondLink, '第二章 · 建文与靖难 →');
   assert.equal(data.chapterUI.thirdLink, '第三章 · 土木堡与北京保卫战 →');
+  assert.equal(data.chapterUI.fourthLink, '第四章 · 嘉靖与海瑞 →');
 });
 test('chapter sections carry verbatim backend sources and render collapsed slips', () => {
   const chunks = JSON.parse(fs.readFileSync(path.join(root, '../backend/data/zhuyuanzhang.json'), 'utf8')).chunks;
@@ -655,6 +664,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
     { text: '第一章 · 洪武朝', href: 'chapter.html?ch=hongwu', current: true, target: undefined },
     { text: '第二章 · 建文与靖难', href: 'chapter.html?ch=jingnan', current: false, target: undefined },
     { text: '第三章 · 土木堡与北京保卫战', href: 'chapter.html?ch=tumubao', current: false, target: undefined },
+    { text: '第四章 · 嘉靖与海瑞', href: 'chapter.html?ch=jiajing', current: false, target: undefined },
   ]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[0].intro);
   assert.equal(walk(app, 'ch-sources').length, 4);
@@ -662,7 +672,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.deepEqual(walk(app, 'ch-next-link').map(a => a.href), Array.from(data.chapters[0].nextSteps, l => l.href));
   // ?ch=jingnan → 第二章
   app = render('?ch=jingnan');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, true, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, true, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[1].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -679,22 +689,39 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps[2].target, undefined);
   // ?ch=tumubao → 第三章
   app = render('?ch=tumubao');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, true]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, true, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[2].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
   assert.deepEqual(walk(app, 'ch-sec-title').slice(0, 5).map(n => textOf(n)), Array.from(data.chapters[2].sections, s => s.title));
-  assert.deepEqual(navOf(app), [{ text: '← 上一章：建文与靖难', href: 'chapter.html?ch=jingnan', target: undefined }]);
+  assert.deepEqual(navOf(app), [
+    { text: '← 上一章：建文与靖难', href: 'chapter.html?ch=jingnan', target: undefined },
+    { text: '下一章：嘉靖与海瑞 →', href: 'chapter.html?ch=jiajing', target: undefined },
+  ]);
   const steps3 = walk(app, 'ch-next-link');
   assert.deepEqual(steps3.map(a => a.href), Array.from(data.chapters[2].nextSteps, l => l.href));
   assert.equal(steps3[0].target, '_blank');
   assert.equal(steps3[0].rel, 'noopener');
   assert.equal(steps3[1].target, undefined);
   assert.equal(steps3[2].target, undefined);
+  // ?ch=jiajing → 第四章
+  app = render('?ch=jiajing');
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, true]);
+  assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[3].intro);
+  assert.equal(walk(app, 'ch-section').length, 5);
+  assert.equal(walk(app, 'ch-sources').length, 0);
+  assert.deepEqual(walk(app, 'ch-sec-title').slice(0, 5).map(n => textOf(n)), Array.from(data.chapters[3].sections, s => s.title));
+  assert.deepEqual(navOf(app), [{ text: '← 上一章：土木堡与北京保卫战', href: 'chapter.html?ch=tumubao', target: undefined }]);
+  const steps4 = walk(app, 'ch-next-link');
+  assert.deepEqual(steps4.map(a => a.href), Array.from(data.chapters[3].nextSteps, l => l.href));
+  assert.equal(steps4[0].target, '_blank');
+  assert.equal(steps4[0].rel, 'noopener');
+  assert.equal(steps4[1].target, undefined);
+  assert.equal(steps4[2].target, undefined);
   // 未知值回落第一章
   app = render('?ch=xxx');
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[0].intro);
-  assert.deepEqual(tabsOf(app).map(t => t.current), [true, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [true, false, false, false]);
 });
 test('chapter banner has the specified copy and no obsolete in-card styling', () => {
   assert.equal(data.chapterUI.bannerEyebrow, '白话明史 · 试点章');
@@ -731,6 +758,11 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   assert.equal(textOf(third), data.chapterUI.thirdLink);
   assert.equal(third.target, '_blank');
   assert.equal(third.rel, 'noopener');
+  const fourth = walk(entry, 'ch-entry-second')[2];
+  assert.ok(fourth && fourth.href === 'chapter.html?ch=jiajing', 'index fourth-chapter link missing');
+  assert.equal(textOf(fourth), data.chapterUI.fourthLink);
+  assert.equal(fourth.target, '_blank');
+  assert.equal(fourth.rel, 'noopener');
   assert.equal(walk(app, 'entry-block').length, 6, 'module entries unchanged');
   const cardsCode = source.slice(source.indexOf('  function renderCards()'), source.indexOf('  function quizState()'));
   const capp = new Node('main');
@@ -761,6 +793,11 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   assert.equal(textOf(bthird), data.chapterUI.thirdLink);
   assert.equal(bthird.target, '_blank');
   assert.equal(bthird.rel, 'noopener');
+  const bfourth = walk(capp, 'cw-banner-second')[2];
+  assert.ok(bfourth && bfourth.href === 'chapter.html?ch=jiajing', 'cards fourth-chapter link missing');
+  assert.equal(textOf(bfourth), data.chapterUI.fourthLink);
+  assert.equal(bfourth.target, '_blank');
+  assert.equal(bfourth.rel, 'noopener');
   const cwWrap = walk(capp, 'cw-wrap')[0];
   assert.ok(cwWrap.children.indexOf(banner) < cwWrap.children.findIndex(n => n.className.includes('cw-group')), 'banner sits above the person grid');
   assert.equal(walk(capp, 'cw-chapter-link').length, 0, 'old in-card link removed');
