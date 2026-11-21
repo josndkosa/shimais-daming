@@ -363,7 +363,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 99 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'a80259a1625ccc75bf0e9605f04d3ee83c82ed991da118f8ec280132a447711a');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'c4e3ace54c6323ff3c9d23220a78f6159c1c022244ab74cf3749f1bf49698aec');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
 });
 function territoryFixture(siteData = data) {
@@ -712,6 +712,18 @@ test('decisions allow changing picks; seal, hint and completion follow current p
   const choices2 = walk(walk(app2, 'dc-scenario')[0], 'dc-choice');
   assert.ok(choices2[1].className.includes('is-picked'), 'refresh keeps latest pick');
   assert.equal(walk(walk(app2, 'dc-scenario')[0], 'dc-consequence-p')[0].textContent, sc.choices[1].consequence);
+});
+test('emperor entries carry exact fullNames; era label added; other relations data untouched', () => {
+  const FULL = { 太祖: '朱元璋', 惠宗: '朱允炆', 成祖: '朱棣', 仁宗: '朱高炽', 宣宗: '朱瞻基', 英宗: '朱祁镇', 代宗: '朱祁钰', 宪宗: '朱见深', 孝宗: '朱祐樘', 武宗: '朱厚照', 世宗: '朱厚熜', 穆宗: '朱载坖', 神宗: '朱翊钧', 光宗: '朱常洛', 熹宗: '朱由校', 思宗: '朱由检' };
+  const emperors = data.relations.emperors;
+  assert.equal(emperors.length, 17);
+  emperors.forEach(e => assert.equal(e.fullName, FULL[e.name], e.name));
+  assert.equal(emperors.filter(e => e.name === '英宗').length, 2);
+  assert.ok(emperors.filter(e => e.name === '英宗').every(e => e.fullName === '朱祁镇'));
+  assert.equal(data.relationsUI.cardLabels.era, '年号');
+  assert.equal(data.relationsUI.cardLabels.identity, '身份');
+  const stripped = { ...data.relations, emperors: emperors.map(({ fullName, ...rest }) => rest) };
+  assert.equal(createHash('sha256').update(JSON.stringify(stripped)).digest('hex'), 'b8b60fa9e112b7f22bc6b625bb9fc79a9ca3aa102d0a6585612179b24eb6be56', 'relations data minus fullName must stay verbatim');
 });
 test('qinli splits into a pure list and a nav-free play page', () => {
   const html = fs.readFileSync(path.join(root, 'qinli-play.html'), 'utf8');

@@ -2500,13 +2500,26 @@ body[data-page="index"] {
   height: 26px;
 }
 
+.rl-lane-emperor .rl-row {
+  height: 40px;
+}
+
 .rl-person {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   font-size: calc(13px * var(--site-type, 1));
   letter-spacing: 0.04em;
   color: var(--site-fg);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.rl-person-full {
+  font-size: calc(11px * var(--site-type, 1));
+  letter-spacing: 0.02em;
+  color: var(--site-muted);
 }
 
 .rl-bar {

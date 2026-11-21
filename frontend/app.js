@@ -2782,10 +2782,10 @@
     function openCard(kind, p, bar) {
       lastBar = bar;
       dialog.replaceChildren(closeBtn);
-      dialog.appendChild(el("h3", "rl-card-name", p.name));
+      dialog.appendChild(el("h3", "rl-card-name", kind === "emperor" && p.fullName ? p.name + "（" + p.fullName + "）" : p.name));
       const rows = [];
       if (kind === "emperor") {
-        rows.push([ui.cardLabels.identity, p.era]);
+        rows.push([ui.cardLabels.era, p.era]);
         rows.push([ui.cardLabels.tenure, p.from + "–" + p.to]);
         rows.push([ui.cardLabels.reign, p.from + "–" + p.to + (p.note ? " · " + p.note : "")]);
       } else {
@@ -2855,7 +2855,14 @@
 
       lane.people.forEach((p) => {
         const row = el("div", "rl-row");
-        row.appendChild(el("span", "rl-name-cell rl-person", p.name));
+        const nameCell = el("span", "rl-name-cell rl-person");
+        if (lane.kind === "emperor" && p.fullName) {
+          nameCell.appendChild(el("span", "rl-person-name", p.name));
+          nameCell.appendChild(el("span", "rl-person-full", p.fullName));
+        } else {
+          nameCell.textContent = p.name;
+        }
+        row.appendChild(nameCell);
         const track = el("div", "rl-track");
         const segs = lane.kind === "emperor" ? [[p.from, p.to]] : p.segments;
         segs.forEach((s, si) => {
