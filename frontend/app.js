@@ -3037,6 +3037,24 @@
       const section = el("section", "ch-section");
       section.appendChild(el("h2", "ch-sec-title", sec.title));
       sec.paragraphs.forEach((p) => section.appendChild(el("p", "ch-p", p)));
+      if (sec.sources && sec.sources.length) {
+        const slip = el("details", "ch-sources");
+        slip.appendChild(el("summary", "ch-sources-summary", "本节史料（" + sec.sources.length + " 条）"));
+        const list = el("div", "ch-sources-list");
+        sec.sources.forEach((s) => {
+          const card = el("div", "ch-slip");
+          const mid = el("div", "ch-slip-mid");
+          const inner = el("div", "ch-slip-in");
+          inner.appendChild(el("h3", "ch-slip-title", s.title));
+          inner.appendChild(el("p", "ch-slip-text", s.text));
+          inner.appendChild(el("p", "ch-slip-from", "—— " + s.source));
+          mid.appendChild(inner);
+          card.appendChild(mid);
+          list.appendChild(card);
+        });
+        slip.appendChild(list);
+        section.appendChild(slip);
+      }
       section.appendChild(el("p", "ch-source", ui.sourcePrefix + sec.sourceNote));
       read.appendChild(section);
     });

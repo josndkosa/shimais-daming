@@ -353,7 +353,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 99 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'c0f3586524bac1f4e6b56669ad853c1db1651ec1ce902d5a15a2c83dbdc9cfb7');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '7e0d52a67e82cf5dd2264925333969295ff54f8c7488a2e3ab8262d6f6061dbc');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
 });
 function territoryFixture(siteData = data) {
@@ -450,6 +450,49 @@ test('chapter pilot keeps five non-empty sourced sections', () => {
   });
   assert.equal(data.chapterUI.entryBtn, '开始试读');
   assert.deepEqual(Array.from(data.chapterUI.next, l => l.href), ['qinli.html?story=q1380', 'chat.html?figure=zhuyuanzhang', 'timeline.html?event=e1380']);
+});
+test('chapter sections carry verbatim backend sources and render collapsed slips', () => {
+  const chunks = JSON.parse(fs.readFileSync(path.join(root, '../backend/data/zhuyuanzhang.json'), 'utf8')).chunks;
+  const byId = Object.fromEntries(chunks.map(c => [c.id, c]));
+  assert.deepEqual(Array.from(data.chapter.sections, s => s.sources.length), [3, 1, 2, 2, 0]);
+  assert.deepEqual(Array.from(data.chapter.sections, s => Array.from(s.sources, x => x.id)), [['c1', 'c2', 'c6'], ['c3'], ['c4', 'c5'], ['c7', 'c8'], []]);
+  data.chapter.sections.forEach(s => s.sources.forEach(x => {
+    assert.match(x.id, /^c[1-8]$/);
+    assert.ok(typeof x.text === 'string' && x.text.trim());
+    const orig = byId[x.id];
+    assert.equal(x.title, orig.title);
+    assert.equal(x.text, orig.text);
+    assert.equal(x.source, orig.source);
+  }));
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const start = source.indexOf('  function renderChapter()');
+  const code = source.slice(start, source.indexOf('  /* ----------', start + 10));
+  const app = new Node('main');
+  const ctx = vm.createContext({ data, app, currentModule: { title: '白话明史 · 洪武朝' },
+    loadProgress: () => ({}), updateProgress: () => assert.fail('chapter sources must not write progress'), markLastRead() {},
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+    window: { addEventListener() {} },
+  });
+  vm.runInContext(code + '\nrenderChapter();', ctx);
+  const slips = walk(app, 'ch-sources');
+  assert.equal(slips.length, 4);
+  assert.deepEqual(slips.map(n => n.tag), ['details', 'details', 'details', 'details']);
+  assert.deepEqual(walk(app, 'ch-sources-summary').map(n => textOf(n)), ['本节史料（3 条）', '本节史料（1 条）', '本节史料（2 条）', '本节史料（2 条）']);
+  assert.equal(walk(app, 'ch-slip').length, 8);
+  const flat = data.chapter.sections.flatMap(s => s.sources);
+  assert.deepEqual(walk(app, 'ch-slip-title').map(n => textOf(n)), Array.from(flat, x => x.title));
+  assert.deepEqual(walk(app, 'ch-slip-text').map(n => textOf(n)), Array.from(flat, x => x.text));
+  assert.deepEqual(walk(app, 'ch-slip-from').map(n => textOf(n)), Array.from(flat, x => '—— ' + x.source));
+  walk(app, 'ch-section').forEach((sec, i) => {
+    const tags = sec.children.map(n => n.className.split(' ')[0]);
+    const at = tags.indexOf('ch-sources');
+    if (i < 4) {
+      assert.ok(at > tags.lastIndexOf('ch-p'));
+      assert.equal(tags[at + 1], 'ch-source');
+    } else {
+      assert.equal(at, -1);
+    }
+  });
 });
 test('chapter renders intro, sections, source prefixes and next links without writing progress', () => {
   const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');

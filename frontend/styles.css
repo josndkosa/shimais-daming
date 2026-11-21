@@ -4233,6 +4233,90 @@ textarea.ct-text {
   border-top: 1px solid var(--line);
 }
 
+/* ---------- 章节节末史料展开（仅 chapter 页；纸面语言缩小一档） ---------- */
+
+.ch-sources {
+  margin: calc(var(--gap) * 0.6) 0 0;
+}
+
+.ch-sources-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+.ch-sources-summary::-webkit-details-marker {
+  display: none;
+}
+
+.ch-sources-summary::before {
+  content: "▸";
+  transition: transform 0.15s ease;
+}
+
+.ch-sources[open] .ch-sources-summary::before {
+  transform: rotate(90deg);
+}
+
+.ch-sources-summary:hover {
+  color: var(--site-fg);
+  border-color: var(--line-strong);
+}
+
+.ch-sources-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.ch-slip {
+  background: linear-gradient(160deg, #efe4c8, #e7d9b8);
+  padding: 5px;
+}
+
+.ch-slip-mid {
+  border: 1.6px solid #2a2417;
+  padding: 3px;
+}
+
+.ch-slip-in {
+  border: 0.7px solid #2a2417;
+  padding: 10px 12px 8px;
+}
+
+.ch-slip-title {
+  margin: 0 0 4px;
+  font-family: var(--site-font);
+  font-size: calc(15px * var(--site-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #2a2417;
+}
+
+.ch-slip-text {
+  margin: 0;
+  font-family: var(--site-font);
+  font-size: calc(15px * var(--site-type, 1));
+  line-height: 1.9;
+  letter-spacing: 0.03em;
+  color: #2a2417;
+}
+
+.ch-slip-from {
+  margin: 6px 0 0;
+  text-align: right;
+  font-size: calc(12px * var(--site-type, 1));
+  color: #6d5f43;
+}
+
 /* ---------- 人物卡：居中牌面、字号上调两号（仅 .cw-person） ---------- */
 
 .cw-person {
