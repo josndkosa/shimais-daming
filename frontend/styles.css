@@ -4103,3 +4103,92 @@ textarea.ct-text {
 .ql-card:has(.ql-cover) .ql-done {
   background: rgba(12, 10, 9, 0.72);
 }
+
+/* ---------- 对话记忆：档位、故人提示、深聊问题、亲历互链 ---------- */
+
+.ct-tier {
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  font-size: calc(11px * var(--site-type, 1));
+  letter-spacing: 0.08em;
+  color: var(--site-muted);
+  white-space: nowrap;
+}
+
+.ct-person-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: calc(10px * var(--site-space, 1)) 0 0;
+}
+
+.ct-qinli-link {
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.ct-qinli-badge {
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  font-size: calc(11px * var(--site-type, 1));
+  letter-spacing: 0.08em;
+  color: var(--vermilion-bright);
+}
+
+.ct-forget-btn {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font-family: var(--font-body);
+  font-size: calc(12px * var(--site-type, 1));
+  letter-spacing: 0.06em;
+  color: var(--site-muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.ct-forget-btn:hover {
+  color: var(--vermilion-bright);
+}
+
+.ct-memory-note {
+  margin: 0 0 6px;
+  font-size: calc(13px * var(--site-type, 1));
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+  color: var(--site-muted);
+}
+
+.ct-chip-deep {
+  border-style: dashed;
+  border-color: var(--gold);
+}
+
+.ct-deep-badge {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 4px;
+  border: 1px solid currentColor;
+  font-size: calc(10px * var(--site-type, 1));
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  vertical-align: 1px;
+}
+
+.pf-old-list {
+  margin-top: calc(8px * var(--site-space, 1));
+}
+
+.pf-old-row {
+  margin: 0;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: calc(13.5px * var(--site-type, 1));
+  line-height: 1.8;
+  color: var(--body-fg);
+}

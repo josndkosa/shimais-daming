@@ -8,6 +8,7 @@ const root = __dirname;
 const context = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(root, 'data.js'), 'utf8') + '\nthis.data = SITE_DATA; this.index = SEARCH_INDEX;', context);
 const data = context.data;
+const chatTier = (rounds) => (rounds < 5 ? '初见' : rounds < 15 ? '相熟' : '深谈');
 const figures = ['zhuyuanzhang', 'zhudi', 'yuqian', 'hairui', 'zhangjuzheng', 'chongzhen'];
 const sources = new Set(figures.flatMap(figure => JSON.parse(fs.readFileSync(path.join(root, '../backend/data', figure + '.json'), 'utf8')).chunks.map(c => figure + '/' + c.id)));
 function checkHref(href) {
@@ -177,7 +178,7 @@ test('profile recommends actual wrong-answer material and a deeper path for full
     const picks = Array.from(data.quiz, q => q.answer);
     if (!perfect) picks[9] = 0;
     const progress = { quiz: { score: perfect ? 10 : 9, picks }, qinli: { done: ['q1581', 'q1581', 'invalid'] } };
-    const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null,
+    const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} },
     });
     vm.runInContext(code + '\nrenderProfile();', ctx);
@@ -314,7 +315,18 @@ test('every story ships a cover image matching its id', () => {
 });
 test('site data digest reflects the cover fields only', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'e3b2b6f5071f776cba109da58db428a613cec634570041a57b486bca68e37c76');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'c0f3586524bac1f4e6b56669ad853c1db1651ec1ce902d5a15a2c83dbdc9cfb7');
+});
+test('every figure carries two deep questions and a personal story link', () => {
+  assert.equal(data.chatFigures.length, 6);
+  for (const f of data.chatFigures) {
+    assert.ok(Array.isArray(f.deepQuestions) && f.deepQuestions.length === 2, f.id + ' deep questions');
+    f.deepQuestions.forEach(q => assert.ok(typeof q === 'string' && q.trim()));
+    assert.ok(data.qinli.some(s => s.id === f.qinliStory), f.id + ' story mapping');
+  }
+  assert.deepEqual(Array.from(data.chatFigures, f => f.qinliStory), ['q1380', 'q1402', 'q1449', 'q1548', 'q1581', 'q1644']);
+  const app = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  assert.match(app, /shimais-daming:chatmem:v1/, 'chat memory key missing');
 });
 test('topic c4 has explicit kind, location, edition and verification limits', () => {
   const c4 = JSON.parse(fs.readFileSync(path.join(root, '../backend/data/zhangjuzheng.json'), 'utf8')).chunks.find(c => c.id === 'c4');

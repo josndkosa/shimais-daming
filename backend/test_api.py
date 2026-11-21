@@ -195,6 +195,36 @@ class APITests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(len(self.calls), count + 1)
                     self.assertNotIn("private upstream detail", result.text)
 
+    async def test_memory_tier_and_topics_reach_the_system_prompt(self):
+        response = await self.chat(memory={"tier": "相熟", "lastTopics": ["问过废相", "问过锦衣卫"]})
+        self.assertEqual(response.status_code, 200, response.text)
+        system = self.calls[0]["messages"][0]["content"]
+        self.assertIn("此人此前曾与你交谈，谈及：问过废相、问过锦衣卫。", system)
+        self.assertIn("此人现与你的交情是「相熟」", system)
+        self.assertIn("史官校验规则不变。", system)
+
+    async def test_memory_topics_are_truncated_and_capped(self):
+        long = "问" * 120
+        response = await self.chat(memory={"tier": "深谈", "lastTopics": [long, "第二问", "第三问", "第四问"]})
+        self.assertEqual(response.status_code, 200, response.text)
+        system = self.calls[0]["messages"][0]["content"]
+        self.assertIn("问" * 50, system)
+        self.assertNotIn("问" * 51, system)
+        self.assertNotIn("第四问", system)
+
+    async def test_invalid_memory_tier_is_ignored(self):
+        response = await self.chat(memory={"tier": "挚友", "lastTopics": ["问过废相"]})
+        self.assertEqual(response.status_code, 200, response.text)
+        system = self.calls[0]["messages"][0]["content"]
+        self.assertNotIn("此人此前曾与你交谈", system)
+
+    async def test_chat_without_memory_keeps_the_prompt_unchanged(self):
+        response = await self.chat()
+        self.assertEqual(response.status_code, 200, response.text)
+        system = self.calls[0]["messages"][0]["content"]
+        self.assertNotIn("此人此前曾与你交谈", system)
+        self.assertTrue(system.endswith(api.GENERAL_RULES))
+
     async def test_empty_chat_checker_is_valid(self):
         result = await self.chat()
         self.assertEqual(result.status_code, 200)

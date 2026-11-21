@@ -56,6 +56,37 @@
     }
   }
 
+  /* ---------- 对话记忆存储：独立 key，与研读进度分开存放 ---------- */
+
+  const CHATMEM_KEY = "shimais-daming:chatmem:v1";
+  const CHATMEM_HISTORY_MAX = 30;
+  const CHATMEM_TOPIC_MAX = 40;
+
+  function loadChatMem() {
+    try {
+      const raw = localStorage.getItem(CHATMEM_KEY);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  function saveChatMem(map) {
+    try {
+      localStorage.setItem(CHATMEM_KEY, JSON.stringify(map));
+    } catch {
+      /* 隐私模式等写入失败时保持只读体验 */
+    }
+  }
+
+  function chatTier(rounds) {
+    const n = Number(rounds) || 0;
+    if (n < 5) return "初见";
+    if (n < 15) return "相熟";
+    return "深谈";
+  }
+
   function updateProgress(mutate) {
     const p = loadProgress();
     mutate(p);
@@ -1977,6 +2008,25 @@
       }
       box.appendChild(qzSec);
 
+      const mem = loadChatMem();
+      const friends = data.chatFigures.filter((f) => mem[f.id] && (Number(mem[f.id].totalRounds) || 0) > 0);
+      if (friends.length) {
+        const oldSec = el("section", "pf-section pf-old");
+        oldSec.appendChild(el("h2", "section-title", ui.oldFriendsTitle));
+        const oldList = el("div", "pf-old-list");
+        friends.forEach((f) => {
+          const n = Number(mem[f.id].totalRounds) || 0;
+          oldList.appendChild(
+            el("p", "pf-old-row", ui.oldFriendsLine
+              .replace("{人物名}", f.name)
+              .replace("{档位}", chatTier(n))
+              .replace("{轮数}", String(n)))
+          );
+        });
+        oldSec.appendChild(oldList);
+        box.appendChild(oldSec);
+      }
+
       if (quiz) {
         const perfect = quiz.score === data.quiz.length;
         const recSec = el("section", "pf-section");
@@ -2038,6 +2088,7 @@
 
     const wrap = el("div", "container ct-wrap");
     const sessions = {};
+    const chatMem = loadChatMem();
     let current = figures[0].id;
     const wanted = new URLSearchParams(window.location.search).get("figure");
     if (wanted && figures.some((f) => f.id === wanted)) current = wanted;
@@ -2045,6 +2096,7 @@
     const picker = el("div", "ct-picker");
     picker.setAttribute("aria-label", ui.pickerLabel);
     const pickerBtns = new Map();
+    const tierNodes = new Map();
     figures.forEach((f) => {
       const b = el("button", "ct-figure");
       b.type = "button";
@@ -2057,6 +2109,9 @@
       const meta = el("span", "ct-figure-meta");
       meta.appendChild(el("span", "ct-figure-name", f.name));
       meta.appendChild(el("span", "ct-figure-era", f.era));
+      const tier = el("span", "ct-tier", ui.tierLabelPrefix + "初见");
+      meta.appendChild(tier);
+      tierNodes.set(f.id, tier);
       b.appendChild(meta);
       b.addEventListener("click", () => select(f.id));
       picker.appendChild(b);
@@ -2064,10 +2119,23 @@
     });
     wrap.appendChild(picker);
 
+    const personBar = el("div", "ct-person-bar");
+    const qinliLink = el("a", "ct-qinli-link", ui.qinliLink);
+    const qinliBadge = el("span", "ct-qinli-badge", ui.qinliDoneBadge);
+    qinliBadge.hidden = true;
+    const forgetBtn = el("button", "ct-forget-btn", ui.forgetBtn);
+    forgetBtn.type = "button";
+    personBar.append(qinliLink, qinliBadge, forgetBtn);
+    wrap.appendChild(personBar);
+
     const conv = el("section", "ct-conv");
     const offlineNote = el("p", "ct-offline", ui.offline);
     offlineNote.hidden = true;
     conv.appendChild(offlineNote);
+
+    const memNote = el("p", "ct-memory-note");
+    memNote.hidden = true;
+    conv.appendChild(memNote);
 
     conv.appendChild(el("p", "qz-practice-hint ct-privacy", online
       ? "在线对话：发送的问题及近期对话会传至本站后端和模型服务。请勿输入个人隐私；实际日志与保留期限需向部署方确认。"
@@ -2106,7 +2174,22 @@
     document.body.appendChild(disclaimer);
 
     function session() {
-      if (!sessions[current]) sessions[current] = { messages: [], offline: !online, pending: false, error: "" };
+      if (!sessions[current]) {
+        const mem = chatMem[current];
+        const restored = mem && Array.isArray(mem.history)
+          ? mem.history
+              .filter((m) => m && (m.role === "user" || m.role === "assistant") && typeof m.content === "string")
+              .slice(-CHATMEM_HISTORY_MAX)
+              .map((m) => ({ role: m.role, content: m.content }))
+          : [];
+        sessions[current] = {
+          messages: restored,
+          offline: !online,
+          pending: false,
+          error: "",
+          baseUsers: restored.filter((m) => m.role === "user").length,
+        };
+      }
       return sessions[current];
     }
 
@@ -2115,7 +2198,8 @@
     }
 
     function rounds() {
-      return session().messages.filter((m) => m.role === "user").length;
+      const s = session();
+      return Math.max(0, s.messages.filter((m) => m.role === "user").length - s.baseUsers);
     }
 
     function messageNode(m) {
@@ -2135,12 +2219,59 @@
     function paintChips() {
       chips.replaceChildren();
       chips.appendChild(el("span", "ct-chips-label", ui.askLabel));
-      figure().qas.forEach((qa) => {
+      const f = figure();
+      f.qas.forEach((qa) => {
         const c = el("button", "ct-chip", qa.q);
         c.type = "button";
         c.addEventListener("click", () => send(qa.q));
         chips.appendChild(c);
       });
+      const tier = chatTier((chatMem[current] && chatMem[current].totalRounds) || 0);
+      if (tier !== "初见" && Array.isArray(f.deepQuestions)) {
+        f.deepQuestions.forEach((q) => {
+          const c = el("button", "ct-chip ct-chip-deep");
+          c.type = "button";
+          c.appendChild(el("span", "ct-deep-badge", ui.deepBadge));
+          c.appendChild(el("span", "ct-chip-text", q));
+          c.addEventListener("click", () => send(q));
+          chips.appendChild(c);
+        });
+      }
+    }
+
+    function paintMem() {
+      const mem = chatMem[current];
+      const topics = mem && Array.isArray(mem.lastTopics) ? mem.lastTopics.filter(Boolean) : [];
+      memNote.textContent = topics.length ? ui.memoryHintPrefix + topics.join("、") : "";
+      memNote.hidden = !topics.length;
+      figures.forEach((f) => {
+        const node = tierNodes.get(f.id);
+        if (node) node.textContent = ui.tierLabelPrefix + chatTier((chatMem[f.id] && chatMem[f.id].totalRounds) || 0);
+      });
+      forgetBtn.hidden = !mem;
+      const storyId = figure().qinliStory;
+      qinliLink.href = "qinli.html?story=" + storyId;
+      const done = loadProgress();
+      const doneIds = done.qinli && Array.isArray(done.qinli.done) ? done.qinli.done : [];
+      qinliBadge.hidden = !doneIds.includes(storyId);
+    }
+
+    function saveMem(id, s) {
+      const mem = chatMem[id] || { history: [], totalRounds: 0, lastTopics: [], lastVisit: 0 };
+      const history = s.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: m.content }))
+        .slice(-CHATMEM_HISTORY_MAX);
+      const topics = Array.isArray(mem.lastTopics) ? mem.lastTopics.slice() : [];
+      const lastUser = [...s.messages].reverse().find((m) => m.role === "user");
+      if (lastUser) topics.push(Array.from(lastUser.content).slice(0, CHATMEM_TOPIC_MAX).join(""));
+      chatMem[id] = {
+        history,
+        totalRounds: (Number(mem.totalRounds) || 0) + 1,
+        lastTopics: topics.slice(-3),
+        lastVisit: Date.now(),
+      };
+      saveChatMem(chatMem);
     }
 
     function refreshInput() {
@@ -2163,6 +2294,7 @@
       pickerBtns.forEach((b, fid) => b.classList.toggle("is-current", fid === id));
       offlineNote.hidden = !session().offline;
       paintChips();
+      paintMem();
       paintFlow();
       refreshInput();
       flow.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth", block: "nearest" });
@@ -2214,14 +2346,23 @@
       const timer = setTimeout(() => ctrl.abort(), ui.timeoutMs);
       let reply;
       let note = null;
+      let counted = false;
       try {
         if (!online) {
           reply = scriptReply(msg, sentFig);
         } else {
+          const mem = chatMem[sentId];
+          const payload = { figure: sentId, history, message: msg };
+          if (mem && (Number(mem.totalRounds) || 0) > 0) {
+            payload.memory = {
+              tier: chatTier(mem.totalRounds),
+              lastTopics: Array.isArray(mem.lastTopics) ? mem.lastTopics.slice(0, 3) : [],
+            };
+          }
           const resp = await fetch(CHAT_API_BASE + "/api/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ figure: sentId, history, message: msg }),
+            body: JSON.stringify(payload),
             signal: ctrl.signal,
           });
           const body = await resp.json().catch(() => null);
@@ -2236,6 +2377,7 @@
           reply = body.reply;
           note = typeof body.note === "string" ? body.note : null;
           s.offline = false;
+          counted = true;
         }
       } catch (error) {
         if (sessions[sentId] !== s) return;
@@ -2262,6 +2404,13 @@
         s.messages.push({ role: "assistant", content: reply, note });
         markChatStarted();
       }
+      if (counted) {
+        saveMem(sentId, s);
+        if (current === sentId) {
+          paintMem();
+          paintChips();
+        }
+      }
       if (current === sentId) {
         paintFlow();
         refreshInput();
@@ -2270,6 +2419,21 @@
     }
 
     sendBtn.addEventListener("click", () => send(text.value));
+    forgetBtn.addEventListener("click", () => {
+      if (!window.confirm(ui.forgetConfirm)) return;
+      delete chatMem[current];
+      saveChatMem(chatMem);
+      const s = sessions[current];
+      if (s) {
+        s.messages = [];
+        s.baseUsers = 0;
+        s.error = "";
+      }
+      paintMem();
+      paintChips();
+      paintFlow();
+      refreshInput();
+    });
     text.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();

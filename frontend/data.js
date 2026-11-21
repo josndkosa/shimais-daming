@@ -613,6 +613,8 @@ const SITE_DATA = {
     footprintTitle: "研读足迹",
     modulesTitle: "模块访问",
     visitNote: "访问、完成与掌握不同：打开卡片页只代表到访；正式十题也只是基础检查，不代表完整掌握。",
+    oldFriendsTitle: "故人",
+    oldFriendsLine: "与{人物名}：{档位} · 共 {轮数} 轮",
     qinliTitle: "亲历完成",
     resumeTitle: "继续上次研读",
     resumeEmpty: "展开一个事件、定位一张卡或进入亲历后，这里会保留具体续读入口。",
@@ -1073,11 +1075,21 @@ const SITE_DATA = {
     historyRounds: 10,
     timeoutMs: 60000,
     coldHintMs: 10000,
+    memoryHintPrefix: "他还记得你——上次你们聊过：",
+    tierLabelPrefix: "与他的交情：",
+    forgetBtn: "忘掉此人",
+    forgetConfirm: "确定忘掉这位人物的全部对话记忆吗？此操作不可撤销。",
+    deepBadge: "深聊",
+    qinliLink: "亲历他的时刻 →",
+    qinliDoneBadge: "你已亲历过他的时刻",
+    tiers: ["初见", "相熟", "深谈"],
   },
 
   chatFigures: [
     {
       id: "zhuyuanzhang",
+      deepQuestions: ["你杀了那么多功臣，夜里睡得着吗？", "你最怕后世子孙里出什么样的皇帝？"],
+      qinliStory: "q1380",
       name: "朱元璋",
       era: "洪武三十年（1397）",
       img: "images/people/p1-zhu-yuanzhang.jpg",
@@ -1090,6 +1102,8 @@ const SITE_DATA = {
     },
     {
       id: "zhudi",
+      deepQuestions: ["靖难这件事，你午夜梦回时怎么想？", "你派郑和下西洋，到底图什么？"],
+      qinliStory: "q1402",
       name: "朱棣",
       era: "永乐十九年（1421）",
       img: "images/people/p2-zhu-di.jpg",
@@ -1102,6 +1116,8 @@ const SITE_DATA = {
     },
     {
       id: "yuqian",
+      deepQuestions: ["土木堡之后，北京城里最难的是哪一夜？", "若北京没守住，你想过自己的下场吗？"],
+      qinliStory: "q1449",
       name: "于谦",
       era: "景泰七年（1456）",
       img: "images/people/p3-yu-qian.jpg",
@@ -1114,6 +1130,8 @@ const SITE_DATA = {
     },
     {
       id: "hairui",
+      deepQuestions: ["你骂嘉靖的底气，到底从哪来？", "棺材早就备下了，你真的一点都不怕死？"],
+      qinliStory: "q1548",
       name: "海瑞",
       era: "隆庆元年（1567）",
       img: "images/people/p4-hai-rui.jpg",
@@ -1126,6 +1144,8 @@ const SITE_DATA = {
     },
     {
       id: "zhangjuzheng",
+      deepQuestions: ["一条鞭法推行十年，你觉得它能活多久？", "你最怕自己身后，发生什么事？"],
+      qinliStory: "q1581",
       name: "张居正",
       era: "万历九年（1581）",
       img: "images/people/p5-zhang-juzheng.jpg",
@@ -1138,6 +1158,8 @@ const SITE_DATA = {
     },
     {
       id: "chongzhen",
+      deepQuestions: ["你换了那么多位首辅，到底信过谁？", "如果能重来，你想在哪一年改主意？"],
+      qinliStory: "q1644",
       name: "崇祯",
       era: "崇祯十六年（1643）",
       img: "images/carousel/05-palace-snow-night.jpg",

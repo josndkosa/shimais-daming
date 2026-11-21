@@ -7,7 +7,7 @@ import re
 import time
 from collections import defaultdict, deque
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Optional
 
 import httpx
 from dotenv import load_dotenv
@@ -108,6 +108,7 @@ class ChatRequest(BaseModel):
     figure: str = Field(strict=True)
     history: list[HistoryMessage] = Field(default_factory=list)
     message: str = Field(strict=True)
+    memory: Optional[dict] = None
 
 
 class UpstreamError(Exception):
@@ -252,6 +253,32 @@ def _retrieval_query(req: ChatRequest) -> str:
     return req.message
 
 
+MEMORY_TIERS = ("初见", "相熟", "深谈")
+
+
+def _memory_note(memory) -> str:
+    """合法 memory 才注入提示词：tier 必须在枚举内；话题取前 3 条、每条截断 50 字。"""
+    if not isinstance(memory, dict):
+        return ""
+    tier = memory.get("tier")
+    if tier not in MEMORY_TIERS:
+        return ""
+    topics = memory.get("lastTopics")
+    picked = []
+    if isinstance(topics, list):
+        for item in topics[:3]:
+            if isinstance(item, str) and item.strip():
+                picked.append(item[:50])
+    if not picked:
+        return ""
+    joined = "、".join(picked)
+    return (
+        "此人此前曾与你交谈，谈及：" + joined + "。若自然，可在言语间提及一二，不必刻意。"
+        "此人现与你的交情是「" + tier + "」：交情深者，言语可更坦率推心，"
+        "但仍不得逾越你的时代认知与史实边界，史官校验规则不变。"
+    )
+
+
 @app.post("/api/chat")
 async def chat(req: ChatRequest, request: Request):
     if req.figure not in PERSONAS:
@@ -272,6 +299,9 @@ async def chat(req: ChatRequest, request: Request):
                               retry_after=retry_after)
 
     system, chunks = build_system(req.figure, _retrieval_query(req))
+    memory_note = _memory_note(req.memory)
+    if memory_note:
+        system = system + "\n" + memory_note
     # 与入站校验分开保留发送预算：优先保留最近历史，且不静默接收超限输入。
     budget = CONTEXT_MAX_CHARS - len(req.message)
     history = []
