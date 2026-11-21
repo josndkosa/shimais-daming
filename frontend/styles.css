@@ -4088,3 +4088,18 @@ textarea.ct-text {
     text-align: center;
   }
 }
+
+/* ---------- 亲历剧本卡封面 ---------- */
+
+.ql-cover {
+  display: block;
+  width: calc(100% + 32px);
+  margin: -16px -16px 0;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-bottom: 1px solid var(--line);
+}
+
+.ql-card:has(.ql-cover) .ql-done {
+  background: rgba(12, 10, 9, 0.72);
+}

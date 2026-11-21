@@ -1178,6 +1178,7 @@ const SITE_DATA = {
   qinli: [
     {
       id: "q1380",
+      cover: "images/qinli/q1380.jpg",
       chatLink: { label: "去跟朱元璋聊聊", href: "chat.html?figure=zhuyuanzhang" },
       followups: [
         { label: "回看废丞相材料", href: "search.html?source=zhuyuanzhang%2Fc3" },
@@ -1297,6 +1298,7 @@ const SITE_DATA = {
     },
     {
       id: "q1402",
+      cover: "images/qinli/q1402.jpg",
       chatLink: { label: "去跟朱棣聊聊", href: "chat.html?figure=zhudi" },
       followups: [
         { label: "回看靖难之役材料", href: "search.html?source=zhudi%2Fc2" },
@@ -1416,6 +1418,7 @@ const SITE_DATA = {
     },
     {
       id: "q1449",
+      cover: "images/qinli/q1449.jpg",
       chatLink: { label: "去跟于谦聊聊", href: "chat.html?figure=yuqian" },
       followups: [
         { label: "回看北京保卫战材料", href: "search.html?source=yuqian%2Fc4" },
@@ -1534,6 +1537,7 @@ const SITE_DATA = {
     },
     {
       id: "q1548",
+      cover: "images/qinli/q1548.jpg",
       chatLink: { label: "去跟海瑞聊聊", href: "chat.html?figure=hairui" },
       followups: [
         { label: "回看内阁形成的背景材料", href: "search.html?source=zhudi%2Fc8" },
@@ -1660,6 +1664,7 @@ const SITE_DATA = {
     },
     {
       id: "q1581",
+      cover: "images/qinli/q1581.jpg",
       chatLink: { label: "去跟张居正聊聊", href: "chat.html?figure=zhangjuzheng" },
       followups: [
         { label: "回看一条鞭法的材料与边界", href: "search.html?source=zhangjuzheng%2Fc4" },
@@ -1793,6 +1798,7 @@ const SITE_DATA = {
     },
     {
       id: "q1644",
+      cover: "images/qinli/q1644.jpg",
       chatLink: { label: "去跟崇祯聊聊", href: "chat.html?figure=chongzhen" },
       followups: [
         { label: "回看三饷加派材料", href: "search.html?source=chongzhen%2Fc4" },

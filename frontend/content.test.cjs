@@ -305,6 +305,17 @@ test('static export matches the backend canonical material fields', () => {
     }
   }
 });
+test('every story ships a cover image matching its id', () => {
+  assert.equal(data.qinli.length, 6);
+  for (const s of data.qinli) {
+    assert.equal(s.cover, 'images/qinli/' + s.id + '.jpg', s.id);
+    assert.ok(fs.existsSync(path.join(root, s.cover)), s.cover + ' missing from repo');
+  }
+});
+test('site data digest reflects the cover fields only', () => {
+  const { territory, ...existing } = data;
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'e3b2b6f5071f776cba109da58db428a613cec634570041a57b486bca68e37c76');
+});
 test('topic c4 has explicit kind, location, edition and verification limits', () => {
   const c4 = JSON.parse(fs.readFileSync(path.join(root, '../backend/data/zhangjuzheng.json'), 'utf8')).chunks.find(c => c.id === 'c4');
   for (const key of ['kind', 'locator', 'edition', 'verification']) assert.ok(c4[key], key + ' missing');

@@ -1103,6 +1103,15 @@
 
     stories.forEach((s) => {
       const card = el("article", "ql-card" + (s.playable ? "" : " is-locked"));
+      if (s.cover) {
+        const cover = el("img", "ql-cover");
+        cover.alt = s.title + "封面";
+        cover.loading = "lazy";
+        cover.decoding = "async";
+        cover.addEventListener("error", () => cover.remove());
+        cover.src = s.cover;
+        card.appendChild(cover);
+      }
       card.appendChild(el("span", "ql-year", String(s.year)));
       card.appendChild(el("h3", "ql-title", s.title));
       card.appendChild(el("p", "ql-role", s.role));
