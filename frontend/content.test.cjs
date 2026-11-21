@@ -109,10 +109,12 @@ class Node {
   querySelectorAll(selector) { return walk(this, selector.slice(1)); }
   scrollIntoView() {}
   focus() {}
+  click() { this.listeners.click?.({ target: this }); }
+  getBoundingClientRect() { return { top: 200, bottom: 258, left: 0, right: 100, width: 100, height: 58 }; }
   appendChild(node) { this.children.push(node); return node; }
   append(...nodes) { nodes.forEach(n => this.appendChild(n)); }
   replaceChildren(...nodes) { this.children = nodes; this.textContent = ''; }
-  setAttribute(name, value) { this[name] = value; }
+  setAttribute(name, value) { this[name] = value; if (name === 'class') this.className = value; }
   addEventListener(name, callback) { this.listeners[name] = callback; }
   set innerHTML(value) { throw new Error('Do not render materials as HTML: ' + value); }
 }
@@ -313,10 +315,6 @@ test('every story ships a cover image matching its id', () => {
     assert.ok(fs.existsSync(path.join(root, s.cover)), s.cover + ' missing from repo');
   }
 });
-test('site data digest reflects the cover fields only', () => {
-  const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'c0f3586524bac1f4e6b56669ad853c1db1651ec1ce902d5a15a2c83dbdc9cfb7');
-});
 test('every figure carries two deep questions and a personal story link', () => {
   assert.equal(data.chatFigures.length, 6);
   for (const f of data.chatFigures) {
@@ -333,6 +331,112 @@ test('topic c4 has explicit kind, location, edition and verification limits', ()
   for (const key of ['kind', 'locator', 'edition', 'verification']) assert.ok(c4[key], key + ' missing');
   assert.equal(data.cards.find(c => c.id === 'i3').sourceId, 'zhangjuzheng/c4');
   assert.equal(data.timeline.events.find(e => e.id === 'e1581').sourceId, 'zhangjuzheng/c4');
+});
+const territoryExpected = [
+  { id: '1368', year: 1368, label: '立国', range: [1368, 1406], show: ['liaodong-full', 'north-early', 'jimi', 'nuergan', 'yunnan-contested'] },
+  { id: '1420', year: 1420, label: '交趾在版图', range: [1407, 1448], show: ['jiaozhi', 'liaodong-full', 'north-early', 'jimi', 'nuergan'] },
+  { id: '1450', year: 1450, label: '土木堡之后', range: [1449, 1580], show: ['liaodong-full', 'north-late', 'jimi', 'nuergan'] },
+  { id: '1581', year: 1581, label: '晚明格局', range: [1581, 1618], show: ['liaodong-full', 'north-late', 'jimi', 'nuergan'] },
+  { id: '1620', year: 1620, label: '萨尔浒之后', range: [1619, 1643], show: ['liaodong-shrunk', 'north-late', 'jimi'] },
+  { id: '1644', year: 1644, label: '落幕', range: [1644, 1644], show: ['north-late'] },
+];
+test('territory states cover every year exactly once with the specified overlays', () => {
+  assert.ok(data.territory, 'territory data missing');
+  assert.equal(data.territory.states.length, 6);
+  assert.deepEqual(JSON.parse(JSON.stringify(data.territory.states.map(({ id, year, label, range, show }) => ({ id, year, label, range, show })))), territoryExpected);
+  data.territory.states.forEach(s => assert.ok(typeof s.note === 'string' && s.note.trim()));
+  for (let year = 1368; year <= 1644; year++) {
+    assert.equal(data.territory.states.filter(s => s.range[0] <= year && year <= s.range[1]).length, 1, String(year));
+  }
+  assert.equal(data.territory.disclaimer, '本图为疆域大势示意，非精确疆界；具体疆界以《中国历史地图集》为准。');
+  assert.equal(data.territory.legend, '实色为布政司实控，斜线为羁縻名义统辖。');
+});
+test('territory addition leaves all existing site data and the 99 search entries unchanged', () => {
+  const { territory, ...existing } = data;
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'c0f3586524bac1f4e6b56669ad853c1db1651ec1ce902d5a15a2c83dbdc9cfb7');
+  assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
+});
+function territoryFixture(siteData = data) {
+  const ctx = vm.createContext({});
+  vm.runInContext(fs.readFileSync(path.join(root, 'territory-map.js'), 'utf8') + '\nthis.geometry = TERRITORY_GEOMETRY;', ctx);
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderTerritory()'), source.indexOf('  function renderTimeline()'));
+  const runtime = vm.createContext({ data: siteData, TERRITORY_GEOMETRY: ctx.geometry,
+    el: (tag, cls, text) => new Node(tag, cls, text), document: { createElementNS: (ns, tag) => new Node(tag) },
+    updateProgress: () => assert.fail('territory must not write progress'),
+    localStorage: { setItem: () => assert.fail('territory must not write localStorage') },
+  });
+  vm.runInContext(code + '\nthis.section = renderTerritory();', runtime);
+  return { section: runtime.section, geometry: ctx.geometry };
+}
+test('territory switches one SVG by layers and filters exact timeline deep links without writes', () => {
+  const { section } = territoryFixture();
+  const buttons = walk(section, 'tm-state');
+  assert.equal(buttons.length, 6);
+  assert.equal(walk(section, 'tm-map').length, 1);
+  assert.equal(walk(section, 'tm-base').length, 1);
+  data.territory.states.forEach((s, i) => {
+    buttons[i].listeners.click();
+    assert.deepEqual(walk(section, 'tm-layer').filter(n => n['aria-hidden'] === 'false').map(n => n['data-overlay']).sort(), Array.from(s.show).sort());
+    assert.equal(buttons.filter(b => b['aria-pressed'] === 'true').length, 1);
+    assert.equal(walk(section, 'tm-year')[0].textContent, String(s.year));
+    assert.equal(walk(section, 'tm-note')[0].textContent, s.note);
+    const expectedEvents = data.timeline.events.filter(e => s.range[0] <= Number(e.year) && Number(e.year) <= s.range[1]);
+    assert.deepEqual(walk(section, 'tm-event-link').map(a => a.href), Array.from(expectedEvents, e => 'timeline.html?event=' + e.id));
+    assert.deepEqual(walk(section, 'tm-event-link').map(a => textOf(a)), Array.from(expectedEvents, e => e.year + ' · ' + e.title));
+    if (s.id === '1450') assert.ok(walk(section, 'tm-event-link').some(a => a.href.endsWith('e1449')) && walk(section, 'tm-event-link').some(a => a.href.endsWith('e1457')));
+    if (s.id === '1620') assert.ok(walk(section, 'tm-event-link').some(a => a.href.endsWith('e1619')));
+    assert.equal(walk(section, 'tm-map')[0].className.split(' ').includes('is-fallen'), s.id === '1644');
+  });
+});
+test('timeline still opens deep links and preserves era context, while plain entry does not write progress', () => {
+  const geo = vm.createContext({});
+  vm.runInContext(fs.readFileSync(path.join(root, 'territory-map.js'), 'utf8') + '\nthis.geometry = TERRITORY_GEOMETRY;', geo);
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderTerritory()'), source.indexOf('  function decisionState()'));
+  for (const deepId of ['', 'e1457', 'e1619']) {
+    const app = new Node('main');
+    const writes = [];
+    const nav = new Node('header');
+    nav.offsetHeight = 58;
+    const ctx = vm.createContext({ data, TERRITORY_GEOMETRY: geo.geometry, app, currentModule: { title: '时间线' }, URLSearchParams,
+      location: { search: deepId ? '?event=' + deepId : '' }, readIds: () => writes, markRead: id => writes.push(id),
+      el: (tag, cls, text) => { const node = new Node(tag, cls, text); node.offsetHeight = 50; return node; },
+      renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'),
+      document: { body: { scrollHeight: 2000 }, createElementNS: (ns, tag) => new Node(tag), querySelector: () => nav, documentElement: { style: { setProperty() {} } } },
+      window: { addEventListener() {}, innerHeight: 800, scrollY: 0, scrollTo() {} }, requestAnimationFrame: f => f(), setTimeout: f => f(),
+    });
+    vm.runInContext(code + '\nrenderTimeline();', ctx);
+    assert.equal(walk(app, 'tl-event').length, 23);
+    assert.deepEqual(writes, deepId ? [deepId] : []);
+    if (deepId) {
+      const row = walk(app, 'tl-event').find(n => n.dataset.id === deepId);
+      assert.equal(walk(row, 'tl-detail')[0].hidden, false);
+      assert.equal(walk(row, 'tl-row')[0]['aria-expanded'], 'true');
+      if (deepId === 'e1457') assert.match(textOf(walk(app, 'tl-context-line')[0]), /英宗/);
+    }
+  }
+});
+test('territory empty event state is explicit', () => {
+  const { section } = territoryFixture({ ...data, timeline: { ...data.timeline, events: [] } });
+  assert.match(textOf(section), /本站时间线暂无此段事件/);
+});
+test('territory geometry has independent geographic paths, labels and source attribution', () => {
+  const { section, geometry } = territoryFixture();
+  assert.equal(geometry.viewBox, '0 0 1000 820');
+  assert.ok(geometry.base.length > 500, 'coastline must retain detail');
+  assert.deepEqual(Array.from(geometry.overlays, o => o.id).sort(), ['jiaozhi', 'jimi', 'liaodong-full', 'liaodong-shrunk', 'north-early', 'north-late', 'nuergan', 'yunnan-contested'].sort());
+  assert.ok(geometry.sources.length > 0);
+  geometry.overlays.forEach(o => { assert.match(o.d, /^M/); assert.ok(o.d.length > 40); });
+  for (const name of ['北京', '南京', '辽东', '山海关', '嘉峪关', '交趾', '乌斯藏', '奴儿干', '云南']) assert.ok(geometry.labels.some(l => l.text === name), name);
+  geometry.labels.forEach(l => assert.ok(l.x >= 0 && l.x <= 1000 && l.y >= 0 && l.y <= 820));
+  assert.equal(walk(section, 'tm-hatch-pattern').length, 1);
+  const html = fs.readFileSync(path.join(root, 'timeline.html'), 'utf8');
+  assert.ok(html.indexOf('territory-map.js') < html.indexOf('src="app.js"'));
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const timeline = source.slice(source.indexOf('  function renderTimeline()'), source.indexOf('  function decisionState()'));
+  assert.ok(timeline.indexOf('renderTerritory()') < timeline.indexOf('const strip'));
+  assert.match(timeline, /try\s*{[\s\S]*?renderTerritory\(\)[\s\S]*?}\s*catch/);
 });
 test('chapter pilot keeps five non-empty sourced sections', () => {
   const ch = data.chapter;

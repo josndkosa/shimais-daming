@@ -5,7 +5,7 @@
 <h1>浏览器回归测试（仅使用模拟接口与隔离存储）</h1>
 <pre id="results">运行中</pre>
 <script type="module">
-const sources = await Promise.all(['data.js', 'app.js'].map(p => fetch(p).then(r => r.text())));
+const sources = await Promise.all(['data.js', 'territory-map.js', 'app.js'].map(p => fetch(p).then(r => r.text())));
 const results = [];
 const assert = (value, message) => { if (!value) throw new Error(message); };
 const tick = () => new Promise(resolve => setTimeout(resolve, 30));
@@ -304,6 +304,55 @@ for (const [id,label,href] of [
   }finally{t.close();}
  });
 }
+await test('版图六态图层、事件和无进度写入',async()=>{
+ const t=await setup('timeline');
+ try {
+  assert(t.d.querySelectorAll('.tm-map').length===1,'不应创建六张地图');
+  assert(t.d.querySelectorAll('.tl-event').length===23,'原时间线事件数量改变');
+  assert(t.store.size===0,'打开版图写入了进度');
+  const buttons=t.d.querySelectorAll('.tm-state');
+  for(let i=0;i<6;i++) {
+   buttons[i].click();
+   const state=t.w.fixtureData.territory.states[i];
+   const layers=Array.from(t.d.querySelectorAll('.tm-layer[aria-hidden="false"]'),n=>n.dataset.overlay).sort();
+   assert(JSON.stringify(layers)===JSON.stringify(Array.from(state.show).sort()),state.id+'图层组合错误');
+   const expected=t.w.fixtureData.timeline.events.filter(e=>state.range[0]<=Number(e.year)&&Number(e.year)<=state.range[1]);
+   const links=Array.from(t.d.querySelectorAll('.tm-event-link'),n=>n.getAttribute('href'));
+   assert(JSON.stringify(links)===JSON.stringify(Array.from(expected,e=>'timeline.html?event='+e.id)),state.id+'事件过滤错误');
+   assert(t.d.querySelectorAll('.tm-state[aria-pressed="true"]').length===1,'状态高亮数量不对');
+   assert(t.d.querySelector('.tm-map').classList.contains('is-fallen')===(state.id==='1644'),'1644态样式标记错误');
+   assert(t.store.size===0,'切换版图写入了进度');
+  }
+  const row=t.d.querySelector('.tl-event[data-id="e1457"] .tl-row');row.click();
+  assert(row.getAttribute('aria-expanded')==='true','原时间线展开失效');
+  assert(t.d.querySelector('.tl-context-line').textContent.includes('英宗'),'时间线时代上下文回归');
+  assert(JSON.parse(t.store.get('shimais-daming:progress:v1')).timeline.read.includes('e1457'),'原事件已读记录回归');
+ }finally{t.close();}
+});
+await test('版图390px等比缩放、按钮横滑及1644虚线褪色',async()=>{
+ const t=await setup('timeline');
+ try {
+  t.frame.style.width='390px';t.frame.style.height='800px';
+  const css=t.d.createElement('link');css.rel='stylesheet';css.href=new URL('styles.css',location.href).href;
+  await new Promise((resolve,reject)=>{css.onload=resolve;css.onerror=reject;t.d.head.append(css);});await tick();
+  const map=t.d.querySelector('.tm-map');const rect=map.getBoundingClientRect();
+  assert(Math.abs(rect.width/rect.height-1000/820)<0.01,'地图比例改变');
+  assert(t.d.documentElement.scrollWidth<=t.w.innerWidth,'390px整页溢出');
+  const controls=t.d.querySelector('.tm-states');assert(controls.scrollWidth>controls.clientWidth,'窄屏状态钮没有横滑空间');
+  controls.scrollLeft=controls.scrollWidth;assert(controls.scrollLeft>0,'状态钮不能横滑');
+  for(const label of t.d.querySelectorAll('.tm-place')) {
+   const box=label.getBBox();assert(box.x>=0&&box.y>=0&&box.x+box.width<=1000&&box.y+box.height<=820,'地图标注超出viewBox');
+  }
+  t.d.querySelectorAll('.tm-state')[5].click();
+  await Promise.all(map.getAnimations({subtree:true}).map(a=>a.finished));
+  assert(t.w.getComputedStyle(map.querySelector('.tm-core')).strokeDasharray!=='none','1644底图不是虚线');
+  assert(Number(t.w.getComputedStyle(map.querySelector('.tm-base')).opacity)<0.4,'1644底图未褪色');
+  t.d.querySelectorAll('.tm-state')[3].click();
+  await Promise.all(map.getAnimations({subtree:true}).map(a=>a.finished));
+  assert(t.w.getComputedStyle(map.querySelector('.tm-core')).strokeDasharray==='none','切回未恢复实线');
+  assert(Number(t.w.getComputedStyle(map.querySelector('.tm-base')).opacity)===1,'切回未恢复底图');
+ }finally{t.close();}
+});
 window.testResults = results;
 document.title = results.some(r=>!r.pass)?'FAIL 浏览器回归':'PASS 浏览器回归';
 </script>

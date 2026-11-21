@@ -652,6 +652,45 @@ const SITE_DATA = {
     privacy: "本页所有数据只读取本机浏览器 localStorage，不上传任何服务器。",
   },
 
+  territory: {
+    title: "版图变迁 · 疆域大势",
+    legend: "实色为布政司实控，斜线为羁縻名义统辖。",
+    disclaimer: "本图为疆域大势示意，非精确疆界；具体疆界以《中国历史地图集》为准。",
+    readingNote: "以 1581 年核心轮廓叠加阶段大势，不是锚点年份的精确行政图；云南斜线单独表示尚未平定，辽东与北边线表示军政经营及防御范围。",
+    states: [
+      {
+        id: "1368", year: 1368, label: "立国", range: [1368, 1406],
+        note: "北伐克大都，元廷北遁；云南尚在元梁王之手，疆域仍在整合。",
+        show: ["liaodong-full", "north-early", "jimi", "nuergan", "yunnan-contested"],
+      },
+      {
+        id: "1420", year: 1420, label: "交趾在版图", range: [1407, 1448],
+        note: "永乐经营四方：交趾设布政司（1407–1427），奴儿干设都司，明之疆域名义上达到最广。",
+        show: ["jiaozhi", "liaodong-full", "north-early", "jimi", "nuergan"],
+      },
+      {
+        id: "1450", year: 1450, label: "土木堡之后", range: [1449, 1580],
+        note: "交趾已弃守，北边防线内移，九边重镇成型——扩张期结束，转入守势。",
+        show: ["liaodong-full", "north-late", "jimi", "nuergan"],
+      },
+      {
+        id: "1581", year: 1581, label: "晚明格局", range: [1581, 1618],
+        note: "张居正执政末年：两京十三省稳固，边墙体系完备，辽东尚全。",
+        show: ["liaodong-full", "north-late", "jimi", "nuergan"],
+      },
+      {
+        id: "1620", year: 1620, label: "萨尔浒之后", range: [1619, 1643],
+        note: "萨尔浒败后辽沈相继失陷，辽东收缩至辽西走廊，关外屏障洞开。",
+        show: ["liaodong-shrunk", "north-late", "jimi"],
+      },
+      {
+        id: "1644", year: 1644, label: "落幕", range: [1644, 1644],
+        note: "崇祯十七年：辽东尽失，京师陷落——版图随王朝同没。",
+        show: ["north-late"],
+      },
+    ],
+  },
+
   /* 时间线：era 分组 + 事件。展开事件即记为已读，进度存 localStorage，多页共用。 */
   timeline: {
     progressLabel: "已读",

@@ -484,6 +484,157 @@
 
   /* ---------- 时间线 ---------- */
 
+  function renderTerritory() {
+    const ui = data.territory;
+    const geometry = typeof TERRITORY_GEOMETRY !== "undefined" ? TERRITORY_GEOMETRY : null;
+    const statesOk = ui && Array.isArray(ui.states) && ui.states.length > 0 && ui.states.every((s) =>
+      s && typeof s.id === "string" && typeof s.label === "string" && typeof s.note === "string" &&
+      Number.isFinite(s.year) && Array.isArray(s.show) && Array.isArray(s.range) && s.range.length === 2);
+    const textsOk = ui && ["title", "legend", "disclaimer", "readingNote"].every((k) => typeof ui[k] === "string");
+    const geoOk = geometry && typeof geometry.viewBox === "string" && typeof geometry.base === "string" &&
+      Array.isArray(geometry.overlays) && Array.isArray(geometry.labels) && Array.isArray(geometry.sources);
+    if (!statesOk || !textsOk || !geoOk) {
+      console.warn("版图数据缺失或结构不合法，版图板块不渲染；时间线照常。");
+      return null;
+    }
+    const section = el("section", "tm-section");
+    section.setAttribute("aria-labelledby", "territory-heading");
+    const heading = el("h2", "section-title tm-heading", ui.title);
+    heading.id = "territory-heading";
+    section.appendChild(heading);
+
+    const controls = el("div", "tm-states");
+    controls.setAttribute("role", "group");
+    controls.setAttribute("aria-label", "切换疆域阶段");
+    const buttons = new Map();
+    ui.states.forEach((state) => {
+      const button = el("button", "tm-state");
+      button.type = "button";
+      button.appendChild(el("span", "tm-state-year", String(state.year)));
+      button.appendChild(el("span", "tm-state-label", state.label));
+      button.setAttribute("aria-controls", "territory-stage");
+      button.addEventListener("click", () => selectState(state));
+      controls.appendChild(button);
+      buttons.set(state.id, button);
+    });
+    section.appendChild(controls);
+    section.appendChild(el("p", "tm-scroll-hint", "左右滑动可查看全部六个阶段"));
+
+    function svgEl(tag, attrs = {}, text) {
+      const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
+      if (text != null) node.textContent = text;
+      return node;
+    }
+    const stage = el("div", "tm-stage");
+    stage.id = "territory-stage";
+    const map = svgEl("svg", { class: "tm-map", viewBox: geometry.viewBox, role: "img", "aria-labelledby": "territory-map-title territory-map-desc" });
+    const mapTitle = svgEl("title", { id: "territory-map-title" });
+    map.append(mapTitle, svgEl("desc", { id: "territory-map-desc" }, ui.disclaimer + ui.readingNote));
+    const defs = svgEl("defs");
+    const hatch = svgEl("pattern", { id: "territory-hatch", class: "tm-hatch-pattern", width: 10, height: 10, patternUnits: "userSpaceOnUse" });
+    hatch.appendChild(svgEl("path", { d: "M-2 2L2-2M0 10L10 0M8 12L12 8", class: "tm-hatch-line" }));
+    defs.appendChild(hatch);
+    map.appendChild(defs);
+    const base = svgEl("g", { class: "tm-base" });
+    base.appendChild(svgEl("path", { class: "tm-core", d: geometry.base }));
+    map.appendChild(base);
+
+    const layerNodes = new Map();
+    const layers = svgEl("g", { class: "tm-layers" });
+    geometry.overlays.forEach((overlay) => {
+      const group = svgEl("g", { class: "tm-layer overlay-" + overlay.id, "data-overlay": overlay.id });
+      if (overlay.id === "yunnan-contested") {
+        group.appendChild(svgEl("path", { class: "tm-contested-ground", d: overlay.d }));
+      }
+      group.appendChild(svgEl("path", { class: "tm-shape tm-" + overlay.kind, d: overlay.d }));
+      (overlay.forts || []).forEach((fort) => {
+        group.appendChild(svgEl("rect", { class: "tm-fort", x: fort.x - 3, y: fort.y - 3, width: 6, height: 6 }));
+      });
+      layers.appendChild(group);
+      layerNodes.set(overlay.id, group);
+    });
+    map.appendChild(layers);
+    const placeNodes = [];
+    geometry.labels.forEach((place) => {
+      const text = svgEl("text", { class: "tm-place", x: place.x, y: place.y, "text-anchor": place.anchor || "middle" }, place.text);
+      map.appendChild(text);
+      placeNodes.push({ node: text, overlay: place.overlay });
+    });
+    const nominal = svgEl("text", { class: "tm-nominal", x: 30, y: 786, "text-anchor": "start" }, "羁縻 · 名义统辖");
+    map.appendChild(nominal);
+    stage.appendChild(map);
+
+    const copy = el("div", "tm-copy");
+    const summary = el("div", "tm-summary");
+    summary.setAttribute("aria-live", "polite");
+    summary.setAttribute("aria-atomic", "true");
+    const year = el("p", "tm-year");
+    const label = el("h3", "tm-label");
+    const note = el("p", "tm-note");
+    summary.append(year, label, note);
+    const eventTitle = el("h4", "tm-event-title");
+    const events = el("ul", "tm-events");
+    const empty = el("p", "tm-empty", "本站时间线暂无此段事件");
+    copy.append(summary, eventTitle, events, empty);
+    stage.appendChild(copy);
+    section.appendChild(stage);
+    const foot = el("div", "tm-foot");
+    foot.appendChild(el("p", "tm-legend", ui.legend));
+    foot.appendChild(el("p", "tm-reading-note", ui.readingNote));
+    foot.appendChild(el("p", "tm-disclaimer", ui.disclaimer));
+    const sourceLine = el("p", "tm-sources", "轮廓资料：");
+    geometry.sources.forEach((source, i) => {
+      if (i) sourceLine.appendChild(el("span", "", " · "));
+      const link = el("a", "tm-source", source.name);
+      link.href = source.url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.title = [source.license, source.detail].filter(Boolean).join("；");
+      sourceLine.appendChild(link);
+    });
+    foot.appendChild(sourceLine);
+    section.appendChild(foot);
+
+    function selectState(state) {
+      mapTitle.textContent = state.year + " · " + state.label + "，疆域大势示意";
+      map.classList.toggle("is-fallen", state.id === "1644");
+      layerNodes.forEach((node, id) => {
+        const visible = state.show.includes(id);
+        node.classList.toggle("is-visible", visible);
+        node.setAttribute("aria-hidden", String(!visible));
+      });
+      placeNodes.forEach(({ node, overlay }) => {
+        const visible = !overlay || state.show.includes(overlay);
+        node.classList.toggle("is-hidden", !visible);
+        node.setAttribute("aria-hidden", String(!visible));
+      });
+      const hasNominal = state.show.includes("jimi") || state.show.includes("nuergan");
+      nominal.classList.toggle("is-hidden", !hasNominal);
+      nominal.setAttribute("aria-hidden", String(!hasNominal));
+      buttons.forEach((button, id) => {
+        button.classList.toggle("is-current", state.id === id);
+        button.setAttribute("aria-pressed", String(state.id === id));
+      });
+      year.textContent = String(state.year);
+      label.textContent = state.label;
+      note.textContent = state.note;
+      eventTitle.textContent = state.range.join("–") + " · 本站事件";
+      events.replaceChildren();
+      const matches = data.timeline.events.filter((event) => state.range[0] <= Number(event.year) && Number(event.year) <= state.range[1]);
+      matches.forEach((event) => {
+        const item = el("li", "tm-event");
+        const link = el("a", "tm-event-link", event.year + " · " + event.title);
+        link.href = "timeline.html?event=" + event.id;
+        item.appendChild(link);
+        events.appendChild(item);
+      });
+      empty.hidden = matches.length > 0;
+    }
+    selectState(ui.states[0]);
+    return section;
+  }
+
   function renderTimeline() {
     const tl = data.timeline;
     app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
@@ -532,6 +683,14 @@
     }
 
     const wrap = el("div", "container tl-wrap");
+    // 版图与时间线列表相互独立：版图初始化失败只移除自身，不拖垮列表渲染。
+    try {
+      const territory = renderTerritory();
+      if (territory) wrap.appendChild(territory);
+    } catch (err) {
+      wrap.querySelectorAll(".tm-section").forEach((node) => node.remove());
+      console.warn("版图板块初始化失败，已移除；时间线照常渲染。", err);
+    }
 
     const strip = el("div", "tl-progress");
     const label = el("p", "tl-progress-label");
@@ -2319,7 +2478,8 @@
       }
       const sentId = current;
       const sentFig = figure();
-      const history = s.messages.slice(-ui.historyRounds * 2).map((m) => ({
+      // 恢复的历史会一起进上下文，但后端单次上限为 20 条，故最多带 19 条历史。
+      const history = s.messages.slice(-Math.max(2, ui.historyRounds * 2 - 1)).map((m) => ({
         role: m.role,
         content: Array.from(m.content).slice(0, m.role === "user" ? 500 : 2000).join(""),
       }));
