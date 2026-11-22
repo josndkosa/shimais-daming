@@ -325,6 +325,7 @@
     let idx = 0;
     let timer = null;
 
+    const imgNodes = [];
     const slideNodes = slides.map((s, i) => {
       const isPortrait = /02-taizu/.test(s.img);
       const slide = el("div", "slide" + (isPortrait ? " slide-frame" : " slide-cover"));
@@ -333,10 +334,12 @@
       slide.setAttribute("aria-label", (i + 1) + " / " + slides.length);
 
       const img = el("img");
-      img.src = s.img;
+      if (i === 0) img.src = s.img;
+      else img.dataset.src = s.img;
       img.alt = s.headline;
       img.decoding = "async";
       img.draggable = false;
+      imgNodes.push(img);
       if (isPortrait) {
         const frame = el("div", "frame-wrap");
         frame.appendChild(img);
@@ -354,6 +357,16 @@
       region.appendChild(slide);
       return slide;
     });
+
+    function ensureLoaded(i) {
+      const img = imgNodes[i];
+      if (img && !img.getAttribute("src") && img.dataset.src) img.src = img.dataset.src;
+    }
+    const loadRemaining = () => {
+      for (let i = 1; i < imgNodes.length; i++) ensureLoaded(i);
+    };
+    if ("requestIdleCallback" in window) window.requestIdleCallback(loadRemaining, { timeout: 3000 });
+    else setTimeout(loadRemaining, 1500);
 
     const prev = el("button", "car-arrow car-prev");
     prev.type = "button";
@@ -395,6 +408,7 @@
 
     function go(n) {
       idx = (n + slides.length) % slides.length;
+      ensureLoaded(idx);
       paint();
     }
 
