@@ -364,7 +364,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'ad73837bc15042971c22bd5e14d0cecdf887b96c48f549d43d3e59dcfdb50c9c');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '9549dc2ee7e2ceaf18ba23579d594aa6b566d8f4d9157c8bc5549d75f50a2fc2');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
@@ -450,12 +450,12 @@ test('territory geometry has independent geographic paths, labels and source att
   assert.ok(timeline.indexOf('renderTerritory()') < timeline.indexOf('const strip'));
   assert.match(timeline, /try\s*{[\s\S]*?renderTerritory\(\)[\s\S]*?}\s*catch/);
 });
-test('chapters array carries six chapters with complete sections and nextSteps', () => {
-  assert.ok(Array.isArray(data.chapters) && data.chapters.length === 6);
+test('chapters array carries seven chapters with complete sections and nextSteps', () => {
+  assert.ok(Array.isArray(data.chapters) && data.chapters.length === 7);
   assert.equal(data.chapter, undefined, 'old chapter field removed');
   assert.equal(data.chapterUI.next, undefined, 'old next field removed');
   assert.equal(data.chapterUI.series, '白话明史');
-  assert.deepEqual(Array.from(data.chapters, c => c.id), ['hongwu', 'jingnan', 'tumubao', 'jiajing', 'zhangjuzheng', 'wanli']);
+  assert.deepEqual(Array.from(data.chapters, c => c.id), ['hongwu', 'jingnan', 'tumubao', 'jiajing', 'zhangjuzheng', 'wanli', 'chongzhen']);
   const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   // AU 起 nextSteps 的亲历 href 改向播放页；正文红线钉 id/title/intro/sections，标签另有逐字断言
   const proseDigest = ({ id, title, intro, sections }) => digest({ id, title, intro, sections });
@@ -465,15 +465,17 @@ test('chapters array carries six chapters with complete sections and nextSteps',
   assert.equal(proseDigest(data.chapters[3]), 'f69e58d1517ba5977d6cfe28e5aecfedb8d354eaaa8820d1f69622c4572c62bd', 'chapter four prose must stay verbatim');
   assert.equal(proseDigest(data.chapters[4]), '6b24bad586e4da2ad302d23ca7cc201edf274f004e2bc77b7347195e323ab0a7', 'chapter five prose must stay verbatim');
   assert.equal(proseDigest(data.chapters[5]), 'd8212ca11024940842916080cac8c4f6f8cdb8d5775a555a3924625e63fbbac2', 'chapter six prose must stay verbatim');
-  const [c1, c2, c3, c4, c5, c6] = data.chapters;
+  assert.equal(proseDigest(data.chapters[6]), 'a94e7ebe7796800c629a10d6b81d5d4907de4f8e8aeca90570138483de5ae396', 'chapter seven prose must stay verbatim');
+  const [c1, c2, c3, c4, c5, c6, c7] = data.chapters;
   assert.equal(c1.title, '洪武朝');
   assert.equal(c2.title, '建文与靖难');
   assert.equal(c3.title, '土木堡与北京保卫战');
   assert.equal(c4.title, '嘉靖与海瑞');
   assert.equal(c5.title, '张居正');
   assert.equal(c6.title, '万历怠政');
-  const secCounts = [5, 5, 5, 5, 6, 6];
-  [c1, c2, c3, c4, c5, c6].forEach((ch, ci) => {
+  assert.equal(c7.title, '崇祯');
+  const secCounts = [5, 5, 5, 5, 6, 6, 6];
+  [c1, c2, c3, c4, c5, c6, c7].forEach((ch, ci) => {
     assert.ok(ch.intro && ch.intro.trim());
     assert.equal(ch.sections.length, secCounts[ci]);
     ch.sections.forEach(s => {
@@ -495,12 +497,19 @@ test('chapters array carries six chapters with complete sections and nextSteps',
   assert.deepEqual(Array.from(c5.nextSteps, l => l.label), ['亲历《清丈》', '跟张居正聊聊', '回看时间线 1582']);
   assert.deepEqual(Array.from(c6.nextSteps, l => l.href), ['qinli-play.html?story=q1644', 'timeline.html?event=e1619', 'timeline.html?event=e1627']);
   assert.deepEqual(Array.from(c6.nextSteps, l => l.label), ['亲历《煤山前夜》', '回看时间线 1619', '回看时间线 1627']);
+  assert.deepEqual(Array.from(c7.nextSteps, l => l.href), ['qinli-play.html?story=q1644', 'chat.html?figure=chongzhen', 'timeline.html?event=e1644']);
+  assert.deepEqual(Array.from(c7.nextSteps, l => l.label), ['亲历《煤山前夜》', '跟崇祯聊聊', '回看时间线 1644']);
+  assert.equal(c7.sections.reduce((n, s) => n + s.paragraphs.length, 0), 25, 'chapter seven has 25 paragraphs');
+  const text7 = c7.sections.map(s => s.title + s.paragraphs.join('')).join('');
+  ['五十人次', '二十万两', '七千万两', '276 年', '五年复辽', '1641–1642 年松锦之战', '1628 年', '1630 年', '1643 年'].forEach(k => assert.ok(text7.includes(k), 'key figure missing: ' + k));
+  ['遗诏', '东林党', '天灾'].forEach(w => assert.ok(!text7.includes(w), 'forbidden topic: ' + w));
   assert.equal(c6.sections.reduce((n, s) => n + s.paragraphs.length, 0), 12, 'chapter six has 12 paragraphs');
   assert.equal(c2.sections.some(s => s.sources), false, 'chapter two has no AJ slips this batch');
   assert.equal(c3.sections.some(s => s.sources), false, 'chapter three has no AJ slips this batch');
   assert.equal(c4.sections.some(s => s.sources), false, 'chapter four has no AJ slips this batch');
   assert.equal(c5.sections.some(s => s.sources), false, 'chapter five has no AJ slips this batch');
   assert.equal(c6.sections.some(s => s.sources), false, 'chapter six has no AJ slips this batch');
+  assert.equal(c7.sections.some(s => s.sources), false, 'chapter seven has no AJ slips this batch');
   const text6 = c6.sections.map(s => s.title + s.paragraphs.join('')).join('');
   ['帝不能自由', '靠个人权威推进的改革，其寿命往往与改革者本人同步', '凭尔几路来，我只一路去', '民变与边患从此互为因果', '支撑了明朝最后六十年的财政——哪怕这数字从一开始就带着水分'].forEach(q => assert.ok(text6.includes(q), 'quote missing: ' + q));
   ['国本之争', '东林党争', '矿税监'].forEach(w => assert.ok(!text6.includes(w), 'forbidden topic: ' + w));
@@ -521,6 +530,7 @@ test('chapters array carries six chapters with complete sections and nextSteps',
   assert.equal(data.chapterUI.fourthLink, '第四章 · 嘉靖与海瑞 →');
   assert.equal(data.chapterUI.fifthLink, '第五章 · 张居正 →');
   assert.equal(data.chapterUI.sixthLink, '第六章 · 万历怠政 →');
+  assert.equal(data.chapterUI.seventhLink, '第七章 · 崇祯 →');
 });
 test('chapter sections carry verbatim backend sources and render collapsed slips', () => {
   const chunks = JSON.parse(fs.readFileSync(path.join(root, '../backend/data/zhuyuanzhang.json'), 'utf8')).chunks;
@@ -874,6 +884,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
     { text: '第四章 · 嘉靖与海瑞', href: 'chapter.html?ch=jiajing', current: false, target: undefined },
     { text: '第五章 · 张居正', href: 'chapter.html?ch=zhangjuzheng', current: false, target: undefined },
     { text: '第六章 · 万历怠政', href: 'chapter.html?ch=wanli', current: false, target: undefined },
+    { text: '第七章 · 崇祯', href: 'chapter.html?ch=chongzhen', current: false, target: undefined },
   ]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[0].intro);
   assert.equal(walk(app, 'ch-sources').length, 4);
@@ -881,7 +892,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.deepEqual(walk(app, 'ch-next-link').map(a => a.href), Array.from(data.chapters[0].nextSteps, l => l.href));
   // ?ch=jingnan → 第二章
   app = render('?ch=jingnan');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, true, false, false, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, true, false, false, false, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[1].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -898,7 +909,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps[2].target, undefined);
   // ?ch=tumubao → 第三章
   app = render('?ch=tumubao');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, true, false, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, true, false, false, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[2].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -915,7 +926,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps3[2].target, undefined);
   // ?ch=jiajing → 第四章
   app = render('?ch=jiajing');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, true, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, true, false, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[3].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -932,7 +943,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps4[2].target, undefined);
   // ?ch=zhangjuzheng → 第五章（六节）
   app = render('?ch=zhangjuzheng');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, true, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, true, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[4].intro);
   assert.equal(walk(app, 'ch-section').length, 6);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -949,23 +960,41 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps5[2].target, undefined);
   // ?ch=wanli → 第六章（六节十二段）
   app = render('?ch=wanli');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, true]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, true, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[5].intro);
   assert.equal(walk(app, 'ch-section').length, 6);
   assert.equal(walk(app, 'ch-p').length, 12);
   assert.equal(walk(app, 'ch-sources').length, 0);
   assert.deepEqual(walk(app, 'ch-sec-title').slice(0, 6).map(n => textOf(n)), Array.from(data.chapters[5].sections, s => s.title));
-  assert.deepEqual(navOf(app), [{ text: '← 上一章：张居正', href: 'chapter.html?ch=zhangjuzheng', target: undefined }]);
+  assert.deepEqual(navOf(app), [
+    { text: '← 上一章：张居正', href: 'chapter.html?ch=zhangjuzheng', target: undefined },
+    { text: '下一章：崇祯 →', href: 'chapter.html?ch=chongzhen', target: undefined },
+  ]);
   const steps6 = walk(app, 'ch-next-link');
   assert.deepEqual(steps6.map(a => a.href), Array.from(data.chapters[5].nextSteps, l => l.href));
   assert.equal(steps6[0].target, '_blank');
   assert.equal(steps6[0].rel, 'noopener');
   assert.equal(steps6[1].target, undefined);
   assert.equal(steps6[2].target, undefined);
+  // ?ch=chongzhen → 第七章（六节二十五段）
+  app = render('?ch=chongzhen');
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, false, true]);
+  assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[6].intro);
+  assert.equal(walk(app, 'ch-section').length, 6);
+  assert.equal(walk(app, 'ch-p').length, 25);
+  assert.equal(walk(app, 'ch-sources').length, 0);
+  assert.deepEqual(walk(app, 'ch-sec-title').slice(0, 6).map(n => textOf(n)), Array.from(data.chapters[6].sections, s => s.title));
+  assert.deepEqual(navOf(app), [{ text: '← 上一章：万历怠政', href: 'chapter.html?ch=wanli', target: undefined }]);
+  const steps7 = walk(app, 'ch-next-link');
+  assert.deepEqual(steps7.map(a => a.href), Array.from(data.chapters[6].nextSteps, l => l.href));
+  assert.equal(steps7[0].target, '_blank');
+  assert.equal(steps7[0].rel, 'noopener');
+  assert.equal(steps7[1].target, undefined);
+  assert.equal(steps7[2].target, undefined);
   // 未知值回落第一章
   app = render('?ch=xxx');
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[0].intro);
-  assert.deepEqual(tabsOf(app).map(t => t.current), [true, false, false, false, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [true, false, false, false, false, false, false]);
 });
 test('chapter banner has the specified copy and no obsolete in-card styling', () => {
   assert.equal(data.chapterUI.bannerEyebrow, '白话明史 · 试点章');
@@ -1017,6 +1046,11 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   assert.equal(textOf(sixth), data.chapterUI.sixthLink);
   assert.equal(sixth.target, '_blank');
   assert.equal(sixth.rel, 'noopener');
+  const seventh = walk(entry, 'ch-entry-second')[5];
+  assert.ok(seventh && seventh.href === 'chapter.html?ch=chongzhen', 'index seventh-chapter link missing');
+  assert.equal(textOf(seventh), data.chapterUI.seventhLink);
+  assert.equal(seventh.target, '_blank');
+  assert.equal(seventh.rel, 'noopener');
   assert.equal(walk(app, 'entry-block').length, 6, 'module entries unchanged');
   const cardsCode = source.slice(source.indexOf('  function renderCards()'), source.indexOf('  function quizState()'));
   const capp = new Node('main');
@@ -1039,9 +1073,9 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   assert.equal(textOf(walk(banner, 'cw-banner-desc')[0]), data.chapterUI.bannerDesc);
   assert.equal(textOf(walk(banner, 'cw-banner-btn')[0]), data.chapterUI.bannerBtn);
   const bannerLinks = walk(banner, 'cw-banner-second');
-  assert.equal(bannerLinks.length, 5, 'chapter links collected inside the banner');
+  assert.equal(bannerLinks.length, 6, 'chapter links collected inside the banner');
   assert.deepEqual(bannerLinks.map(a => a.href), Array.from(data.chapters.slice(1), c => 'chapter.html?ch=' + c.id));
-  assert.deepEqual(bannerLinks.map(a => textOf(a)), [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink]);
+  assert.deepEqual(bannerLinks.map(a => textOf(a)), [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink, data.chapterUI.seventhLink]);
   bannerLinks.forEach(a => { assert.equal(a.target, '_blank'); assert.equal(a.rel, 'noopener'); });
   const bsecond = walk(capp, 'cw-banner-second')[0];
   assert.ok(bsecond && bsecond.href === 'chapter.html?ch=jingnan', 'cards second-chapter link missing');

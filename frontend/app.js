@@ -504,6 +504,11 @@
     chSixth.target = "_blank";
     chSixth.rel = "noopener";
     chEntry.appendChild(chSixth);
+    const chSeventh = el("a", "ch-entry-second", data.chapterUI.seventhLink);
+    chSeventh.href = "chapter.html?ch=" + data.chapters[6].id;
+    chSeventh.target = "_blank";
+    chSeventh.rel = "noopener";
+    chEntry.appendChild(chSeventh);
     app.appendChild(chEntry);
 
     const entries = el("section", "entries-section container");
@@ -1454,7 +1459,7 @@
     bannerMain.appendChild(el("span", "cw-banner-btn", data.chapterUI.bannerBtn));
     banner.appendChild(bannerMain);
     const bannerLinks = el("div", "cw-banner-links");
-    const chapterLinks = [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink];
+    const chapterLinks = [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink, data.chapterUI.seventhLink];
     data.chapters.slice(1).forEach((c, i) => {
       const link = el("a", "cw-banner-second", chapterLinks[i]);
       link.href = "chapter.html?ch=" + c.id;
