@@ -393,7 +393,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '2cb5561b6d871cee64fe9ec242d7b758e20ba17153230957bb87ad9ff9e4fd58');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'df9d29b7a758a0209513a7c3b5fa0b86e9df4e825fc8bbd029f36a4fdc88ea75');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
@@ -809,7 +809,8 @@ test('emperor entries carry exact fullNames; era label added; other relations da
   assert.equal(data.relationsUI.cardLabels.era, '年号');
   assert.equal(data.relationsUI.cardLabels.identity, '身份');
   const newGuestNames = ['徐达', '常遇春', '李文忠', '冯胜', '傅友德', '蓝玉', '李成梁', '徐霞客'];
-  const stripped = { ...data.relations, emperors: emperors.map(({ fullName, ...rest }) => rest), guests: data.relations.guests.filter(g => !newGuestNames.includes(g.name)) };
+  const stripEnd = ({ endType, ...rest }) => rest;
+  const stripped = { ...data.relations, emperors: emperors.map(({ fullName, endType, ...rest }) => rest), chiefs: data.relations.chiefs.map(stripEnd), guests: data.relations.guests.filter(g => !newGuestNames.includes(g.name)).map(stripEnd) };
   assert.equal(createHash('sha256').update(JSON.stringify(stripped)).digest('hex'), 'b8b60fa9e112b7f22bc6b625bb9fc79a9ca3aa102d0a6585612179b24eb6be56', 'original 28 relations entries must stay verbatim');
 });
 test('guest lane expands to 16 with eight verbatim new entries and a civilian outlier', () => {
@@ -844,6 +845,44 @@ test('guest lane expands to 16 with eight verbatim new entries and a civilian ou
     assert.ok(e.text.includes(table[i][1]) && e.text.includes(table[i][6]));
     assert.ok(Array.isArray(e.keywords) && e.keywords.includes(table[i][0]));
   });
+});
+test('relations endType covers all 53 segments with the specified 23/8/10/5/7 split', () => {
+  const EMP = { 太祖: 'shan', 惠宗: 'teshu', 成祖: 'shan', 仁宗: 'shan', 宣宗: 'shan', 英宗: 'teshu', 代宗: 'teshu', 宪宗: 'shan', 孝宗: 'shan', 武宗: 'shan', 世宗: 'shan', 穆宗: 'shan', 神宗: 'shan', 光宗: 'teshu', 熹宗: 'shan', 思宗: 'zhanshang' };
+  const CHIEF = { 解缙: 'feiming', 杨士奇: 'shan', 陈循: 'bazhu', 商辂: 'shan', 徐溥: 'shan', 刘健: 'shan', 李东阳: 'shan', 杨廷和: 'bazhu', 夏言: 'feiming', 严嵩: 'feiming', 徐阶: 'shan', 高拱: 'bazhu', 张居正: 'shan', 申时行: 'shan', 方从哲: 'bazhu', 叶向高: 'bazhu', 周延儒: 'feiming', 温体仁: 'bazhu', 薛国观: 'feiming', 魏藻德: 'feiming' };
+  const GUEST = { 徐达: 'shan', 常遇春: 'zhanshang', 李文忠: 'shan', 冯胜: 'teshu', 傅友德: 'feiming', 蓝玉: 'feiming', 于谦: 'feiming', 王守仁: 'shan', 戚继光: 'bazhu', 李成梁: 'bazhu', 李如松: 'zhanshang', 卢象升: 'zhanshang', 孙传庭: 'zhanshang', 袁崇焕: 'feiming', 杨嗣昌: 'teshu', 徐霞客: 'shan' };
+  const valid = ['shan', 'bazhu', 'feiming', 'zhanshang', 'teshu'];
+  const { emperors, chiefs, guests } = data.relations;
+  emperors.forEach(e => assert.equal(e.endType, EMP[e.name], e.name + ' ' + e.era));
+  chiefs.forEach(c => assert.equal(c.endType, CHIEF[c.name], c.name));
+  guests.forEach(g => assert.equal(g.endType, GUEST[g.name], g.name));
+  const all = [...emperors, ...chiefs, ...guests];
+  assert.equal(all.length, 53);
+  all.forEach(p => assert.ok(valid.includes(p.endType), p.name));
+  const tally = {};
+  all.forEach(p => (tally[p.endType] = (tally[p.endType] || 0) + 1));
+  assert.deepEqual(tally, { shan: 23, bazhu: 8, feiming: 10, zhanshang: 5, teshu: 7 });
+  assert.equal(emperors.filter(e => e.name === '英宗').every(e => e.endType === 'teshu'), true);
+  assert.equal(chiefs.find(c => c.name === '张居正').endType, 'shan', '张居正任上病逝计善终');
+  assert.equal(guests.find(g => g.name === '徐霞客').endType, 'shan');
+  const ui = data.relationsUI;
+  assert.deepEqual(JSON.parse(JSON.stringify(ui.modeLabels)), { tenure: '按任期看', end: '按结局看' });
+  assert.deepEqual(Array.from(ui.endCategories, c => [c.kind, c.label]), [['shan', '善终'], ['bazhu', '罢黜'], ['feiming', '非命'], ['zhanshang', '战殁殉国'], ['teshu', '特殊存疑']]);
+  assert.equal(ui.cardLabels.endType, '结局类别');
+  assert.equal(ui.endLegendNote, '结局按本人离世或最终处境归类，不计身后事。徐霞客保留布衣虚线标识，按善终染色。');
+});
+test('relations render: mode toggle defaults to tenure, end mode colors bars and legend, popup carries category', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const start = source.indexOf('  function renderRelations()');
+  const code = source.slice(start, source.indexOf('  /* ----------', start + 10));
+  assert.ok(code.includes('let endMode = false;'), 'default must be tenure mode');
+  assert.ok(!code.includes('localStorage'), 'mode choice must not be persisted');
+  assert.ok(code.includes('bar.dataset.end = p.endType;'), 'bars must carry endType');
+  assert.ok(code.includes('ui.cardLabels.endType'), 'popup must show category label');
+  assert.ok(code.includes('rl-end-swatch-'), 'end legend swatches');
+  assert.ok(code.includes('tally[p.endType]'), 'legend counts derived from data');
+  const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+  ['.rl-bar.rl-end-shan', '.rl-bar.rl-end-bazhu', '.rl-bar.rl-end-feiming', '.rl-bar.rl-end-zhanshang', '.rl-bar.rl-end-teshu', '.rl-mode.is-on', '.rl-end-swatch-teshu'].forEach(sel => assert.ok(css.includes(sel), 'missing css ' + sel));
+  assert.ok(css.indexOf('.rl-bar.rl-end-shan') > css.indexOf('.rl-bar-guest.is-civilian'), 'end fills must override civilian fill');
 });
 test('qinli splits into a pure list and a nav-free play page', () => {
   const html = fs.readFileSync(path.join(root, 'qinli-play.html'), 'utf8');

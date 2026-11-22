@@ -2406,6 +2406,27 @@ body[data-page="index"] {
   background: var(--site-accent);
 }
 
+.rl-end-swatch-shan {
+  background: var(--gold);
+}
+
+.rl-end-swatch-bazhu {
+  background: #7d8ca3;
+}
+
+.rl-end-swatch-feiming {
+  background: #c0492f;
+}
+
+.rl-end-swatch-zhanshang {
+  background: #7c3a2d;
+}
+
+.rl-end-swatch-teshu {
+  background: repeating-linear-gradient(45deg, #8a857c 0 3px, var(--site-bg) 3px 6px);
+  border: 1px dashed var(--site-muted);
+}
+
 .rl-legend-label {
   font-size: calc(13px * var(--site-type, 1));
   letter-spacing: 0.06em;
@@ -2418,6 +2439,30 @@ body[data-page="index"] {
   font-size: calc(13px * var(--site-type, 1));
   letter-spacing: 0.04em;
   color: var(--site-muted);
+}
+
+.rl-modes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: calc(var(--gap) * 0.7);
+}
+
+.rl-mode {
+  padding: 8px 18px;
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--site-muted);
+  font-family: var(--font-body);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+
+.rl-mode.is-on {
+  color: var(--site-fg);
+  border-color: var(--vermilion-bright);
+  box-shadow: inset 0 -2px 0 var(--site-accent);
 }
 
 .rl-scroll {
@@ -2618,6 +2663,38 @@ body[data-page="index"] {
 .rl-bar-guest.is-civilian {
   background: color-mix(in srgb, var(--site-muted) 40%, var(--site-bg));
   border: 1px dashed var(--site-muted);
+}
+
+.rl-bar.rl-end-shan {
+  background: var(--gold);
+}
+
+.rl-bar.rl-end-bazhu {
+  background: #7d8ca3;
+}
+
+.rl-bar.rl-end-feiming {
+  background: #c0492f;
+}
+
+.rl-bar.rl-end-zhanshang {
+  background: #7c3a2d;
+}
+
+.rl-bar.rl-end-teshu {
+  background: repeating-linear-gradient(45deg, #8a857c 0 3px, var(--site-bg) 3px 6px);
+  border: 1px dashed var(--site-muted);
+}
+
+.rl-bar.rl-end-shan.is-wide .rl-bar-label,
+.rl-bar.rl-end-bazhu.is-wide .rl-bar-label {
+  color: var(--site-bg);
+}
+
+.rl-bar.rl-end-feiming.is-wide .rl-bar-label,
+.rl-bar.rl-end-zhanshang.is-wide .rl-bar-label,
+.rl-bar.rl-end-teshu.is-wide .rl-bar-label {
+  color: var(--site-fg);
 }
 
 .rl-bar-label {

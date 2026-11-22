@@ -2808,14 +2808,51 @@
     const span = ui.axisEnd - ui.axisStart;
     const pct = (y) => ((y - ui.axisStart) / span) * 100;
 
-    const legend = el("div", "rl-legend");
-    ui.legend.forEach((g) => {
-      const item = el("span", "rl-legend-item");
-      item.appendChild(el("span", "rl-swatch rl-swatch-" + g.kind));
-      item.appendChild(el("span", "rl-legend-label", g.label));
-      legend.appendChild(item);
+    const endLabels = {};
+    ui.endCategories.forEach((c) => (endLabels[c.kind] = c.label));
+    let endMode = false;
+
+    const modes = el("div", "rl-modes");
+    modes.setAttribute("role", "group");
+    modes.setAttribute("aria-label", ui.modeLabels.tenure + " / " + ui.modeLabels.end);
+    const modeBtns = {};
+    [["tenure", ui.modeLabels.tenure], ["end", ui.modeLabels.end]].forEach(([key, label]) => {
+      const b = el("button", "rl-mode", label);
+      b.type = "button";
+      b.addEventListener("click", () => {
+        endMode = key === "end";
+        applyMode();
+      });
+      modeBtns[key] = b;
+      modes.appendChild(b);
     });
-    legend.appendChild(el("p", "rl-legend-note", ui.legendNote));
+    wrap.appendChild(modes);
+
+    const legend = el("div", "rl-legend");
+    function buildLegend() {
+      legend.replaceChildren();
+      if (!endMode) {
+        ui.legend.forEach((g) => {
+          const item = el("span", "rl-legend-item");
+          item.appendChild(el("span", "rl-swatch rl-swatch-" + g.kind));
+          item.appendChild(el("span", "rl-legend-label", g.label));
+          legend.appendChild(item);
+        });
+        legend.appendChild(el("p", "rl-legend-note", ui.legendNote));
+      } else {
+        const tally = {};
+        [...rl.emperors, ...rl.chiefs, ...rl.guests].forEach(
+          (p) => (tally[p.endType] = (tally[p.endType] || 0) + 1)
+        );
+        ui.endCategories.forEach((c) => {
+          const item = el("span", "rl-legend-item");
+          item.appendChild(el("span", "rl-swatch rl-end-swatch-" + c.kind));
+          item.appendChild(el("span", "rl-legend-label", c.label + " " + (tally[c.kind] || 0)));
+          legend.appendChild(item);
+        });
+        legend.appendChild(el("p", "rl-legend-note", ui.endLegendNote));
+      }
+    }
     wrap.appendChild(legend);
 
     const ticks = [];
@@ -2868,6 +2905,10 @@
         row.appendChild(el("span", "rl-card-value", value));
         dialog.appendChild(row);
       });
+      const catRow = el("div", "rl-card-row rl-card-endtype");
+      catRow.appendChild(el("span", "rl-card-label", ui.cardLabels.endType));
+      catRow.appendChild(el("span", "rl-card-value", endLabels[p.endType] || ""));
+      dialog.appendChild(catRow);
       if (p.cbdbUrl) {
         const link = el("a", "topic-next cbdb-link", "CBDB 人物条目 ↗");
         link.href = p.cbdbUrl;
@@ -2934,6 +2975,7 @@
         segs.forEach((s, si) => {
           const bar = el("button", "rl-bar rl-bar-" + lane.kind);
           bar.type = "button";
+          bar.dataset.end = p.endType;
           if (lane.kind === "guest" && p.office.startsWith("布衣")) bar.classList.add("is-civilian");
           const left = pct(s[0]);
           bar.style.left = left + "%";
@@ -2967,6 +3009,21 @@
     scroll.appendChild(chart);
     wrap.appendChild(scroll);
     app.appendChild(wrap);
+
+    function applyMode() {
+      modeBtns.tenure.classList.toggle("is-on", !endMode);
+      modeBtns.end.classList.toggle("is-on", endMode);
+      modeBtns.tenure.setAttribute("aria-pressed", String(!endMode));
+      modeBtns.end.setAttribute("aria-pressed", String(endMode));
+      scroll.querySelectorAll(".rl-bar").forEach((bar) => {
+        const et = bar.dataset.end;
+        ui.endCategories.forEach((c) =>
+          bar.classList.toggle("rl-end-" + c.kind, endMode && et === c.kind)
+        );
+      });
+      buildLegend();
+    }
+    applyMode();
 
     const qp = new URLSearchParams(location.search);
     const person = qp.get("person");
