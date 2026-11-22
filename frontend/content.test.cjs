@@ -364,7 +364,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '9549dc2ee7e2ceaf18ba23579d594aa6b566d8f4d9157c8bc5549d75f50a2fc2');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '29932023af0ee11ad24aa2e1469c3022b1081b5bafc35f29f5bc7eff1196a977');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
@@ -450,12 +450,12 @@ test('territory geometry has independent geographic paths, labels and source att
   assert.ok(timeline.indexOf('renderTerritory()') < timeline.indexOf('const strip'));
   assert.match(timeline, /try\s*{[\s\S]*?renderTerritory\(\)[\s\S]*?}\s*catch/);
 });
-test('chapters array carries seven chapters with complete sections and nextSteps', () => {
-  assert.ok(Array.isArray(data.chapters) && data.chapters.length === 7);
+test('chapters array carries eight chapters with complete sections and nextSteps', () => {
+  assert.ok(Array.isArray(data.chapters) && data.chapters.length === 8);
   assert.equal(data.chapter, undefined, 'old chapter field removed');
   assert.equal(data.chapterUI.next, undefined, 'old next field removed');
   assert.equal(data.chapterUI.series, '白话明史');
-  assert.deepEqual(Array.from(data.chapters, c => c.id), ['hongwu', 'jingnan', 'tumubao', 'jiajing', 'zhangjuzheng', 'wanli', 'chongzhen']);
+  assert.deepEqual(Array.from(data.chapters, c => c.id), ['hongwu', 'jingnan', 'tumubao', 'jiajing', 'zhangjuzheng', 'wanli', 'chongzhen', 'xuxiake']);
   const digest = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
   // AU 起 nextSteps 的亲历 href 改向播放页；正文红线钉 id/title/intro/sections，标签另有逐字断言
   const proseDigest = ({ id, title, intro, sections }) => digest({ id, title, intro, sections });
@@ -466,7 +466,8 @@ test('chapters array carries seven chapters with complete sections and nextSteps
   assert.equal(proseDigest(data.chapters[4]), '6b24bad586e4da2ad302d23ca7cc201edf274f004e2bc77b7347195e323ab0a7', 'chapter five prose must stay verbatim');
   assert.equal(proseDigest(data.chapters[5]), 'd8212ca11024940842916080cac8c4f6f8cdb8d5775a555a3924625e63fbbac2', 'chapter six prose must stay verbatim');
   assert.equal(proseDigest(data.chapters[6]), 'a94e7ebe7796800c629a10d6b81d5d4907de4f8e8aeca90570138483de5ae396', 'chapter seven prose must stay verbatim');
-  const [c1, c2, c3, c4, c5, c6, c7] = data.chapters;
+  assert.equal(proseDigest(data.chapters[7]), '5f3b4114e4f4090d6693f9d974401e9b1c5cccfbbd552ebc4cb9ad7bcfed5361', 'finale prose must stay verbatim');
+  const [c1, c2, c3, c4, c5, c6, c7, c8] = data.chapters;
   assert.equal(c1.title, '洪武朝');
   assert.equal(c2.title, '建文与靖难');
   assert.equal(c3.title, '土木堡与北京保卫战');
@@ -474,8 +475,9 @@ test('chapters array carries seven chapters with complete sections and nextSteps
   assert.equal(c5.title, '张居正');
   assert.equal(c6.title, '万历怠政');
   assert.equal(c7.title, '崇祯');
-  const secCounts = [5, 5, 5, 5, 6, 6, 6];
-  [c1, c2, c3, c4, c5, c6, c7].forEach((ch, ci) => {
+  assert.equal(c8.title, '徐霞客');
+  const secCounts = [5, 5, 5, 5, 6, 6, 6, 5];
+  [c1, c2, c3, c4, c5, c6, c7, c8].forEach((ch, ci) => {
     assert.ok(ch.intro && ch.intro.trim());
     assert.equal(ch.sections.length, secCounts[ci]);
     ch.sections.forEach(s => {
@@ -510,6 +512,13 @@ test('chapters array carries seven chapters with complete sections and nextSteps
   assert.equal(c5.sections.some(s => s.sources), false, 'chapter five has no AJ slips this batch');
   assert.equal(c6.sections.some(s => s.sources), false, 'chapter six has no AJ slips this batch');
   assert.equal(c7.sections.some(s => s.sources), false, 'chapter seven has no AJ slips this batch');
+  assert.equal(c8.sections.some(s => s.sources), false, 'chapter eight has no AJ slips this batch');
+  assert.equal(c8.sections.reduce((n, s) => n + s.paragraphs.length, 0), 18, 'finale has 18 paragraphs');
+  assert.deepEqual(Array.from(c8.nextSteps, l => l.href), ['relations.html', 'timeline.html?event=e1644', 'qinli-play.html?story=q1644']);
+  const text8 = c8.sections.map(s => s.title + s.paragraphs.join('')).join('');
+  ['十余省', '《明史》里没有他的传', '原稿有两百多万字', '现存约四十万字', '以耳目所亲见闻较确', '以性灵游，以躯命游，亘古以来，一人而已'].forEach(k => assert.ok(text8.includes(k), 'missing: ' + k));
+  ['大丈夫当朝游碧海而暮宿苍梧', '五岳归来不看山，黄山归来不看岳'].forEach(w => assert.ok(!text8.includes(w), 'forbidden quote: ' + w));
+  assert.ok(!/十[一二三四五六七八九]省/.test(text8), 'no specific province count');
   const text6 = c6.sections.map(s => s.title + s.paragraphs.join('')).join('');
   ['帝不能自由', '靠个人权威推进的改革，其寿命往往与改革者本人同步', '凭尔几路来，我只一路去', '民变与边患从此互为因果', '支撑了明朝最后六十年的财政——哪怕这数字从一开始就带着水分'].forEach(q => assert.ok(text6.includes(q), 'quote missing: ' + q));
   ['国本之争', '东林党争', '矿税监'].forEach(w => assert.ok(!text6.includes(w), 'forbidden topic: ' + w));
@@ -531,6 +540,7 @@ test('chapters array carries seven chapters with complete sections and nextSteps
   assert.equal(data.chapterUI.fifthLink, '第五章 · 张居正 →');
   assert.equal(data.chapterUI.sixthLink, '第六章 · 万历怠政 →');
   assert.equal(data.chapterUI.seventhLink, '第七章 · 崇祯 →');
+  assert.equal(data.chapterUI.finaleLink, '终章 · 徐霞客 →');
 });
 test('chapter sections carry verbatim backend sources and render collapsed slips', () => {
   const chunks = JSON.parse(fs.readFileSync(path.join(root, '../backend/data/zhuyuanzhang.json'), 'utf8')).chunks;
@@ -885,6 +895,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
     { text: '第五章 · 张居正', href: 'chapter.html?ch=zhangjuzheng', current: false, target: undefined },
     { text: '第六章 · 万历怠政', href: 'chapter.html?ch=wanli', current: false, target: undefined },
     { text: '第七章 · 崇祯', href: 'chapter.html?ch=chongzhen', current: false, target: undefined },
+    { text: '终章 · 徐霞客', href: 'chapter.html?ch=xuxiake', current: false, target: undefined },
   ]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[0].intro);
   assert.equal(walk(app, 'ch-sources').length, 4);
@@ -892,7 +903,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.deepEqual(walk(app, 'ch-next-link').map(a => a.href), Array.from(data.chapters[0].nextSteps, l => l.href));
   // ?ch=jingnan → 第二章
   app = render('?ch=jingnan');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, true, false, false, false, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, true, false, false, false, false, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[1].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -909,7 +920,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps[2].target, undefined);
   // ?ch=tumubao → 第三章
   app = render('?ch=tumubao');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, true, false, false, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, true, false, false, false, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[2].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -926,7 +937,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps3[2].target, undefined);
   // ?ch=jiajing → 第四章
   app = render('?ch=jiajing');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, true, false, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, true, false, false, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[3].intro);
   assert.equal(walk(app, 'ch-section').length, 5);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -943,7 +954,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps4[2].target, undefined);
   // ?ch=zhangjuzheng → 第五章（六节）
   app = render('?ch=zhangjuzheng');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, true, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, true, false, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[4].intro);
   assert.equal(walk(app, 'ch-section').length, 6);
   assert.equal(walk(app, 'ch-sources').length, 0);
@@ -960,7 +971,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps5[2].target, undefined);
   // ?ch=wanli → 第六章（六节十二段）
   app = render('?ch=wanli');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, true, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, true, false, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[5].intro);
   assert.equal(walk(app, 'ch-section').length, 6);
   assert.equal(walk(app, 'ch-p').length, 12);
@@ -978,23 +989,42 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
   assert.equal(steps6[2].target, undefined);
   // ?ch=chongzhen → 第七章（六节二十五段）
   app = render('?ch=chongzhen');
-  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, false, true]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, false, true, false]);
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[6].intro);
   assert.equal(walk(app, 'ch-section').length, 6);
   assert.equal(walk(app, 'ch-p').length, 25);
   assert.equal(walk(app, 'ch-sources').length, 0);
   assert.deepEqual(walk(app, 'ch-sec-title').slice(0, 6).map(n => textOf(n)), Array.from(data.chapters[6].sections, s => s.title));
-  assert.deepEqual(navOf(app), [{ text: '← 上一章：万历怠政', href: 'chapter.html?ch=wanli', target: undefined }]);
+  assert.deepEqual(navOf(app), [
+    { text: '← 上一章：万历怠政', href: 'chapter.html?ch=wanli', target: undefined },
+    { text: '下一章：徐霞客 →', href: 'chapter.html?ch=xuxiake', target: undefined },
+  ]);
   const steps7 = walk(app, 'ch-next-link');
   assert.deepEqual(steps7.map(a => a.href), Array.from(data.chapters[6].nextSteps, l => l.href));
   assert.equal(steps7[0].target, '_blank');
   assert.equal(steps7[0].rel, 'noopener');
   assert.equal(steps7[1].target, undefined);
   assert.equal(steps7[2].target, undefined);
+  // ?ch=xuxiake → 终章（五节十八段，引文段走纸面引文框）
+  app = render('?ch=xuxiake');
+  assert.deepEqual(tabsOf(app).map(t => t.current), [false, false, false, false, false, false, false, true]);
+  assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[7].intro);
+  assert.equal(walk(app, 'ch-section').length, 5);
+  assert.equal(walk(app, 'ch-p').length, 17);
+  const quotes8 = walk(app, 'cw-paper-quote');
+  assert.equal(quotes8.length, 1, 'finale quote paragraph uses the paper quote block');
+  assert.equal(textOf(quotes8[0]), data.chapters[7].sections[4].paragraphs[3]);
+  assert.equal(walk(app, 'ch-quote').length, 1);
+  assert.deepEqual(navOf(app), [{ text: '← 上一章：崇祯', href: 'chapter.html?ch=chongzhen', target: undefined }]);
+  const steps8 = walk(app, 'ch-next-link');
+  assert.deepEqual(steps8.map(a => a.href), Array.from(data.chapters[7].nextSteps, l => l.href));
+  assert.equal(steps8[2].target, '_blank');
+  assert.equal(steps8[2].rel, 'noopener');
+  assert.equal(steps8[0].target, undefined);
   // 未知值回落第一章
   app = render('?ch=xxx');
   assert.equal(textOf(walk(app, 'ch-intro')[0]), data.chapters[0].intro);
-  assert.deepEqual(tabsOf(app).map(t => t.current), [true, false, false, false, false, false, false]);
+  assert.deepEqual(tabsOf(app).map(t => t.current), [true, false, false, false, false, false, false, false]);
 });
 test('chapter banner has the specified copy and no obsolete in-card styling', () => {
   assert.equal(data.chapterUI.bannerEyebrow, '白话明史 · 试点章');
@@ -1051,6 +1081,11 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   assert.equal(textOf(seventh), data.chapterUI.seventhLink);
   assert.equal(seventh.target, '_blank');
   assert.equal(seventh.rel, 'noopener');
+  const eighth = walk(entry, 'ch-entry-second')[6];
+  assert.ok(eighth && eighth.href === 'chapter.html?ch=xuxiake', 'index finale link missing');
+  assert.equal(textOf(eighth), data.chapterUI.finaleLink);
+  assert.equal(eighth.target, '_blank');
+  assert.equal(eighth.rel, 'noopener');
   assert.equal(walk(app, 'entry-block').length, 6, 'module entries unchanged');
   const cardsCode = source.slice(source.indexOf('  function renderCards()'), source.indexOf('  function quizState()'));
   const capp = new Node('main');
@@ -1073,9 +1108,9 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   assert.equal(textOf(walk(banner, 'cw-banner-desc')[0]), data.chapterUI.bannerDesc);
   assert.equal(textOf(walk(banner, 'cw-banner-btn')[0]), data.chapterUI.bannerBtn);
   const bannerLinks = walk(banner, 'cw-banner-second');
-  assert.equal(bannerLinks.length, 6, 'chapter links collected inside the banner');
+  assert.equal(bannerLinks.length, 7, 'chapter links collected inside the banner');
   assert.deepEqual(bannerLinks.map(a => a.href), Array.from(data.chapters.slice(1), c => 'chapter.html?ch=' + c.id));
-  assert.deepEqual(bannerLinks.map(a => textOf(a)), [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink, data.chapterUI.seventhLink]);
+  assert.deepEqual(bannerLinks.map(a => textOf(a)), [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink, data.chapterUI.seventhLink, data.chapterUI.finaleLink]);
   bannerLinks.forEach(a => { assert.equal(a.target, '_blank'); assert.equal(a.rel, 'noopener'); });
   const bsecond = walk(capp, 'cw-banner-second')[0];
   assert.ok(bsecond && bsecond.href === 'chapter.html?ch=jingnan', 'cards second-chapter link missing');

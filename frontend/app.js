@@ -509,6 +509,11 @@
     chSeventh.target = "_blank";
     chSeventh.rel = "noopener";
     chEntry.appendChild(chSeventh);
+    const chEighth = el("a", "ch-entry-second", data.chapterUI.finaleLink);
+    chEighth.href = "chapter.html?ch=" + data.chapters[7].id;
+    chEighth.target = "_blank";
+    chEighth.rel = "noopener";
+    chEntry.appendChild(chEighth);
     app.appendChild(chEntry);
 
     const entries = el("section", "entries-section container");
@@ -1459,7 +1464,7 @@
     bannerMain.appendChild(el("span", "cw-banner-btn", data.chapterUI.bannerBtn));
     banner.appendChild(bannerMain);
     const bannerLinks = el("div", "cw-banner-links");
-    const chapterLinks = [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink, data.chapterUI.seventhLink];
+    const chapterLinks = [data.chapterUI.secondLink, data.chapterUI.thirdLink, data.chapterUI.fourthLink, data.chapterUI.fifthLink, data.chapterUI.sixthLink, data.chapterUI.seventhLink, data.chapterUI.finaleLink];
     data.chapters.slice(1).forEach((c, i) => {
       const link = el("a", "cw-banner-second", chapterLinks[i]);
       link.href = "chapter.html?ch=" + c.id;
@@ -3172,7 +3177,9 @@
     tabs.setAttribute("role", "group");
     tabs.setAttribute("aria-label", "章节切换");
     data.chapters.forEach((c, i) => {
-      const tab = el("a", "ch-tab" + (c === ch ? " is-current" : ""), "第" + chapterNum(i + 1) + "章 · " + c.title);
+      const isFinale = i === data.chapters.length - 1;
+      const label = isFinale ? "终章 · " + c.title : "第" + chapterNum(i + 1) + "章 · " + c.title;
+      const tab = el("a", "ch-tab" + (c === ch ? " is-current" : ""), label);
       tab.href = "chapter.html?ch=" + c.id;
       if (c === ch) tab.setAttribute("aria-current", "page");
       tabs.appendChild(tab);
@@ -3182,7 +3189,19 @@
     ch.sections.forEach((sec) => {
       const section = el("section", "ch-section");
       section.appendChild(el("h2", "ch-sec-title", sec.title));
-      sec.paragraphs.forEach((p) => section.appendChild(el("p", "ch-p", p)));
+      sec.paragraphs.forEach((p) => {
+        if (/^“[^”]*”$/.test(p.trim())) {
+          const quote = el("div", "ch-quote cw-paper");
+          const mid = el("div", "cw-paper-mid");
+          const inner = el("div", "cw-paper-in");
+          inner.appendChild(el("p", "cw-paper-quote", p));
+          mid.appendChild(inner);
+          quote.appendChild(mid);
+          section.appendChild(quote);
+        } else {
+          section.appendChild(el("p", "ch-p", p));
+        }
+      });
       if (sec.sources && sec.sources.length) {
         const slip = el("details", "ch-sources");
         slip.appendChild(el("summary", "ch-sources-summary", "本节史料（" + sec.sources.length + " 条）"));

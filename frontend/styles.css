@@ -4411,6 +4411,10 @@ body[data-page="chapter"] .head-title {
 
 /* ---------- 章节节末史料展开（仅 chapter 页；纸面语言缩小一档） ---------- */
 
+.ch-quote {
+  margin: 0 0 calc(var(--gap) * 0.7);
+}
+
 .ch-sources {
   margin: calc(var(--gap) * 0.6) 0 0;
 }
