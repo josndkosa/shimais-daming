@@ -202,6 +202,35 @@ test('profile recommends actual wrong-answer material and a deeper path for full
     assert.match(textOf(app), /亲历完成1 \/ 6/);
   }
 });
+test('profile lists wrong-answer material from the latest submission and hides when clean', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderProfile()'), source.indexOf('  /* ---------- 人物对话'));
+  const render = (progress) => {
+    const app = new Node('main');
+    const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
+      el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} },
+    });
+    vm.runInContext(code + '\nrenderProfile();', ctx);
+    return app;
+  };
+  const ids = Array.from(data.quiz.slice(0, 3), q => q.id);
+  const app = render({ quiz: { score: 7, picks: [] }, quizWrong: ids });
+  const sec = walk(app, 'pf-wrong')[0];
+  assert.ok(sec, 'wrong section missing');
+  assert.equal(textOf(walk(sec, 'section-title')[0]), '待补史料');
+  const rows = walk(sec, 'pf-wrong-row');
+  assert.equal(rows.length, 3);
+  rows.forEach((row, k) => {
+    assert.equal(textOf(walk(row, 'pf-wrong-stem')[0]), data.quiz[k].stem);
+    const link = walk(row, 'pf-wrong-link')[0];
+    assert.equal(link.href, data.quiz[k].reviewHref);
+    assert.equal(link.target, '_blank');
+    assert.equal(link.rel, 'noopener');
+    assert.equal(textOf(link), '回看 →');
+  });
+  assert.equal(walk(render({ quiz: { score: 10, picks: [] }, quizWrong: [] }), 'pf-wrong').length, 0);
+  assert.equal(walk(render({}), 'pf-wrong').length, 0);
+});
 test('all story final-scene resumes preserve numbers and finish without applying effects again', () => {
   const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const code = source.slice(source.indexOf('  function renderQinli()'), source.indexOf('  function renderCards()'));
@@ -364,7 +393,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '29932023af0ee11ad24aa2e1469c3022b1081b5bafc35f29f5bc7eff1196a977');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '2cb5561b6d871cee64fe9ec242d7b758e20ba17153230957bb87ad9ff9e4fd58');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
@@ -687,6 +716,10 @@ test('formal quiz allows re-picks before submit, locks after, and retakes', () =
   items.forEach((item, i) => choicesOf(item)[data.quiz[i].answer].click());
   walk(formalRoot, 'qz-submit-btn')[0].click();
   assert.equal(progress.quiz.score, 10);
+  assert.deepEqual(JSON.parse(JSON.stringify(progress.quizWrong)), [], 'all-correct clears wrong list');
+  assert.equal(walk(formalRoot, 'qz-wrong-empty').length, 1);
+  assert.equal(textOf(walk(formalRoot, 'qz-wrong-empty')[0]), '全对，无待补史料。');
+  assert.equal(walk(formalRoot, 'qz-wrong-item').length, 0);
   const picked = choicesOf(items[0])[data.quiz[0].answer];
   assert.ok(picked.disabled && picked.className.includes('is-correct'), 'locked + judged after submit');
   assert.equal(walk(items[0], 'qz-explain')[0].hidden, false);
@@ -701,6 +734,27 @@ test('formal quiz allows re-picks before submit, locks after, and retakes', () =
   items.forEach((item, i) => choicesOf(item)[(data.quiz[i].answer + 1) % 4].click());
   walk(formalRoot, 'qz-submit-btn')[0].click();
   assert.equal(progress.quiz.score, 0, 'latest submission wins');
+  assert.deepEqual(JSON.parse(JSON.stringify(progress.quizWrong)), Array.from(data.quiz, q => q.id), 'all-wrong records every id');
+  const wrongItems = walk(formalRoot, 'qz-wrong-item');
+  assert.equal(wrongItems.length, 10);
+  wrongItems.forEach((item, k) => {
+    const q = data.quiz[k];
+    const pick = (q.answer + 1) % 4;
+    assert.equal(textOf(walk(item, 'qz-wrong-stem')[0]), q.stem);
+    const lines = walk(item, 'qz-wrong-line');
+    assert.equal(textOf(walk(lines[0], 'qz-wrong-value')[0]), 'ABCD'[pick] + '　' + q.options[pick]);
+    assert.equal(textOf(walk(lines[1], 'qz-wrong-value')[0]), 'ABCD'[q.answer] + '　' + q.options[q.answer]);
+    assert.equal(textOf(walk(item, 'qz-wrong-explain')[0]), q.explain);
+    const review = walk(item, 'qz-wrong-review')[0];
+    assert.equal(review.href, q.reviewHref);
+    assert.equal(review.target, '_blank');
+    assert.equal(review.rel, 'noopener');
+  });
+  walk(formalRoot, 'qz-retake')[0].click();
+  items.forEach((item, i) => choicesOf(item)[i < 3 ? (data.quiz[i].answer + 1) % 4 : data.quiz[i].answer].click());
+  walk(formalRoot, 'qz-submit-btn')[0].click();
+  assert.deepEqual(JSON.parse(JSON.stringify(progress.quizWrong)), Array.from(data.quiz.slice(0, 3), q => q.id), 'three wrong recorded');
+  assert.equal(walk(formalRoot, 'qz-wrong-item').length, 3);
 });
 test('decisions allow changing picks; seal, hint and completion follow current pick', () => {
   assert.equal(data.decisionLabels.lockedHint, '已记录，可点选其他选项更改');

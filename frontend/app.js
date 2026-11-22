@@ -1764,6 +1764,36 @@
         });
         sec.appendChild(dims);
         sec.appendChild(el("p", "qz-submitted-note", ui.submittedNote));
+        const wrongSec = el("div", "qz-wrong");
+        wrongSec.appendChild(el("h3", "qz-wrong-title", ui.wrongTitle));
+        const wrongList = questions.filter((q, i) => Number.isInteger(st.picks[i]) && st.picks[i] !== q.answer);
+        if (!wrongList.length) {
+          wrongSec.appendChild(el("p", "qz-wrong-empty", ui.wrongEmpty));
+        } else {
+          const list = el("div", "qz-wrong-list");
+          wrongList.forEach((q) => {
+            const i = questions.indexOf(q);
+            const item = el("article", "qz-wrong-item");
+            item.appendChild(el("h4", "qz-wrong-stem", q.stem));
+            const yours = el("p", "qz-wrong-line");
+            yours.appendChild(el("span", "qz-wrong-label", ui.yourAnswerLabel));
+            yours.appendChild(el("span", "qz-wrong-value", "ABCD"[st.picks[i]] + "　" + q.options[st.picks[i]]));
+            item.appendChild(yours);
+            const right = el("p", "qz-wrong-line");
+            right.appendChild(el("span", "qz-wrong-label", ui.answerLabel));
+            right.appendChild(el("span", "qz-wrong-value", "ABCD"[q.answer] + "　" + q.options[q.answer]));
+            item.appendChild(right);
+            item.appendChild(el("p", "qz-wrong-explain", q.explain));
+            const review = el("a", "topic-next qz-wrong-review", ui.reviewBtn);
+            review.href = q.reviewHref;
+            review.target = "_blank";
+            review.rel = "noopener";
+            item.appendChild(review);
+            list.appendChild(item);
+          });
+          wrongSec.appendChild(list);
+        }
+        sec.appendChild(wrongSec);
         const retake = el("button", "cta-button qz-retake", ui.retakeLabel);
         retake.type = "button";
         retake.addEventListener("click", () => {
@@ -1876,6 +1906,7 @@
           p.quiz.picks = st.picks;
           p.quiz.score = score;
           p.quiz.dims = dims;
+          p.quizWrong = questions.filter((q, i) => st.picks[i] !== q.answer).map((q) => q.id);
         });
         questions.forEach((q, i) => applyQuestion(q, nodes.get(q.id), st.picks[i], true));
         refresh();
@@ -2296,6 +2327,26 @@
         qzSec.appendChild(empty);
       }
       box.appendChild(qzSec);
+
+      const wrongIds = Array.isArray(p.quizWrong) ? p.quizWrong : [];
+      const wrongQs = data.quiz.filter((q) => wrongIds.includes(q.id));
+      if (wrongQs.length) {
+        const wrongSec = el("section", "pf-section pf-wrong");
+        wrongSec.appendChild(el("h2", "section-title", ui.wrongTitle));
+        const wrongList = el("div", "pf-wrong-list");
+        wrongQs.forEach((q) => {
+          const row = el("div", "pf-wrong-row");
+          row.appendChild(el("p", "pf-wrong-stem", q.stem));
+          const link = el("a", "pf-link pf-wrong-link", ui.wrongReviewBtn);
+          link.href = q.reviewHref;
+          link.target = "_blank";
+          link.rel = "noopener";
+          row.appendChild(link);
+          wrongList.appendChild(row);
+        });
+        wrongSec.appendChild(wrongList);
+        box.appendChild(wrongSec);
+      }
 
       const mem = loadChatMem();
       const friends = data.chatFigures.filter((f) => mem[f.id] && (Number(mem[f.id].totalRounds) || 0) > 0);
