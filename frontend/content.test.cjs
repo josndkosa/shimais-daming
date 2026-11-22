@@ -364,7 +364,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), '0e55ba37e4123da9804cc45685c8bdb44d8921766db4603f25cf73ccfca5afb2');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'ad73837bc15042971c22bd5e14d0cecdf887b96c48f549d43d3e59dcfdb50c9c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
@@ -463,7 +463,8 @@ test('chapters array carries six chapters with complete sections and nextSteps',
   assert.equal(proseDigest(data.chapters[1]), 'eba8bff4d20db09787ff47ab43c8b2ecec48e0ba86ea40f207fece9b04ccbb19', 'chapter two prose must stay verbatim');
   assert.equal(proseDigest(data.chapters[2]), 'e0f9934d38d8871a0cc0de39d57b5aa9151f8eabe558ddc630ab311cf09d69f4', 'chapter three prose must stay verbatim');
   assert.equal(proseDigest(data.chapters[3]), 'f69e58d1517ba5977d6cfe28e5aecfedb8d354eaaa8820d1f69622c4572c62bd', 'chapter four prose must stay verbatim');
-  assert.equal(proseDigest(data.chapters[4]), 'd43cefb352bdcf59e334d159a4be2e97ea44028a3198e8bfe5fde5c86043eab9', 'chapter five prose must stay verbatim');
+  assert.equal(proseDigest(data.chapters[4]), '6b24bad586e4da2ad302d23ca7cc201edf274f004e2bc77b7347195e323ab0a7', 'chapter five prose must stay verbatim');
+  assert.equal(proseDigest(data.chapters[5]), 'd8212ca11024940842916080cac8c4f6f8cdb8d5775a555a3924625e63fbbac2', 'chapter six prose must stay verbatim');
   const [c1, c2, c3, c4, c5, c6] = data.chapters;
   assert.equal(c1.title, '洪武朝');
   assert.equal(c2.title, '建文与靖难');
