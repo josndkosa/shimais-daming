@@ -1,0 +1,31 @@
+const { spawn } = require("child_process");
+const CHROME = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+const PORT = 9299;
+const DIR = __dirname;
+const chrome = spawn(CHROME, ["--headless=new", "--no-first-run", "--disable-gpu", `--remote-debugging-port=${PORT}`, `--user-data-dir=${DIR}/ud55`, "--window-size=1280,900", "about:blank"], { stdio: "ignore" });
+const stub = spawn(process.execPath, [DIR + "/stub-chat-delay.js", "8001"], { stdio: "ignore" });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+let ws, idc = 0; const pending = new Map(); const excs = [];
+const send = (method, params = {}) => new Promise((res, rej) => { const id = ++idc; pending.set(id, { res, rej }); ws.send(JSON.stringify({ id, method, params })); });
+const ev = async (expression) => { const r = await send("Runtime.evaluate", { expression, returnByValue: true }); if (r.exceptionDetails) return { err: JSON.stringify(r.exceptionDetails.exception).slice(0, 300) }; return r.result.value; };
+const nav = async (url) => { await send("Page.navigate", { url }); await sleep(1800); };
+(async () => {
+  let t;
+  for (let i = 0; i < 40; i++) { await sleep(300); try { t = (await (await fetch(`http://127.0.0.1:${PORT}/json`)).json()).find((x) => x.type === "page"); if (t) break; } catch {} }
+  ws = new WebSocket(t.webSocketDebuggerUrl);
+  await new Promise((r) => (ws.onopen = r));
+  ws.onmessage = (m) => { const d = JSON.parse(m.data); if (d.id && pending.has(d.id)) { const p = pending.get(d.id); pending.delete(d.id); d.error ? p.rej(new Error(d.error.message)) : p.res(d.result); } else if (d.method === "Runtime.exceptionThrown") excs.push(JSON.stringify(d.params.exceptionDetails).slice(0, 250)); };
+  await send("Runtime.enable"); await send("Page.enable");
+  await sleep(500);
+  await nav("http://127.0.0.1:8001/qinli.html");
+  console.log("LIST:", JSON.stringify(await ev(`(() => ({ cards: document.querySelectorAll('a.ql-card').length, hrefs: [...document.querySelectorAll('a.ql-card')].map(a => a.getAttribute('href')), targets: [...document.querySelectorAll('a.ql-card')].map(a => a.getAttribute('target')), player: document.querySelectorAll('.ql-play').length, choices: document.querySelectorAll('.ql-choice').length, nav: document.querySelectorAll('.nav-link').length }))()`)));
+  await nav("http://127.0.0.1:8001/qinli.html?story=q1449");
+  console.log("OLD DEEPLINK now at:", await ev("location.pathname + location.search"));
+  console.log("PLAY:", JSON.stringify(await ev(`(() => ({ nav: document.querySelectorAll('.nav-link').length, siteNav: document.querySelectorAll('.site-nav').length, bar: !!document.querySelector('.qp-bar'), back: document.querySelector('.qp-back') ? document.querySelector('.qp-back').getAttribute('href') : null, title: document.querySelector('.qp-title') ? document.querySelector('.qp-title').textContent : null, meta: document.querySelector('.qp-meta') ? document.querySelector('.qp-meta').textContent : null, choices: document.querySelectorAll('.ql-choice').length, stats: document.querySelectorAll('.ql-stat-row').length, head: document.querySelector('.head-title') ? document.querySelector('.head-title').textContent : null, docTitle: document.title }))()`)));
+  await nav("http://127.0.0.1:8001/qinli-play.html");
+  console.log("MISSING PARAM now at:", await ev("location.pathname + location.search"));
+  await nav("http://127.0.0.1:8001/qinli-play.html?story=nope");
+  console.log("BAD ID now at:", await ev("location.pathname + location.search"));
+  console.log("EXCS:", JSON.stringify(excs));
+  ws.close(); chrome.kill(); stub.kill(); process.exit(0);
+})().catch((e) => { console.error("HARNESS ERROR", e); chrome.kill(); stub.kill(); process.exit(1); });
