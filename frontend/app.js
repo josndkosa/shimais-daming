@@ -556,6 +556,10 @@
     const heading = el("h2", "section-title tm-heading", ui.title);
     heading.id = "territory-heading";
     section.appendChild(heading);
+    const linkNote = el("p", "tm-link-note");
+    linkNote.hidden = true;
+    section.appendChild(linkNote);
+    const link = { states: ui.states, onManual: null, highlightId: null };
 
     const controls = el("div", "tm-states");
     controls.setAttribute("role", "group");
@@ -567,10 +571,14 @@
       button.appendChild(el("span", "tm-state-year", String(state.year)));
       button.appendChild(el("span", "tm-state-label", state.label));
       button.setAttribute("aria-controls", "territory-stage");
-      button.addEventListener("click", () => selectState(state));
+      button.addEventListener("click", () => onManualClick(state));
       controls.appendChild(button);
       buttons.set(state.id, button);
     });
+    const allBtn = el("button", "tm-state-all", "全部");
+    allBtn.type = "button";
+    allBtn.addEventListener("click", () => link.clearLink());
+    controls.appendChild(allBtn);
     section.appendChild(controls);
     section.appendChild(el("p", "tm-scroll-hint", "左右滑动可查看全部六个阶段"));
 
@@ -685,6 +693,43 @@
       });
       empty.hidden = matches.length > 0;
     }
+    function setLinkNote(text) {
+      if (!text) {
+        linkNote.hidden = true;
+        linkNote.textContent = "";
+        return;
+      }
+      linkNote.textContent = text;
+      linkNote.hidden = false;
+      linkNote.classList.remove("is-flash");
+      void linkNote.offsetWidth;
+      linkNote.classList.add("is-flash");
+    }
+    function onManualClick(state) {
+      if (link.highlightId === state.id) {
+        link.highlightId = null;
+        selectState(state);
+        setLinkNote(null);
+        if (link.onManual) link.onManual(null);
+      } else {
+        link.highlightId = state.id;
+        selectState(state);
+        setLinkNote("正显示 " + state.label + " 时段的事件");
+        if (link.onManual) link.onManual(state);
+      }
+    }
+    link.followEvent = (y) => {
+      const state = ui.states.find((s) => s.range[0] <= y && y <= s.range[1]);
+      if (!state) return;
+      selectState(state);
+      setLinkNote("已随事件年份切换至 " + state.label);
+    };
+    link.clearLink = () => {
+      link.highlightId = null;
+      setLinkNote(null);
+      if (link.onManual) link.onManual(null);
+    };
+    section.territoryLink = link;
     selectState(ui.states[0]);
     return section;
   }
@@ -738,9 +783,13 @@
 
     const wrap = el("div", "container tl-wrap");
     // 版图与时间线列表相互独立：版图初始化失败只移除自身，不拖垮列表渲染。
+    let territoryLink = null;
     try {
       const territory = renderTerritory();
-      if (territory) wrap.appendChild(territory);
+      if (territory) {
+        wrap.appendChild(territory);
+        territoryLink = territory.territoryLink || null;
+      }
     } catch (err) {
       wrap.querySelectorAll(".tm-section").forEach((node) => node.remove());
       console.warn("版图板块初始化失败，已移除；时间线照常渲染。", err);
@@ -823,6 +872,7 @@
           if (open) {
             markRead(ev.id);
             refreshProgress();
+            if (territoryLink) territoryLink.followEvent(Number(ev.year));
           }
         });
 
@@ -836,6 +886,17 @@
 
     app.appendChild(wrap);
     refreshProgress();
+
+    function applyHighlight(state) {
+      rows.forEach((node, id) => {
+        const ev = tl.events.find((e) => e.id === id);
+        const y = Number(ev.year);
+        const inRange = !!state && state.range[0] <= y && y <= state.range[1];
+        node.classList.toggle("tl-linked", inRange);
+        node.classList.toggle("tl-dimmed", !!state && !inRange);
+      });
+    }
+    if (territoryLink) territoryLink.onManual = applyHighlight;
 
     const evNodes = tl.events.map((ev) => ({ ev, node: rows.get(ev.id) }));
     function pickCurrent() {

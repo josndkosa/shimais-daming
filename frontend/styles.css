@@ -558,6 +558,26 @@ body[data-page="index"] {
   margin: 0 0 20px;
 }
 
+.tm-link-note {
+  margin: -12px 0 16px;
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--gold);
+}
+
+.tm-link-note.is-flash {
+  animation: tm-link-fade 0.45s ease;
+}
+
+@keyframes tm-link-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 .tm-states {
   display: flex;
   gap: 0;
@@ -591,6 +611,24 @@ body[data-page="index"] {
   border-bottom-color: var(--vermilion-bright);
   background: color-mix(in srgb, var(--site-accent) 16%, var(--site-bg));
   color: var(--gold);
+}
+
+.tm-state-all {
+  flex: 0 0 auto;
+  align-self: stretch;
+  padding: 12px 14px;
+  border: 0;
+  border-bottom: 2px solid var(--line);
+  background: transparent;
+  font: inherit;
+  letter-spacing: 0.06em;
+  color: var(--site-muted);
+  cursor: pointer;
+}
+
+.tm-state-all:hover {
+  background: var(--site-surface);
+  color: var(--site-fg);
 }
 
 .tm-state-year {
@@ -4014,6 +4052,32 @@ a.ql-card {
 
 .tl-event {
   scroll-margin-top: calc(var(--nav-h) + 92px);
+  transition: opacity 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tl-event.tl-linked {
+  box-shadow: inset 0 0 0 1px var(--gold);
+  animation: tl-link-flash 0.5s ease;
+}
+
+.tl-event.tl-dimmed {
+  opacity: 0.45;
+}
+
+@keyframes tl-link-flash {
+  0% {
+    box-shadow: inset 0 0 0 2px var(--gold);
+  }
+  100% {
+    box-shadow: inset 0 0 0 1px var(--gold);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tm-link-note.is-flash,
+  .tl-event.tl-linked {
+    animation: none;
+  }
 }
 
 .tl-event.is-deep-hit {

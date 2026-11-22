@@ -111,6 +111,7 @@ class Node {
     this.tag = tag; this.className = className; this.children = []; this.listeners = {}; this.textContent = text; this.hidden = false; this.value = ''; this.style = { setProperty(name, value) { this[name] = value; } }; this.dataset = {};
     this.classList = {
       add: (...names) => { this.className += ' ' + names.join(' '); },
+      remove: (...names) => { this.className = this.className.split(' ').filter(n => !names.includes(n)).join(' '); },
       toggle: (name, enabled) => { this.className = this.className.split(' ').filter(n => n !== name).concat(enabled ? [name] : []).join(' '); },
     };
   }
@@ -457,6 +458,73 @@ test('timeline still opens deep links and preserves era context, while plain ent
       if (deepId === 'e1457') assert.match(textOf(walk(app, 'tl-context-line')[0]), /英宗/);
     }
   }
+});
+test('BD linkage: event expand silently switches territory; manual state highlights matching events; no loop, no scroll', () => {
+  const geo = vm.createContext({});
+  vm.runInContext(fs.readFileSync(path.join(root, 'territory-map.js'), 'utf8') + '\nthis.geometry = TERRITORY_GEOMETRY;', geo);
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderTerritory()'), source.indexOf('  function decisionState()'));
+  const app = new Node('main');
+  const writes = []; const scrolls = [];
+  const nav = new Node('header'); nav.offsetHeight = 58;
+  const ctx = vm.createContext({ data, TERRITORY_GEOMETRY: geo.geometry, app, currentModule: { title: '时间线' }, URLSearchParams,
+    location: { search: '' }, readIds: () => writes, markRead: id => writes.push(id),
+    el: (tag, cls, text) => { const n = new Node(tag, cls, text); n.offsetHeight = 50; return n; },
+    renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'),
+    document: { body: { scrollHeight: 2000 }, createElementNS: (ns, tag) => new Node(tag), querySelector: () => nav, documentElement: { style: { setProperty() {} } } },
+    window: { addEventListener() {}, innerHeight: 800, scrollY: 0, scrollTo: () => scrolls.push(1) }, requestAnimationFrame: f => f(), setTimeout: f => f(),
+  });
+  vm.runInContext(code + '\nrenderTimeline();', ctx);
+  const section = walk(app, 'tm-section')[0];
+  const link = section.territoryLink;
+  assert.ok(link && typeof link.followEvent === 'function', 'territory must expose linkage bridge');
+  const buttons = walk(section, 'tm-state');
+  const note = walk(section, 'tm-link-note')[0];
+  const rows = walk(app, 'tl-event');
+  const inRange = (y, s) => s.range[0] <= y && y <= s.range[1];
+  const clean = () => rows.forEach(r => assert.ok(!r.className.includes('tl-linked') && !r.className.includes('tl-dimmed'), r.dataset.id));
+  buttons[1].listeners.click();
+  const s1420 = data.territory.states[1];
+  rows.forEach(r => { const ev = data.timeline.events.find(e => e.id === r.dataset.id); const hit = inRange(Number(ev.year), s1420);
+    assert.equal(r.className.includes('tl-linked'), hit, ev.id); assert.equal(r.className.includes('tl-dimmed'), !hit, ev.id); });
+  assert.equal(note.textContent, '正显示 交趾在版图 时段的事件'); assert.equal(note.hidden, false);
+  assert.equal(scrolls.length, 0, 'manual switch must not scroll');
+  buttons[1].listeners.click(); clean(); assert.equal(note.hidden, true);
+  buttons[1].listeners.click();
+  walk(section, 'tm-state-all')[0].listeners.click(); clean(); assert.equal(note.hidden, true);
+  rows.find(r => r.dataset.id === 'e1449').querySelector('.tl-row').listeners.click();
+  assert.equal(walk(section, 'tm-year')[0].textContent, '1450');
+  assert.equal(note.textContent, '已随事件年份切换至 土木堡之后');
+  clean();
+  assert.equal(scrolls.length, 0, 'event follow must not scroll');
+  rows.find(r => r.dataset.id === 'e1619').querySelector('.tl-row').listeners.click();
+  rows.find(r => r.dataset.id === 'e1644').querySelector('.tl-row').listeners.click();
+  assert.equal(walk(section, 'tm-year')[0].textContent, '1644');
+  assert.equal(note.textContent, '已随事件年份切换至 落幕');
+});
+test('BD keeps timeline alive and clickable when territory data is missing', () => {
+  const geo = vm.createContext({});
+  vm.runInContext(fs.readFileSync(path.join(root, 'territory-map.js'), 'utf8') + '\nthis.geometry = TERRITORY_GEOMETRY;', geo);
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function renderTerritory()'), source.indexOf('  function decisionState()'));
+  const app = new Node('main');
+  const warns = [];
+  const nav = new Node('header'); nav.offsetHeight = 58;
+  const ctx = vm.createContext({ data: { ...data, territory: undefined }, TERRITORY_GEOMETRY: geo.geometry, app, currentModule: { title: '时间线' }, URLSearchParams,
+    location: { search: '' }, readIds: () => [], markRead: () => {},
+    console: { warn: (...a) => warns.push(a.join(' ')) },
+    el: (tag, cls, text) => { const n = new Node(tag, cls, text); n.offsetHeight = 50; return n; },
+    renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'),
+    document: { body: { scrollHeight: 2000 }, createElementNS: (ns, tag) => new Node(tag), querySelector: () => nav, documentElement: { style: { setProperty() {} } } },
+    window: { addEventListener() {}, innerHeight: 800, scrollY: 0, scrollTo() {} }, requestAnimationFrame: f => f(), setTimeout: f => f(),
+  });
+  vm.runInContext(code + '\nrenderTimeline();', ctx);
+  assert.equal(walk(app, 'tl-event').length, 23);
+  assert.equal(walk(app, 'tm-section').length, 0, 'territory must not render when data missing');
+  assert.ok(warns.some(w => w.includes('版图数据缺失或结构不合法')), 'expected isolation warning');
+  const row = walk(app, 'tl-event').find(n => n.dataset.id === 'e1449');
+  row.querySelector('.tl-row').listeners.click();
+  assert.equal(walk(row, 'tl-detail')[0].hidden, false, 'event still expands without territory');
 });
 test('territory empty event state is explicit', () => {
   const { section } = territoryFixture({ ...data, timeline: { ...data.timeline, events: [] } });
