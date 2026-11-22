@@ -49,7 +49,7 @@
     ? currentModule.title + " · " + data.meta.title
     : data.meta.title;
   const metaDesc = document.querySelector('meta[name="description"]');
-  if (metaDesc) metaDesc.setAttribute("content", data.meta.description);
+  if (metaDesc && !metaDesc.getAttribute("content")) metaDesc.setAttribute("content", data.meta.description);
 
   function el(tag, className, text) {
     const node = document.createElement(tag);
