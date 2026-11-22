@@ -601,6 +601,19 @@ test('BE list codex row lit/unknown/old-save and top total; profile collected li
   vm.runInContext(CODEX_HELPERS + pcode + '\nrenderProfile();', pctx);
   assert.equal(textOf(walk(papp, 'pf-endings-line')[0]), '已收集结局 1/20');
 });
+test('BH left scrollbar injected site-wide, layered under nav/popup, hidden when short', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  assert.ok(source.includes('function initLeftScroll()'), 'init function missing');
+  assert.ok(source.includes('if (!/browser-tests\\.html$/.test(location.pathname)) initLeftScroll();'), 'must init on formal pages but not the test page');
+  assert.ok(source.includes('requestAnimationFrame(update)'), 'scroll updates must be rAF-throttled');
+  assert.ok(source.includes('setPointerCapture'), 'thumb drag must use pointer capture');
+  const css = fs.readFileSync(path.join(root, 'styles.css'), 'utf8');
+  ['.left-scroll {', '.left-scroll-thumb', '.left-scroll[hidden]', '.left-scroll.is-dragging'].forEach(sel => assert.ok(css.includes(sel), 'missing css ' + sel));
+  assert.ok(/\.left-scroll \{[\s\S]*?position: fixed;[\s\S]*?height: 100dvh;[\s\S]*?width: 5px;[\s\S]*?z-index: 50;[\s\S]*?touch-action: none;/.test(css), 'bar geometry/layering/touch-action');
+  assert.ok(/\.left-scroll-thumb \{[\s\S]*?min-height: 40px;[\s\S]*?background: var\(--gold\);/.test(css), 'gold thumb with min height');
+  assert.ok(/@media \(max-width: 480px\) \{[\s\S]*?\.left-scroll \{\s*width: 4px;/.test(css), 'narrow screens 4px');
+  assert.ok(css.includes('scrollbar-width: none'), 'AZ right-side hiding must stay');
+});
 test('territory empty event state is explicit', () => {
   const { section } = territoryFixture({ ...data, timeline: { ...data.timeline, events: [] } });
   assert.match(textOf(section), /本站时间线暂无此段事件/);

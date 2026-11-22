@@ -53,6 +53,55 @@ body::-webkit-scrollbar {
   display: none;
 }
 
+/* ---------- 全站左侧自定义滚动条（BH） ---------- */
+
+.left-scroll {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: 5px;
+  z-index: 50;
+  background: rgba(12, 10, 9, 0.35);
+  touch-action: none;
+}
+
+.left-scroll[hidden] {
+  display: none;
+}
+
+.left-scroll:hover,
+.left-scroll.is-dragging {
+  width: 6px;
+}
+
+.left-scroll-thumb {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  min-height: 40px;
+  border-radius: 3px;
+  background: var(--gold);
+  opacity: 0.45;
+  transition: opacity var(--dur) ease;
+}
+
+.left-scroll:hover .left-scroll-thumb,
+.left-scroll.is-dragging .left-scroll-thumb {
+  opacity: 0.9;
+}
+
+@media (max-width: 480px) {
+  .left-scroll {
+    width: 4px;
+  }
+  .left-scroll:hover,
+  .left-scroll.is-dragging {
+    width: 5px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

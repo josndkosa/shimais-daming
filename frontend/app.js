@@ -3513,6 +3513,81 @@
     app.appendChild(wrap);
   }
 
+  /* ---------- 全站左侧自定义滚动条（BH） ---------- */
+
+  function initLeftScroll() {
+    const bar = el("div", "left-scroll");
+    bar.id = "left-scroll";
+    bar.setAttribute("aria-hidden", "true");
+    const thumb = el("div", "left-scroll-thumb");
+    bar.appendChild(thumb);
+    document.body.appendChild(bar);
+
+    let tick = false;
+    let dragging = false;
+    let dragOffset = 0;
+
+    function metrics() {
+      const doc = document.documentElement;
+      const trackH = bar.clientHeight;
+      const viewH = window.innerHeight;
+      const docH = doc.scrollHeight;
+      return { trackH, viewH, docH, scrollable: docH > viewH + 1, thumbH: Math.max(40, Math.round((viewH / docH) * trackH)) };
+    }
+    function update() {
+      tick = false;
+      const m = metrics();
+      bar.hidden = !m.scrollable;
+      if (!m.scrollable) return;
+      const maxScroll = m.docH - m.viewH;
+      const ratio = maxScroll > 0 ? window.scrollY / maxScroll : 0;
+      thumb.style.height = m.thumbH + "px";
+      thumb.style.top = Math.round(ratio * (m.trackH - m.thumbH)) + "px";
+    }
+    function schedule() {
+      if (tick) return;
+      tick = true;
+      requestAnimationFrame(update);
+    }
+    function scrollToRatio(r) {
+      const m = metrics();
+      window.scrollTo({ top: Math.max(0, Math.min(1, r)) * (m.docH - m.viewH), behavior: "instant" });
+    }
+    bar.addEventListener("pointerdown", (e) => {
+      const m = metrics();
+      if (!m.scrollable) return;
+      e.preventDefault();
+      bar.setPointerCapture(e.pointerId);
+      const y = e.clientY - bar.getBoundingClientRect().top;
+      if (e.target === thumb) {
+        dragOffset = y - thumb.offsetTop;
+      } else {
+        scrollToRatio((y - m.thumbH / 2) / (m.trackH - m.thumbH));
+        dragOffset = m.thumbH / 2;
+      }
+      dragging = true;
+      bar.classList.add("is-dragging");
+    });
+    bar.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const m = metrics();
+      const y = e.clientY - bar.getBoundingClientRect().top - dragOffset;
+      scrollToRatio(y / (m.trackH - m.thumbH));
+    });
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      bar.classList.remove("is-dragging");
+      if (bar.hasPointerCapture(e.pointerId)) bar.releasePointerCapture(e.pointerId);
+    }
+    bar.addEventListener("pointerup", endDrag);
+    bar.addEventListener("pointercancel", endDrag);
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    if ("ResizeObserver" in window) new ResizeObserver(schedule).observe(document.body);
+    update();
+  }
+
   /* ---------- 组装 ---------- */
 
   if (page !== "qinli-play") renderNav();
@@ -3530,4 +3605,5 @@
   else if (page === "qinli-play") renderQinliPlay();
   else renderPlaceholder();
   app.appendChild(renderFooter());
+  if (!/browser-tests\.html$/.test(location.pathname)) initLeftScroll();
 })();
