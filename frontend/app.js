@@ -3513,13 +3513,13 @@
     app.appendChild(wrap);
   }
 
-  /* ---------- 全站左侧自定义滚动条（BH） ---------- */
+  /* ---------- 全站右侧自定义滚动条（BH） ---------- */
 
-  function initLeftScroll() {
-    const bar = el("div", "left-scroll");
-    bar.id = "left-scroll";
+  function initSideScroll() {
+    const bar = el("div", "side-scroll");
+    bar.id = "side-scroll";
     bar.setAttribute("aria-hidden", "true");
-    const thumb = el("div", "left-scroll-thumb");
+    const thumb = el("div", "side-scroll-thumb");
     bar.appendChild(thumb);
     document.body.appendChild(bar);
 
@@ -3605,5 +3605,5 @@
   else if (page === "qinli-play") renderQinliPlay();
   else renderPlaceholder();
   app.appendChild(renderFooter());
-  if (!/browser-tests\.html$/.test(location.pathname)) initLeftScroll();
+  if (!/browser-tests\.html$/.test(location.pathname)) initSideScroll();
 })();

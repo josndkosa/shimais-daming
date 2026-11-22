@@ -53,11 +53,11 @@ body::-webkit-scrollbar {
   display: none;
 }
 
-/* ---------- 全站左侧自定义滚动条（BH） ---------- */
+/* ---------- 全站右侧自定义滚动条（BH） ---------- */
 
-.left-scroll {
+.side-scroll {
   position: fixed;
-  left: 0;
+  right: 0;
   top: 0;
   height: 100vh;
   height: 100dvh;
@@ -67,16 +67,16 @@ body::-webkit-scrollbar {
   touch-action: none;
 }
 
-.left-scroll[hidden] {
+.side-scroll[hidden] {
   display: none;
 }
 
-.left-scroll:hover,
-.left-scroll.is-dragging {
+.side-scroll:hover,
+.side-scroll.is-dragging {
   width: 6px;
 }
 
-.left-scroll-thumb {
+.side-scroll-thumb {
   position: absolute;
   left: 0;
   width: 100%;
@@ -87,17 +87,17 @@ body::-webkit-scrollbar {
   transition: opacity var(--dur) ease;
 }
 
-.left-scroll:hover .left-scroll-thumb,
-.left-scroll.is-dragging .left-scroll-thumb {
+.side-scroll:hover .side-scroll-thumb,
+.side-scroll.is-dragging .side-scroll-thumb {
   opacity: 0.9;
 }
 
 @media (max-width: 480px) {
-  .left-scroll {
+  .side-scroll {
     width: 4px;
   }
-  .left-scroll:hover,
-  .left-scroll.is-dragging {
+  .side-scroll:hover,
+  .side-scroll.is-dragging {
     width: 5px;
   }
 }
