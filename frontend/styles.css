@@ -3284,6 +3284,69 @@ textarea.ct-text {
   background: rgba(232, 232, 230, 0.08);
 }
 
+.ql-codex {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 calc(var(--gap) * 0.7);
+}
+
+.ql-codex-count {
+  font-size: calc(14px * var(--site-type, 1));
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+.ql-codex-guide {
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+}
+
+.ql-codex-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ql-codex-label {
+  font-size: calc(12px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+}
+
+.ql-end-cell {
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  font-family: var(--font-body);
+  font-size: calc(12px * var(--site-type, 1));
+  letter-spacing: 0.02em;
+  color: var(--site-muted);
+}
+
+.ql-end-cell.is-lit {
+  border-color: var(--gold);
+  color: var(--gold);
+  background: color-mix(in srgb, var(--gold) 12%, transparent);
+  cursor: pointer;
+}
+
+.ql-codex-old {
+  font-size: calc(12px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+}
+
+.pf-endings-line {
+  margin: 6px 0 0;
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.04em;
+  color: var(--site-muted);
+}
+
 /* ---------- 亲历独立播放页与整卡链接（AU） ---------- */
 
 .qp-bar {

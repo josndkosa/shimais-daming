@@ -623,6 +623,7 @@ const SITE_DATA = {
     wrongTitle: "待补史料",
     wrongReviewBtn: "回看 →",
     qinliTitle: "亲历完成",
+    endingsCollected: "已收集结局",
     resumeTitle: "继续上次研读",
     resumeEmpty: "展开一个事件、定位一张卡或进入亲历后，这里会保留具体续读入口。",
     perfectTitle: "基础题全对，继续深入",
@@ -1260,6 +1261,12 @@ const SITE_DATA = {
     restart: "再活一次",
     toChat: "去跟于谦聊聊",
     closure: "历史背景与剧情边界 · 编辑解读",
+    codexTitle: "结局图鉴",
+    codexGuide: "每个故事都有不止一种结局",
+    endingsLabel: "结局",
+    unknownCell: "？？？",
+    oldSaveNote: "已通关 · 结局待收集",
+    notReachedHint: "尚未抵达",
   },
 
   qinli: [

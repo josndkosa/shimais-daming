@@ -112,6 +112,7 @@ class Node {
     this.classList = {
       add: (...names) => { this.className += ' ' + names.join(' '); },
       remove: (...names) => { this.className = this.className.split(' ').filter(n => !names.includes(n)).join(' '); },
+      contains: (name) => this.className.split(' ').includes(name),
       toggle: (name, enabled) => { this.className = this.className.split(' ').filter(n => n !== name).concat(enabled ? [name] : []).join(' '); },
     };
   }
@@ -132,6 +133,7 @@ class Node {
 }
 function walk(node, className) { return [node, ...node.children.flatMap(n => walk(n, className))].filter(n => n.className.split(' ').includes(className)); }
 function textOf(node) { return node.textContent + node.children.map(textOf).join(''); }
+const CODEX_HELPERS = (() => { const s = fs.readFileSync(path.join(root, 'app.js'), 'utf8'); return s.slice(s.indexOf('  /* ---------- 结局图鉴：抵达即登记'), s.indexOf('  function readIds()')); })();
 async function searchPage(sourceId, response) {
   const appCode = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const code = appCode.slice(appCode.indexOf('  function renderSearch()'), appCode.indexOf('  /* ---------- 占位模块页'));
@@ -195,7 +197,7 @@ test('profile recommends actual wrong-answer material and a deeper path for full
     const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} },
     });
-    vm.runInContext(code + '\nrenderProfile();', ctx);
+    vm.runInContext(CODEX_HELPERS + code + '\nrenderProfile();', ctx);
     const links = walk(app, 'topic-next').concat(walk(app, 'cta-button'));
     if (perfect) assert.ok(links.some(a => a.href === 'quiz.html?topic=yitiaobian'));
     else assert.ok(links.some(a => a.href === data.quiz[9].reviewHref));
@@ -211,7 +213,7 @@ test('profile lists wrong-answer material from the latest submission and hides w
     const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} },
     });
-    vm.runInContext(code + '\nrenderProfile();', ctx);
+    vm.runInContext(CODEX_HELPERS + code + '\nrenderProfile();', ctx);
     return app;
   };
   const ids = Array.from(data.quiz.slice(0, 3), q => q.id);
@@ -242,7 +244,7 @@ test('all story final-scene resumes preserve numbers and finish without applying
       loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {},
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'), window: { addEventListener() {} },
     });
-    vm.runInContext(code + '\nrenderQinliPlay();', ctx);
+    vm.runInContext(CODEX_HELPERS + code + '\nrenderQinliPlay();', ctx);
     assert.equal(progress.qinli.current, null, story.id);
     assert.deepEqual(Array.from(progress.qinli.done), [story.id]);
     assert.deepEqual(walk(app, 'ql-stat-val').map(n => n.textContent), ['80', '45']);
@@ -269,7 +271,7 @@ function renderEnding(story, qinliUI = data.qinliUI) {
     loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {},
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'), window: { addEventListener() {} },
   });
-  vm.runInContext(code + '\nrenderQinliPlay();', ctx);
+  vm.runInContext(CODEX_HELPERS + code + '\nrenderQinliPlay();', ctx);
   return app;
 }
 test('all six endings render the exact configured chat label and destination', () => {
@@ -394,7 +396,7 @@ test('territory states cover every year exactly once with the specified overlays
 });
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, ...existing } = data;
-  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'df9d29b7a758a0209513a7c3b5fa0b86e9df4e825fc8bbd029f36a4fdc88ea75');
+  assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'ffcf4ef985fe51175b035bc24ef8467812392509cacf229591ddb50f52fecc59');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');
 });
@@ -525,6 +527,79 @@ test('BD keeps timeline alive and clickable when territory data is missing', () 
   const row = walk(app, 'tl-event').find(n => n.dataset.id === 'e1449');
   row.querySelector('.tl-row').listeners.click();
   assert.equal(walk(row, 'tl-detail')[0].hidden, false, 'event still expands without territory');
+});
+test('BE endings codex storage: reach records dedup under single progress key, totals 20', () => {
+  assert.equal(data.qinli.reduce((n, s) => n + (s.endings || []).length, 0), 20);
+  assert.deepEqual(Array.from(data.qinli, s => (s.endings || []).length), [3, 3, 3, 3, 4, 4]);
+  const store = { v: null, k: null };
+  const src = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const progSrc = src.slice(src.indexOf('  function loadProgress()'), src.indexOf('  /* ---------- 结局图鉴'));
+  const ctx = vm.createContext({ data, PROGRESS_KEY: 'shimais-daming:progress:v1',
+    localStorage: { getItem: () => store.v, setItem: (k, val) => { store.k = k; store.v = val; } },
+  });
+  vm.runInContext(progSrc + CODEX_HELPERS + '\nthis.api = { recordEnding, collectedEndingCount, totalEndingCount, qinliEndingsMap };', ctx);
+  const api = ctx.api;
+  assert.equal(api.totalEndingCount(), 20);
+  assert.equal(api.collectedEndingCount(), 0);
+  api.recordEnding('q1581', 'minren');
+  api.recordEnding('q1581', 'minren');
+  api.recordEnding('q1581', 'qingtian');
+  assert.deepEqual(Array.from(api.qinliEndingsMap().q1581), ['minren', 'qingtian']);
+  assert.equal(api.collectedEndingCount(), 2);
+  assert.equal(store.k, 'shimais-daming:progress:v1', 'must reuse the single progress key');
+  api.recordEnding('q1581', 'bogus');
+  assert.equal(api.collectedEndingCount(), 2, 'unknown ending id not counted');
+  store.v = JSON.stringify({ qinli: { done: ['q1380'] } });
+  assert.equal(api.collectedEndingCount(), 0, 'old save without field collects nothing');
+  assert.deepEqual(Array.from(Object.keys(api.qinliEndingsMap())), []);
+});
+test('BE list codex row lit/unknown/old-save and top total; profile collected line matches', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const listCode = source.slice(source.indexOf('  function renderQinli()'), source.indexOf('  function renderQinliPlay()'));
+  const renderList = (progress) => {
+    const app = new Node('main');
+    const ctx = vm.createContext({ data, app, URLSearchParams, location: { search: '' }, loadProgress: () => progress, updateProgress: () => assert.fail('list read-only'),
+      el: (t, c, x) => new Node(t, c, x), renderPageHead: () => new Node('header'), window: { addEventListener() {} }, setTimeout: () => {}, PROGRESS_KEY: 'k' });
+    vm.runInContext(CODEX_HELPERS + listCode + '\nrenderQinli();', ctx);
+    return app;
+  };
+  let app = renderList({});
+  assert.equal(textOf(walk(app, 'ql-codex-count')[0]), '结局图鉴 0 / 20');
+  assert.equal(walk(app, 'ql-codex-guide')[0].hidden, false);
+  walk(app, 'ql-card').forEach((c, i) => {
+    const cells = walk(c, 'ql-end-cell');
+    assert.equal(cells.length, (data.qinli[i].endings || []).length);
+    cells.forEach(x => { assert.equal(x.textContent, '？？？'); assert.ok(!x.className.includes('is-lit')); });
+    assert.equal(walk(c, 'ql-codex-old')[0].hidden, true);
+  });
+  const e0 = data.qinli.find(s => s.id === 'q1581').endings[0];
+  app = renderList({ qinliEndings: { q1581: [e0.id] }, qinli: { done: ['q1380', 'q1581'] } });
+  assert.equal(textOf(walk(app, 'ql-codex-count')[0]), '结局图鉴 1 / 20');
+  assert.equal(walk(app, 'ql-codex-guide')[0].hidden, true);
+  const c581 = walk(app, 'ql-card').find(c => c.href.includes('q1581'));
+  assert.equal(textOf(walk(c581, 'ql-codex-label')[0]), '结局 1/4');
+  const lit = walk(c581, 'ql-end-cell').filter(x => x.className.includes('is-lit'));
+  assert.equal(lit.length, 1);
+  assert.equal(lit[0].textContent, e0.title);
+  assert.equal(walk(c581, 'ql-codex-old')[0].hidden, true);
+  const c380 = walk(app, 'ql-card').find(c => c.href.includes('q1380'));
+  assert.equal(textOf(walk(c380, 'ql-codex-label')[0]), '结局 0/3');
+  assert.equal(walk(c380, 'ql-codex-old')[0].hidden, false);
+  assert.equal(textOf(walk(c380, 'ql-codex-old')[0]), '已通关 · 结局待收集');
+  const un = walk(c581, 'ql-end-cell').find(x => !x.className.includes('is-lit'));
+  const evt = { preventDefault() { this.pd = true; }, stopPropagation() {} };
+  un.listeners.click(evt);
+  assert.equal(evt.pd, true, 'unlit cell must block card navigation');
+  assert.equal(un.textContent, '尚未抵达');
+  const litEvt = { preventDefault() { this.pd = true; }, stopPropagation() {} };
+  lit[0].listeners.click(litEvt);
+  assert.equal(litEvt.pd, undefined, 'lit cell rides the card link to replay');
+  const pcode = source.slice(source.indexOf('  function renderProfile()'), source.indexOf('  /* ---------- 人物对话'));
+  const papp = new Node('main');
+  const pctx = vm.createContext({ data, app: papp, currentModule: { title: '画像' }, loadProgress: () => ({ qinliEndings: { q1581: [e0.id] }, qinli: { done: ['q1581'] } }), readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
+    el: (t, c, x) => new Node(t, c, x), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} } });
+  vm.runInContext(CODEX_HELPERS + pcode + '\nrenderProfile();', pctx);
+  assert.equal(textOf(walk(papp, 'pf-endings-line')[0]), '已收集结局 1/20');
 });
 test('territory empty event state is explicit', () => {
   const { section } = territoryFixture({ ...data, timeline: { ...data.timeline, events: [] } });
@@ -979,7 +1054,7 @@ test('qinli splits into a pure list and a nav-free play page', () => {
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
     window: { addEventListener() {} }, PROGRESS_KEY: 'shimais-daming:progress:v1',
   });
-  vm.runInContext(listCode + '\nrenderQinli();', ctx);
+  vm.runInContext(CODEX_HELPERS + listCode + '\nrenderQinli();', ctx);
   const cards = walk(app, 'ql-card');
   assert.equal(cards.length, 6);
   cards.forEach((c, i) => {
@@ -996,7 +1071,7 @@ test('qinli splits into a pure list and a nav-free play page', () => {
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
     window: { addEventListener() {} },
   });
-  vm.runInContext(listCode + '\nrenderQinli();', ctx2);
+  vm.runInContext(CODEX_HELPERS + listCode + '\nrenderQinli();', ctx2);
   assert.deepEqual(replaced2, ['qinli-play.html?story=q1449']);
   assert.equal(app2.children.length, 0);
 });

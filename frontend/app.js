@@ -112,6 +112,35 @@
     return p;
   }
 
+  /* ---------- 结局图鉴：抵达即登记，沿用 progress 单 key ---------- */
+
+  function qinliEndingsMap() {
+    const p = loadProgress();
+    return p.qinliEndings && typeof p.qinliEndings === "object" ? p.qinliEndings : {};
+  }
+  function recordEnding(storyId, eid) {
+    updateProgress((p) => {
+      p.qinliEndings = p.qinliEndings && typeof p.qinliEndings === "object" ? p.qinliEndings : {};
+      const arr = Array.isArray(p.qinliEndings[storyId]) ? p.qinliEndings[storyId] : [];
+      if (!arr.includes(eid)) arr.push(eid);
+      p.qinliEndings[storyId] = arr;
+    });
+  }
+  function collectedEndingCount() {
+    const map = qinliEndingsMap();
+    let n = 0;
+    data.qinli.forEach((s) => {
+      const arr = Array.isArray(map[s.id]) ? map[s.id] : [];
+      (s.endings || []).forEach((e) => {
+        if (arr.includes(e.id)) n++;
+      });
+    });
+    return n;
+  }
+  function totalEndingCount() {
+    return data.qinli.reduce((n, s) => n + (s.endings || []).length, 0);
+  }
+
   function readIds() {
     const p = loadProgress();
     return p.timeline && Array.isArray(p.timeline.read) ? p.timeline.read : [];
@@ -1126,8 +1155,14 @@
     }
     app.appendChild(renderPageHead(qu.sectionTitle, qu.sectionHint));
     const wrap = el("div", "container ql-wrap");
+    const codex = el("div", "ql-codex");
+    const codexCount = el("span", "ql-codex-count");
+    const codexGuide = el("span", "ql-codex-guide", qu.codexGuide);
+    codex.append(codexCount, codexGuide);
+    wrap.appendChild(codex);
     const cards = el("div", "ql-cards");
     const cardNodes = new Map();
+    const codexRows = new Map();
     function qinliState() {
       const p = loadProgress();
       const q = p.qinli && typeof p.qinli === "object" ? p.qinli : {};
@@ -1148,6 +1183,27 @@
           node.querySelector(".ql-play-btn").textContent =
             st.current && st.current.storyId === s.id ? qu.resume : qu.play;
         }
+      });
+      paintCodex();
+    }
+    function paintCodex() {
+      const map = qinliEndingsMap();
+      const got = collectedEndingCount();
+      codexCount.textContent = qu.codexTitle + " " + got + " / " + totalEndingCount();
+      codexGuide.hidden = got > 0;
+      const st = qinliState();
+      stories.forEach((s) => {
+        const r = codexRows.get(s.id);
+        if (!r) return;
+        const arr = Array.isArray(map[s.id]) ? map[s.id] : [];
+        const lit = (s.endings || []).filter((e) => arr.includes(e.id)).length;
+        r.label.textContent = qu.endingsLabel + " " + lit + "/" + (s.endings || []).length;
+        r.cells.forEach(({ node, ending }) => {
+          const isLit = arr.includes(ending.id);
+          node.classList.toggle("is-lit", isLit);
+          node.textContent = isLit ? ending.title : qu.unknownCell;
+        });
+        r.oldNote.hidden = !(st.done.includes(s.id) && lit === 0);
       });
     }
     stories.forEach((s) => {
@@ -1171,6 +1227,28 @@
       const done = el("span", "ql-done", qu.doneBadge);
       done.hidden = true;
       card.appendChild(done);
+      const row = el("div", "ql-codex-row");
+      const label = el("span", "ql-codex-label");
+      row.appendChild(label);
+      const cells = (s.endings || []).map((e) => {
+        const cell = el("span", "ql-end-cell");
+        cell.addEventListener("click", (evt) => {
+          if (cell.classList.contains("is-lit")) return;
+          evt.preventDefault();
+          evt.stopPropagation();
+          cell.textContent = qu.notReachedHint;
+          setTimeout(() => {
+            if (!cell.classList.contains("is-lit")) cell.textContent = qu.unknownCell;
+          }, 1200);
+        });
+        row.appendChild(cell);
+        return { node: cell, ending: e };
+      });
+      const oldNote = el("span", "ql-codex-old", qu.oldSaveNote);
+      oldNote.hidden = true;
+      row.appendChild(oldNote);
+      card.appendChild(row);
+      codexRows.set(s.id, { label, cells, oldNote });
       card.appendChild(el("span", "ql-play-btn", s.playable ? qu.play : qu.comingSoon));
       cards.appendChild(card);
       cardNodes.set(s.id, card);
@@ -1312,6 +1390,7 @@
 
     function showEnding(eid) {
       const e = run.story.endings.find((x) => x.id === eid);
+      recordEnding(run.story.id, eid);
       stage.replaceChildren();
       const box = el("div", "ql-ending");
       box.appendChild(el("h4", "ql-ending-title", e.title));
@@ -2317,6 +2396,7 @@
       const qlStat = el("div", "pf-stat");
       qlStat.appendChild(el("p", "pf-stat-title", ui.qinliTitle));
       qlStat.appendChild(el("p", "pf-count", completed.length + " / " + playable.length));
+      qlStat.appendChild(el("p", "pf-endings-line", ui.endingsCollected + " " + collectedEndingCount() + "/" + totalEndingCount()));
       const qlLink = el("a", "pf-link", "继续亲历");
       const currentStory = resolveLastRead({ kind: "qinli", id: p.qinli && p.qinli.current && p.qinli.current.storyId });
       qlLink.href = currentStory ? currentStory.href : "qinli.html";
