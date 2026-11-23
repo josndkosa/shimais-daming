@@ -1670,20 +1670,22 @@
         }
 
         const body = el("div", "cw-body");
-        if (g.kind === "institution") body.appendChild(el("span", "cw-glyph", c.glyph));
+        const inst = g.kind === "institution";
+        const rail = inst ? el("div", "cw-inst-rail") : null;
+        const main = inst ? el("div", "cw-inst-main") : null;
+        const side = inst ? el("div", "cw-inst-side") : null;
         const headRow = el("div", "cw-head");
         headRow.appendChild(el("h3", "cw-name", c.name));
         if (c.role) headRow.appendChild(el("span", "cw-role", c.role));
         if (c.era) headRow.appendChild(el("span", "cw-era", c.era));
-        body.appendChild(headRow);
-        if (c.sub) body.appendChild(el("p", "cw-sub", c.sub));
-        body.appendChild(el("p", "cw-position", c.position));
+        const sub = c.sub ? el("p", "cw-sub", c.sub) : null;
+        const position = el("p", "cw-position", c.position);
+        let cbdb = null;
         if (c.cbdbUrl) {
-          const link = el("a", "topic-next cbdb-link", "CBDB 人物条目 ↗");
-          link.href = c.cbdbUrl;
-          link.target = "_blank";
-          link.rel = "noopener";
-          body.appendChild(link);
+          cbdb = el("a", "topic-next cbdb-link", "CBDB 人物条目 ↗");
+          cbdb.href = c.cbdbUrl;
+          cbdb.target = "_blank";
+          cbdb.rel = "noopener";
         }
 
         const facts = el("div", "cw-facts");
@@ -1691,10 +1693,10 @@
         const ul = el("ul", "cw-fact-list");
         c.facts.forEach((f) => ul.appendChild(el("li", "cw-fact", f)));
         facts.appendChild(ul);
-        body.appendChild(facts);
 
+        let paper = null;
         if (c.quote) {
-          const paper = el("div", "cw-paper");
+          paper = el("div", "cw-paper");
           const mid = el("div", "cw-paper-mid");
           const inner = el("div", "cw-paper-in");
           const fish = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -1710,22 +1712,47 @@
           inner.appendChild(el("p", "cw-paper-verification", c.quoteVerification));
           mid.appendChild(inner);
           paper.appendChild(mid);
-          body.appendChild(paper);
         }
 
         const comment = el("div", "cw-comment");
         comment.appendChild(el("span", "cw-comment-label", ui.commentLabel));
         comment.appendChild(el("p", "cw-comment-p", c.comment));
-        body.appendChild(comment);
         const permalink = el("a", "topic-next", "定位此卡 · 留作续读");
         permalink.href = "cards.html?card=" + c.id;
-        body.appendChild(permalink);
+        let source = null;
         if (c.sourceId) {
-          const source = el("a", "topic-next", "查看引文、出处与版本限制");
+          source = el("a", "topic-next", "查看引文、出处与版本限制");
           source.href = "search.html?source=" + encodeURIComponent(c.sourceId);
-          body.appendChild(source);
         }
-        if (c.id === "i3") body.appendChild(buildTopicPath("cards.html?card=i3"));
+        const topic = c.id === "i3" ? buildTopicPath("cards.html?card=i3") : null;
+
+        if (inst) {
+          rail.appendChild(el("span", "cw-glyph", c.glyph));
+          rail.appendChild(headRow);
+          if (sub) rail.appendChild(sub);
+          main.appendChild(position);
+          main.appendChild(facts);
+          if (paper) side.appendChild(paper);
+          side.appendChild(comment);
+          side.appendChild(permalink);
+          if (source) side.appendChild(source);
+          if (cbdb) side.appendChild(cbdb);
+          if (topic) side.appendChild(topic);
+          body.appendChild(rail);
+          body.appendChild(main);
+          body.appendChild(side);
+        } else {
+          body.appendChild(headRow);
+          if (sub) body.appendChild(sub);
+          body.appendChild(position);
+          if (cbdb) body.appendChild(cbdb);
+          body.appendChild(facts);
+          if (paper) body.appendChild(paper);
+          body.appendChild(comment);
+          body.appendChild(permalink);
+          if (source) body.appendChild(source);
+          if (topic) body.appendChild(topic);
+        }
 
         card.appendChild(body);
         grid.appendChild(card);
