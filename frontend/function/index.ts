@@ -19,4 +19,14 @@ const api = createApi({
   },
 });
 
-Deno.serve((req, info) => api.handle(req, info));
+Deno.serve(async (req, info) => {
+  // BS-2 临时诊断：只回连接地址与网关转发头，供限流身份实测；下一版移除。
+  const url = new URL(req.url);
+  if (url.searchParams.get("action") === "netinfo") {
+    return new Response(JSON.stringify({
+      remoteAddr: (info && info.remoteAddr && info.remoteAddr.hostname) || null,
+      xff: req.headers.get("x-forwarded-for"),
+    }), { headers: { "content-type": "application/json; charset=utf-8" } });
+  }
+  return api.handle(req, info);
+});
