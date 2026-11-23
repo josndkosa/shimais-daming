@@ -399,8 +399,11 @@ export function createApi(deps = {}) {
 
   async function route(req, ip) {
     const url = new URL(req.url);
-    // 网关把 /functions/v1/app/<后缀> 改写为 /app/<后缀>（BR-0 实测）；本地对拍直接给 /api/*。
-    let path = url.pathname.replace(/^\/functions\/v1\/[^/]+/, "").replace(/^\/app/, "") || "/";
+    // 网关把 /functions/v1/app/<后缀> 改写为 /<上游名>/<后缀>（上游名不固定，BR-0/BS 实测）；
+    // 本地对拍直接给 /api/*。剥掉首段网关前缀，保留 /api/* 业务路径。
+    let path = url.pathname.replace(/^\/functions\/v1\/[^/]+/, "");
+    if (!path.startsWith("/api/")) path = path.replace(/^\/[^/]+/, "");
+    path = path || "/";
     const action = url.searchParams.get("action");
     if (action === "health") path = "/api/health";
     else if (action === "chat") path = "/api/chat";
@@ -457,4 +460,28 @@ export function createApi(deps = {}) {
   }
 
   return { handle, hits, practiceHits, clearRetrievalCache: clearCache, constants: { GENERAL_RULES, CHECK_RULES, PRACTICE_RULES, REVIEW_RULES } };
+}
+
+// 限流身份（BS 实测口径）：remoteAddr 为占位 0.0.0.0；网关注入 XFF 链，最左可被客户端伪造，
+// 真实客户端＝自右向左第一个非内网地址（等价 uvicorn 可信代理「最右非可信」语义，可信段＝内网）。
+function isInternalIp(ip) {
+  return (
+    /^10\./.test(ip) || /^127\./.test(ip) || /^0\./.test(ip) || /^169\.254\./.test(ip) ||
+    /^192\.168\./.test(ip) || /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+    /^100\.(6[4-9]|[7-9]\d|1[01]\d|12[0-7])\./.test(ip) ||
+    ip === "::1" || /^f[cd]/i.test(ip) || /^fe80/i.test(ip)
+  );
+}
+
+export function gatewayClientIp(req, info) {
+  const xff = req.headers.get("x-forwarded-for");
+  if (xff) {
+    const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    for (let i = parts.length - 1; i >= 0; i--) {
+      if (!isInternalIp(parts[i])) return parts[i];
+    }
+  }
+  const remote = info && info.remoteAddr && info.remoteAddr.hostname;
+  if (remote && remote !== "0.0.0.0") return remote;
+  return "unknown";
 }

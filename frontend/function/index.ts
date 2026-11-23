@@ -1,31 +1,23 @@
 // 史脉·大明 Sites Functions 入口：三端点移植版（BR-1）。
-// 路由：/functions/v1/app/api/health|chat|quiz/practice（网关改写为 /app/api/*），或 ?action=health|chat|practice。
-import { createApi } from "./api.js";
+// 路由：/functions/v1/app/api/health|chat|quiz/practice（网关改写为 /<上游名>/api/*），或 ?action=health|chat|practice。
+import { createApi, gatewayClientIp } from "./api.js";
 
 const api = createApi({
   fetch: (url, init) => fetch(url, init),
   getKey: () => Deno.env.get("DEEPSEEK_API_KEY"),
   now: () => Date.now() / 1000,
-  // 网关连接地址优先；缺失时取网关注入的转发链最右一跳（浏览器伪造头在网关被剥离，口径待切换时实测）。
-  clientIp: (req, info) => {
-    const remote = info && info.remoteAddr && info.remoteAddr.hostname;
-    if (remote) return remote;
-    const xff = req.headers.get("x-forwarded-for");
-    if (xff) {
-      const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
-      if (parts.length) return parts[parts.length - 1];
-    }
-    return "unknown";
-  },
+  clientIp: gatewayClientIp,
 });
 
 Deno.serve(async (req, info) => {
-  // BS-2 临时诊断：只回连接地址与网关转发头，供限流身份实测；下一版移除。
+  // BS-2 临时诊断：只回收到的路径/连接地址/网关转发头，供路由与限流身份实测；下一版移除。
   const url = new URL(req.url);
   if (url.searchParams.get("action") === "netinfo") {
     return new Response(JSON.stringify({
+      pathname: url.pathname,
       remoteAddr: (info && info.remoteAddr && info.remoteAddr.hostname) || null,
       xff: req.headers.get("x-forwarded-for"),
+      clientIp: gatewayClientIp(req, info),
     }), { headers: { "content-type": "application/json; charset=utf-8" } });
   }
   return api.handle(req, info);

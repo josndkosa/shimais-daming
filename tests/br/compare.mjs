@@ -505,6 +505,34 @@ await test("BM25 跨语言对拍（172 查询 × 6 人物，顺序一致、分�
   console.log(`  bm25 cross-check: ${checked} cases, max score delta ${maxDelta}`);
 });
 
+/* ---------- 网关路由与限流身份（BS 实测口径） ---------- */
+
+await test("网关上游名不固定：任意首段前缀均剥离到 /api/*", async () => {
+  const { api } = makeApi();
+  for (const prefix of ["/app", "/upstream-xyz", "/functions/v1/app"]) {
+    const resp = await api.handle(new Request("http://test" + prefix + "/api/health", { method: "GET" }), { ip: "127.0.0.1" });
+    assert.equal(resp.status, 200, prefix);
+    assert.deepEqual(await resp.json(), { status: "ok", figures: FIGURES });
+  }
+  const bare = await api.handle(new Request("http://test/api/health", { method: "GET" }), { ip: "127.0.0.1" });
+  assert.equal(bare.status, 200);
+  const root = await api.handle(new Request("http://test/app", { method: "GET" }), { ip: "127.0.0.1" });
+  assert.equal(root.status, 404);
+});
+
+await test("gatewayClientIp：伪造 XFF 不夺身份，取最右非内网跳", async () => {
+  const { gatewayClientIp } = await import("../../frontend/function/api.js");
+  const mk = (xff, remote) => gatewayClientIp(
+    new Request("http://test/", { headers: xff ? { "x-forwarded-for": xff } : {} }),
+    { remoteAddr: { hostname: remote } }
+  );
+  assert.equal(mk("1.2.3.4, 211.173.78.184,10.200.8.245,10.200.8.240, 100.127.105.48", "0.0.0.0"), "211.173.78.184");
+  assert.equal(mk("211.173.78.184,10.200.9.44,10.200.8.239, 100.127.106.67", "0.0.0.0"), "211.173.78.184");
+  assert.equal(mk("10.0.0.1, 192.168.1.1, 100.64.0.9", "0.0.0.0"), "unknown");
+  assert.equal(mk(null, "203.0.113.7"), "203.0.113.7");
+  assert.equal(mk(null, "0.0.0.0"), "unknown");
+});
+
 console.log(`\n== BR compare ${passed}/${passed + failed} ==`);
 if (failed) {
   console.log("failures: " + failures.join(", "));
