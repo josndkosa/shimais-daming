@@ -121,7 +121,13 @@ await test("未知人物与未知路由结构化 404", async () => {
   const { state, send, chat } = makeApi();
   await assertError(await chat({ figure: "no-such-person" }), 404, "not_found");
   await assertError(await send("/missing", { method: "GET" }), 404, "not_found");
+  await assertError(await send("/?action=netinfo", { method: "GET" }), 404, "not_found");
   assert.equal(state.calls.length, 0);
+});
+
+await test("BT-1 函数入口不再暴露 netinfo 诊断路由", () => {
+  const entry = readFileSync(resolve(root, "frontend/function/index.ts"), "utf8");
+  assert.doesNotMatch(entry, /action.{0,20}netinfo|netinfo/);
 });
 
 /* ---------- chat 入参校验 ---------- */

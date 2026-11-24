@@ -9,16 +9,4 @@ const api = createApi({
   clientIp: gatewayClientIp,
 });
 
-Deno.serve(async (req, info) => {
-  // BS-2 临时诊断：只回收到的路径/连接地址/网关转发头，供路由与限流身份实测；下一版移除。
-  const url = new URL(req.url);
-  if (url.searchParams.get("action") === "netinfo") {
-    return new Response(JSON.stringify({
-      pathname: url.pathname,
-      remoteAddr: (info && info.remoteAddr && info.remoteAddr.hostname) || null,
-      xff: req.headers.get("x-forwarded-for"),
-      clientIp: gatewayClientIp(req, info),
-    }), { headers: { "content-type": "application/json; charset=utf-8" } });
-  }
-  return api.handle(req, info);
-});
+Deno.serve(async (req, info) => api.handle(req, info));

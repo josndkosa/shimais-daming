@@ -60,7 +60,4 @@ if (rp.status === 200 && pb.questions) {
   process.exit(1);
 }
 
-// 5) 限流身份（netinfo 诊断）
-const rn = await fetch(BASE + "?action=netinfo", { headers: HEADERS });
-log("== 5 限流身份 ==", await rn.text());
 log("== BS live DONE ==");
