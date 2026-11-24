@@ -95,13 +95,20 @@ const NAV_PROBE = `(() => {
   const i1 = await activeIdx();
   check("autoplay: slide 0 -> 1 within ~6.9s of load, untouched", i0 === 0 && i1 === 1, i0 + "->" + i1);
 
-  // reduced-motion 不得禁用自动切换
+  // reduced-motion 禁用自动切换，但手动切换与指示点照常
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   await nav("http://127.0.0.1:4173/index.html");
   const r0 = await activeIdx();
   await sleep(5600);
   const r1 = await activeIdx();
-  check("autoplay still runs under prefers-reduced-motion", r0 === 0 && r1 === 1, r0 + "->" + r1);
+  check("no autoplay under prefers-reduced-motion", r0 === 0 && r1 === 0, r0 + "->" + r1);
+  await evalJs(`document.querySelector('.car-next').click()`);
+  const r2 = await activeIdx();
+  await evalJs(`document.querySelectorAll('.car-dot')[3].click()`);
+  const r3 = await activeIdx();
+  await sleep(5600);
+  const r4 = await activeIdx();
+  check("reduced-motion: manual next and dots work without autoplay", r2 === 1 && r3 === 3 && r4 === 3, [r2, r3, r4].join(","));
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "" }] });
 
   // 手动切换后计时重置

@@ -421,8 +421,7 @@
 
     function start() {
       stop();
-      /* 自动切换不受 prefers-reduced-motion 限制，该设置只影响过渡动画；唯一暂停条件是标签页在后台 */
-      if (document.hidden) return;
+      if (document.hidden || reducedMotion.matches) return;
       timer = setInterval(() => go(idx + 1), 6000);
     }
 

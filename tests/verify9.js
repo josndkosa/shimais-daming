@@ -64,7 +64,7 @@ const mouse = (x, y) => send("Input.dispatchMouseEvent", { type: "mouseMoved", x
   const d2 = await activeIdx();
   check("ArrowRight resets timer and autoplay continues", d0 === 0 && d1 === 0 && d2 === 1, [d0, d1, d2].join(","));
 
-  // 唯一暂停条件：后台
+  // 后台暂停；前台是否自动播放取决于 reduced-motion
   await evalJs(`Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>'hidden'});Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));`);
   const e0 = await activeIdx();
   await sleep(7000);
@@ -75,14 +75,21 @@ const mouse = (x, y) => send("Input.dispatchMouseEvent", { type: "mouseMoved", x
   await evalJs(`delete document.visibilityState; delete document.hidden;`);
   check("hidden pauses, foreground resumes", e0 === e1 && e2 === (e1 + 1) % 5, [e0, e1, e2].join(","));
 
-  // reduced-motion 下仍自动播放（鼠标仍在轮播上）
+  // reduced-motion 下不自动播放，但手动切换与指示点照常
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "reduce" }] });
   await nav("http://127.0.0.1:4173/index.html");
   await mouse(640, 500);
   const f0 = await activeIdx();
   await sleep(5600);
   const f1 = await activeIdx();
-  check("reduced-motion + hovered: still autoplay", f0 === 0 && f1 === 1, f0 + "->" + f1);
+  check("reduced-motion + hovered: no autoplay", f0 === 0 && f1 === 0, f0 + "->" + f1);
+  await evalJs(`document.querySelector('.car-next').click()`);
+  const f2 = await activeIdx();
+  await evalJs(`document.querySelectorAll('.car-dot')[3].click()`);
+  const f3 = await activeIdx();
+  await sleep(5600);
+  const f4 = await activeIdx();
+  check("reduced-motion: manual next and dots work without autoplay", f2 === 1 && f3 === 3 && f4 === 3, [f2, f3, f4].join(","));
   await send("Emulation.setEmulatedMedia", { features: [{ name: "prefers-reduced-motion", value: "" }] });
   const s = await send("Page.captureScreenshot", { format: "png" });
   fs.writeFileSync(__dirname + "/car-hover-autoplay.png", Buffer.from(s.data, "base64"));
