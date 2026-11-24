@@ -40,6 +40,7 @@ async function setup(page, options = {}) {
     };
   }
   if (options.progress) store.set('shimais-daming:progress:v1', JSON.stringify(options.progress));
+  if (options.chatMem) store.set('shimais-daming:chatmem:v1', JSON.stringify(options.chatMem));
   for (let i=0;i<sources.length;i++) { const script=d.createElement('script'); script.textContent=sources[i]+(i===0?'\nwindow.fixtureData=SITE_DATA;':''); d.body.append(script); }
   await tick();
   return {w,d,frame,requests,store,timeouts,close:()=>frame.remove()};
@@ -111,6 +112,18 @@ await test('BT-4 等待中点忘记，中止请求且晚到回复与记忆不得
   const mem=JSON.parse(t.store.get('shimais-daming:chatmem:v1')).zhuyuanzhang;
   assert(mem && mem.history.length===2,'新对话记忆未正常建立');
   assert(!mem.history.some(m=>m.content.includes('待忘记')||m.content.includes('晚到回答')),'旧请求污染新记忆');
+ }finally{t.close();}
+});
+await test('BT-5 聊天话题落库与发送前均移除换行和控制字符',async()=>{
+ const t=await setup('chat',{chatMem:{zhuyuanzhang:{history:[],totalRounds:1,lastTopics:['旧\n话题','\u0000'],lastVisit:0}}});
+ try {
+  const input=t.d.querySelector('textarea');input.value='新\n\t话题';t.d.querySelector('.ct-send').click();
+  const payload=JSON.parse(t.requests[0].init.body);
+  assert(JSON.stringify(payload.memory.lastTopics)==='["旧话题"]','发送的 memory 话题未消毒');
+  t.requests[0].resolve({reply:'回答'});await tick();
+  const mem=JSON.parse(t.store.get('shimais-daming:chatmem:v1')).zhuyuanzhang;
+  assert(JSON.stringify(mem.lastTopics)==='["旧话题","新话题"]','落库话题未消毒或丢失正常话题');
+  assert(!/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(mem.lastTopics.join('')),'落库仍含控制字符');
  }finally{t.close();}
 });
 await test('F02 输入边界错误不得伪装离线或消耗回合',async()=>{

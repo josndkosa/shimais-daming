@@ -2787,15 +2787,22 @@
       qinliBadge.hidden = !doneIds.includes(storyId);
     }
 
+    function cleanTopic(value) {
+      return typeof value === "string" ? value.replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/g, "") : "";
+    }
+
     function saveMem(id, s) {
       const mem = chatMem[id] || { history: [], totalRounds: 0, lastTopics: [], lastVisit: 0 };
       const history = s.messages
         .filter((m) => m.role === "user" || m.role === "assistant")
         .map((m) => ({ role: m.role, content: m.content }))
         .slice(-CHATMEM_HISTORY_MAX);
-      const topics = Array.isArray(mem.lastTopics) ? mem.lastTopics.slice() : [];
+      const topics = (Array.isArray(mem.lastTopics) ? mem.lastTopics : []).map(cleanTopic).filter((topic) => topic.trim());
       const lastUser = [...s.messages].reverse().find((m) => m.role === "user");
-      if (lastUser) topics.push(Array.from(lastUser.content).slice(0, CHATMEM_TOPIC_MAX).join(""));
+      if (lastUser) {
+        const topic = Array.from(cleanTopic(lastUser.content)).slice(0, CHATMEM_TOPIC_MAX).join("");
+        if (topic) topics.push(topic);
+      }
       chatMem[id] = {
         history,
         totalRounds: (Number(mem.totalRounds) || 0) + 1,
@@ -2890,7 +2897,7 @@
           if (mem && (Number(mem.totalRounds) || 0) > 0) {
             payload.memory = {
               tier: chatTier(mem.totalRounds),
-              lastTopics: Array.isArray(mem.lastTopics) ? mem.lastTopics.slice(0, 3) : [],
+              lastTopics: Array.isArray(mem.lastTopics) ? mem.lastTopics.map(cleanTopic).filter((topic) => topic.trim()).slice(0, 3) : [],
             };
           }
           const resp = await fetch(CHAT_API_BASE + "/api/chat", {
