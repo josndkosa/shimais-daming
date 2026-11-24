@@ -1,1 +1,94 @@
-{"version":1,"name":"史脉·大明","design":{"version":1,"pages":[{"id":"home","path":"/","title":"首页 · 轮播与模块入口"},{"id":"timeline","path":"/timeline.html","title":"时间线"},{"id":"relations","path":"/relations.html","title":"帝王 · 首辅 · 统兵重臣"},{"id":"decisions","path":"/decisions.html","title":"决策模式"},{"id":"qinli","path":"/qinli.html","title":"亲历 · 长剧本"},{"id":"cards","path":"/cards.html","title":"人物与制度卡"},{"id":"chat","path":"/chat.html","title":"人物对话"},{"id":"quiz","path":"/quiz.html","title":"小测"},{"id":"profile","path":"/profile.html","title":"我的研读画像"},{"id":"search","path":"/search.html","title":"史料检索"},{"id":"chapter","path":"/chapter.html","title":"白话明史"},{"id":"qinli-play","path":"/qinli-play.html","title":"亲历播放"}],"capabilities":["appearance","radius","spacing","typography","motion"]},"publication":{"actionId":"176ed54b-4c74-4216-a293-45e29fa99996","projectId":"01a208e6-b151-791a-80cb-fe87fd128c27","siteId":"01a208e6-b152-7742-974d-2cacbdc8ba84","deploymentId":"01a20910-bfb0-7b8b-a048-89d2557448a4","artifactSha256":"6fac9f29271c46558987bb701787320b796b8905a08ddf4378d6513fabeb878d","indexSha256":"ac2302adc93ffeaa5bfcb2af048b42a20dcfd307dfb6077a92fb75db6816eee5","releaseId":"01a20911-1376-73bb-bbd2-e3da88c95508","indexHtml":"PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9InpoLUNOIj4KPGhlYWQ+CiAgPG1ldGEgY2hhcnNldD0iVVRGLTgiIC8+CiAgPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiIC8+CiAgPG1ldGEgbmFtZT0iYXBpLWJhc2UiIGNvbnRlbnQ9Ii9mdW5jdGlvbnMvdjEvYXBwIiAvPgogIDxtZXRhIG5hbWU9ImRlc2NyaXB0aW9uIiBjb250ZW50PSLkuIDkuKrmiormnYPlipvmipPlvpfmnIDntKfnmoTnjovmnJ3vvIzkuLrku4DkuYjmnIDlkI7lpLHmjqfkuobvvJ8iIC8+CiAgPG1ldGEgcHJvcGVydHk9Im9nOnRpdGxlIiBjb250ZW50PSLlj7LohInCt+Wkp+aYjiIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6ZGVzY3JpcHRpb24iIGNvbnRlbnQ9IuS4gOS4quaKiuadg+WKm+aKk+W+l+acgOe0p+eahOeOi+acne+8jOS4uuS7gOS5iOacgOWQjuWkseaOp+S6hu+8nyIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6dHlwZSIgY29udGVudD0id2Vic2l0ZSIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6aW1hZ2UiIGNvbnRlbnQ9Ii9pbWFnZXMvY2Fyb3VzZWwvMDEtdGFpaGVkaWFuLmpwZyIgLz4KICA8bGluayByZWw9Imljb24iIHR5cGU9ImltYWdlL3N2Zyt4bWwiIGhyZWY9ImZhdmljb24uc3ZnIiAvPgogIDx0aXRsZT7lj7LohInCt+Wkp+aYjjwvdGl0bGU+CiAgPGxpbmsgcmVsPSJwcmVsb2FkIiBhcz0iaW1hZ2UiIGhyZWY9ImltYWdlcy9jYXJvdXNlbC8wMS10YWloZWRpYW4uanBnIiAvPgogIDxsaW5rIHJlbD0ic3R5bGVzaGVldCIgaHJlZj0ic3R5bGVzLmNzcyIgLz4KPC9oZWFkPgo8Ym9keSBkYXRhLXBhZ2U9ImluZGV4Ij4KICA8bWFpbiBpZD0iYXBwIj48L21haW4+CiAgPG5vc2NyaXB0PuacrOermemcgOimgeWQr+eUqCBKYXZhU2NyaXB0IOaJjeiDvea4suafk+WGheWuueOAgjwvbm9zY3JpcHQ+CiAgPHNjcmlwdCBzcmM9ImRhdGEuanMiPjwvc2NyaXB0PgogIDxzY3JpcHQgc3JjPSJhcHAuanMiPjwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4="},"actionId":"176ed54b-4c74-4216-a293-45e29fa99996","projectId":"01a208e6-b151-791a-80cb-fe87fd128c27","siteId":"01a208e6-b152-7742-974d-2cacbdc8ba84","deploymentId":"01a20910-bfb0-7b8b-a048-89d2557448a4","artifactSha256":"6fac9f29271c46558987bb701787320b796b8905a08ddf4378d6513fabeb878d","indexSha256":"ac2302adc93ffeaa5bfcb2af048b42a20dcfd307dfb6077a92fb75db6816eee5","releaseId":"01a20911-1376-73bb-bbd2-e3da88c95508","indexHtml":"PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9InpoLUNOIj4KPGhlYWQ+CiAgPG1ldGEgY2hhcnNldD0iVVRGLTgiIC8+CiAgPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiIC8+CiAgPG1ldGEgbmFtZT0iYXBpLWJhc2UiIGNvbnRlbnQ9Ii9mdW5jdGlvbnMvdjEvYXBwIiAvPgogIDxtZXRhIG5hbWU9ImRlc2NyaXB0aW9uIiBjb250ZW50PSLkuIDkuKrmiormnYPlipvmipPlvpfmnIDntKfnmoTnjovmnJ3vvIzkuLrku4DkuYjmnIDlkI7lpLHmjqfkuobvvJ8iIC8+CiAgPG1ldGEgcHJvcGVydHk9Im9nOnRpdGxlIiBjb250ZW50PSLlj7LohInCt+Wkp+aYjiIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6ZGVzY3JpcHRpb24iIGNvbnRlbnQ9IuS4gOS4quaKiuadg+WKm+aKk+W+l+acgOe0p+eahOeOi+acne+8jOS4uuS7gOS5iOacgOWQjuWkseaOp+S6hu+8nyIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6dHlwZSIgY29udGVudD0id2Vic2l0ZSIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6aW1hZ2UiIGNvbnRlbnQ9Ii9pbWFnZXMvY2Fyb3VzZWwvMDEtdGFpaGVkaWFuLmpwZyIgLz4KICA8bGluayByZWw9Imljb24iIHR5cGU9ImltYWdlL3N2Zyt4bWwiIGhyZWY9ImZhdmljb24uc3ZnIiAvPgogIDx0aXRsZT7lj7LohInCt+Wkp+aYjjwvdGl0bGU+CiAgPGxpbmsgcmVsPSJwcmVsb2FkIiBhcz0iaW1hZ2UiIGhyZWY9ImltYWdlcy9jYXJvdXNlbC8wMS10YWloZWRpYW4uanBnIiAvPgogIDxsaW5rIHJlbD0ic3R5bGVzaGVldCIgaHJlZj0ic3R5bGVzLmNzcyIgLz4KPC9oZWFkPgo8Ym9keSBkYXRhLXBhZ2U9ImluZGV4Ij4KICA8bWFpbiBpZD0iYXBwIj48L21haW4+CiAgPG5vc2NyaXB0PuacrOermemcgOimgeWQr+eUqCBKYXZhU2NyaXB0IOaJjeiDvea4suafk+WGheWuueOAgjwvbm9zY3JpcHQ+CiAgPHNjcmlwdCBzcmM9ImRhdGEuanMiPjwvc2NyaXB0PgogIDxzY3JpcHQgc3JjPSJhcHAuanMiPjwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4="}
+{
+  "version": 1,
+  "name": "史脉·大明",
+  "design": {
+    "version": 1,
+    "pages": [
+      {
+        "id": "home",
+        "path": "/",
+        "title": "首页 · 轮播与模块入口"
+      },
+      {
+        "id": "timeline",
+        "path": "/timeline.html",
+        "title": "时间线"
+      },
+      {
+        "id": "relations",
+        "path": "/relations.html",
+        "title": "帝王 · 首辅 · 统兵重臣"
+      },
+      {
+        "id": "decisions",
+        "path": "/decisions.html",
+        "title": "决策模式"
+      },
+      {
+        "id": "qinli",
+        "path": "/qinli.html",
+        "title": "亲历 · 长剧本"
+      },
+      {
+        "id": "cards",
+        "path": "/cards.html",
+        "title": "人物与制度卡"
+      },
+      {
+        "id": "chat",
+        "path": "/chat.html",
+        "title": "人物对话"
+      },
+      {
+        "id": "quiz",
+        "path": "/quiz.html",
+        "title": "小测"
+      },
+      {
+        "id": "profile",
+        "path": "/profile.html",
+        "title": "我的研读画像"
+      },
+      {
+        "id": "search",
+        "path": "/search.html",
+        "title": "史料检索"
+      },
+      {
+        "id": "chapter",
+        "path": "/chapter.html",
+        "title": "白话明史"
+      },
+      {
+        "id": "qinli-play",
+        "path": "/qinli-play.html",
+        "title": "亲历播放"
+      }
+    ],
+    "capabilities": [
+      "appearance",
+      "radius",
+      "spacing",
+      "typography",
+      "motion"
+    ]
+  },
+  "publication": {
+    "actionId": "e6b96914-e1cd-4b8f-93d8-0f7ed81c71aa",
+    "projectId": "01a208e6-b151-791a-80cb-fe87fd128c27",
+    "siteId": "01a208e6-b152-7742-974d-2cacbdc8ba84",
+    "deploymentId": "01a20e2b-046d-7c2e-a4a5-228fff86d3f3",
+    "artifactSha256": "923de6d5bbb49935feb080448adcc95e900f3e339cadfab12f852109bd729fee",
+    "indexSha256": "ac2302adc93ffeaa5bfcb2af048b42a20dcfd307dfb6077a92fb75db6816eee5",
+    "indexHtml": "PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9InpoLUNOIj4KPGhlYWQ+CiAgPG1ldGEgY2hhcnNldD0iVVRGLTgiIC8+CiAgPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiIC8+CiAgPG1ldGEgbmFtZT0iYXBpLWJhc2UiIGNvbnRlbnQ9Ii9mdW5jdGlvbnMvdjEvYXBwIiAvPgogIDxtZXRhIG5hbWU9ImRlc2NyaXB0aW9uIiBjb250ZW50PSLkuIDkuKrmiormnYPlipvmipPlvpfmnIDntKfnmoTnjovmnJ3vvIzkuLrku4DkuYjmnIDlkI7lpLHmjqfkuobvvJ8iIC8+CiAgPG1ldGEgcHJvcGVydHk9Im9nOnRpdGxlIiBjb250ZW50PSLlj7LohInCt+Wkp+aYjiIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6ZGVzY3JpcHRpb24iIGNvbnRlbnQ9IuS4gOS4quaKiuadg+WKm+aKk+W+l+acgOe0p+eahOeOi+acne+8jOS4uuS7gOS5iOacgOWQjuWkseaOp+S6hu+8nyIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6dHlwZSIgY29udGVudD0id2Vic2l0ZSIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6aW1hZ2UiIGNvbnRlbnQ9Ii9pbWFnZXMvY2Fyb3VzZWwvMDEtdGFpaGVkaWFuLmpwZyIgLz4KICA8bGluayByZWw9Imljb24iIHR5cGU9ImltYWdlL3N2Zyt4bWwiIGhyZWY9ImZhdmljb24uc3ZnIiAvPgogIDx0aXRsZT7lj7LohInCt+Wkp+aYjjwvdGl0bGU+CiAgPGxpbmsgcmVsPSJwcmVsb2FkIiBhcz0iaW1hZ2UiIGhyZWY9ImltYWdlcy9jYXJvdXNlbC8wMS10YWloZWRpYW4uanBnIiAvPgogIDxsaW5rIHJlbD0ic3R5bGVzaGVldCIgaHJlZj0ic3R5bGVzLmNzcyIgLz4KPC9oZWFkPgo8Ym9keSBkYXRhLXBhZ2U9ImluZGV4Ij4KICA8bWFpbiBpZD0iYXBwIj48L21haW4+CiAgPG5vc2NyaXB0PuacrOermemcgOimgeWQr+eUqCBKYXZhU2NyaXB0IOaJjeiDvea4suafk+WGheWuueOAgjwvbm9zY3JpcHQ+CiAgPHNjcmlwdCBzcmM9ImRhdGEuanMiPjwvc2NyaXB0PgogIDxzY3JpcHQgc3JjPSJhcHAuanMiPjwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4=",
+    "releaseId": "01a20e2b-539d-7018-9cbb-dd45abfc4a32"
+  },
+  "actionId": "e6b96914-e1cd-4b8f-93d8-0f7ed81c71aa",
+  "projectId": "01a208e6-b151-791a-80cb-fe87fd128c27",
+  "siteId": "01a208e6-b152-7742-974d-2cacbdc8ba84",
+  "deploymentId": "01a20e2b-046d-7c2e-a4a5-228fff86d3f3",
+  "artifactSha256": "923de6d5bbb49935feb080448adcc95e900f3e339cadfab12f852109bd729fee",
+  "indexSha256": "ac2302adc93ffeaa5bfcb2af048b42a20dcfd307dfb6077a92fb75db6816eee5",
+  "indexHtml": "PCFET0NUWVBFIGh0bWw+CjxodG1sIGxhbmc9InpoLUNOIj4KPGhlYWQ+CiAgPG1ldGEgY2hhcnNldD0iVVRGLTgiIC8+CiAgPG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCwgaW5pdGlhbC1zY2FsZT0xLjAiIC8+CiAgPG1ldGEgbmFtZT0iYXBpLWJhc2UiIGNvbnRlbnQ9Ii9mdW5jdGlvbnMvdjEvYXBwIiAvPgogIDxtZXRhIG5hbWU9ImRlc2NyaXB0aW9uIiBjb250ZW50PSLkuIDkuKrmiormnYPlipvmipPlvpfmnIDntKfnmoTnjovmnJ3vvIzkuLrku4DkuYjmnIDlkI7lpLHmjqfkuobvvJ8iIC8+CiAgPG1ldGEgcHJvcGVydHk9Im9nOnRpdGxlIiBjb250ZW50PSLlj7LohInCt+Wkp+aYjiIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6ZGVzY3JpcHRpb24iIGNvbnRlbnQ9IuS4gOS4quaKiuadg+WKm+aKk+W+l+acgOe0p+eahOeOi+acne+8jOS4uuS7gOS5iOacgOWQjuWkseaOp+S6hu+8nyIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6dHlwZSIgY29udGVudD0id2Vic2l0ZSIgLz4KICA8bWV0YSBwcm9wZXJ0eT0ib2c6aW1hZ2UiIGNvbnRlbnQ9Ii9pbWFnZXMvY2Fyb3VzZWwvMDEtdGFpaGVkaWFuLmpwZyIgLz4KICA8bGluayByZWw9Imljb24iIHR5cGU9ImltYWdlL3N2Zyt4bWwiIGhyZWY9ImZhdmljb24uc3ZnIiAvPgogIDx0aXRsZT7lj7LohInCt+Wkp+aYjjwvdGl0bGU+CiAgPGxpbmsgcmVsPSJwcmVsb2FkIiBhcz0iaW1hZ2UiIGhyZWY9ImltYWdlcy9jYXJvdXNlbC8wMS10YWloZWRpYW4uanBnIiAvPgogIDxsaW5rIHJlbD0ic3R5bGVzaGVldCIgaHJlZj0ic3R5bGVzLmNzcyIgLz4KPC9oZWFkPgo8Ym9keSBkYXRhLXBhZ2U9ImluZGV4Ij4KICA8bWFpbiBpZD0iYXBwIj48L21haW4+CiAgPG5vc2NyaXB0PuacrOermemcgOimgeWQr+eUqCBKYXZhU2NyaXB0IOaJjeiDvea4suafk+WGheWuueOAgjwvbm9zY3JpcHQ+CiAgPHNjcmlwdCBzcmM9ImRhdGEuanMiPjwvc2NyaXB0PgogIDxzY3JpcHQgc3JjPSJhcHAuanMiPjwvc2NyaXB0Pgo8L2JvZHk+CjwvaHRtbD4=",
+  "releaseId": "01a20e2b-539d-7018-9cbb-dd45abfc4a32"
+}

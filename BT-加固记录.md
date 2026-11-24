@@ -115,4 +115,14 @@ Python 与 Sites Functions 均采用以下一致约束：
 
 ## 发布状态
 
-**本轮未发布 Qoder Sites。**
+2026-11-24 经用户要求重新发布 Qoder Sites，前端与 Functions 已一并上线。
+
+- 当前 release：`01a20e2b-539d-7018-9cbb-dd45abfc4a32`
+- 当前 action：`e6b96914-e1cd-4b8f-93d8-0f7ed81c71aa`
+- 当前 deployment：`01a20e2b-046d-7c2e-a4a5-228fff86d3f3`
+- 发布源码：`63777f87fc4d2f5f571246ba1314ab844b75d97f`
+- 上一版 release（回滚参照）：`01a20911-1376-73bb-bbd2-e3da88c95508`
+- 访问范围：保持 `public`，未修改站点权限。
+- Secret：`DEEPSEEK_API_KEY` 仍为 `synced`，值未进入仓库、日志或聊天。
+
+发布后冒烟：12 个正式页面与同域 `api-base` 均可达；线上 `app.js` 与本地发布产物 SHA-256 一致；health 200 且返回六人物；`?action=netinfo` 已关闭并返回 404；真实人物对话 200，2.285 秒返回 128 字回复，史官注为空。
