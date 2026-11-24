@@ -357,6 +357,27 @@ await test('版图390px等比缩放、按钮横滑及1644虚线褪色',async()=>
   assert(Number(t.w.getComputedStyle(map.querySelector('.tm-base')).opacity)===1,'切回未恢复底图');
  }finally{t.close();}
 });
+await test('BT-3 非法决策存档按未选渲染且可正常重新选择',async()=>{
+ const probe=await setup('decision');
+ try {
+  const ids=probe.w.fixtureData.decisions.map(sc=>sc.id);
+  const picks={unknownScenario:'A'};ids.forEach(id=>{picks[id]='invalid-key';});
+  probe.store.set('shimais-daming:progress:v1',JSON.stringify({decisions:{done:[],picks}}));
+  probe.w.dispatchEvent(new probe.w.StorageEvent('storage',{key:'shimais-daming:progress:v1'}));
+  await tick();
+  const nodes=probe.d.querySelectorAll('.dc-scenario');
+  assert(nodes.length===3,'决策场景未完整渲染');
+  nodes.forEach(node=>{
+   assert(!node.classList.contains('is-done'),'非法选项仍标记完成');
+   assert(node.querySelector('.dc-result').hidden,'非法选项仍显示结果');
+   assert(node.querySelector('.dc-seal').hidden,'非法选项仍显示印章');
+   assert(Array.from(node.querySelectorAll('.dc-choice')).every(btn=>!btn.classList.contains('is-picked')),'非法选项仍高亮');
+  });
+  assert(probe.d.querySelector('.dc-count').textContent==='0 / 3','非法存档仍计入完成数');
+  nodes[0].querySelector('.dc-choice').click();await tick();
+  assert(nodes[0].classList.contains('is-done'),'非法存档无法重新选择');
+ }finally{probe.close();}
+});
 window.testResults = results;
 document.title = results.some(r=>!r.pass)?'FAIL 浏览器回归':'PASS 浏览器回归';
 </script>

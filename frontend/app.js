@@ -1004,9 +1004,15 @@
   function decisionState() {
     const p = loadProgress();
     const d = p.decisions && typeof p.decisions === "object" ? p.decisions : {};
+    const saved = d.picks && typeof d.picks === "object" ? d.picks : {};
+    const picks = {};
+    data.decisions.forEach((sc) => {
+      const pick = saved[sc.id];
+      if (sc.choices.some((choice) => choice.key === pick)) picks[sc.id] = pick;
+    });
     return {
       done: Array.isArray(d.done) ? d.done : [],
-      picks: d.picks && typeof d.picks === "object" ? d.picks : {},
+      picks,
     };
   }
 
@@ -1035,20 +1041,20 @@
 
     function applyState(sc, node) {
       const pick = decisionState().picks[sc.id];
+      const choice = sc.choices.find((c) => c.key === pick);
       const hint = node.querySelector(".dc-lock-hint");
       const result = node.querySelector(".dc-result");
-      node.classList.toggle("is-done", !!pick);
-      node.querySelector(".dc-seal").hidden = !pick;
-      hint.textContent = pick ? ui.lockedHint : ui.lockHint;
+      node.classList.toggle("is-done", !!choice);
+      node.querySelector(".dc-seal").hidden = !choice;
+      hint.textContent = choice ? ui.lockedHint : ui.lockHint;
       node.querySelectorAll(".dc-choice").forEach((btn) => {
         const key = btn.dataset.key;
         btn.disabled = false;
-        btn.classList.toggle("is-picked", pick === key);
-        btn.classList.toggle("is-dim", !!pick && pick !== key);
-        btn.setAttribute("aria-pressed", pick === key ? "true" : "false");
+        btn.classList.toggle("is-picked", !!choice && choice.key === key);
+        btn.classList.toggle("is-dim", !!choice && choice.key !== key);
+        btn.setAttribute("aria-pressed", choice && choice.key === key ? "true" : "false");
       });
-      if (pick) {
-        const choice = sc.choices.find((c) => c.key === pick);
+      if (choice) {
         result.querySelector(".dc-consequence-p").textContent = choice.consequence;
         result.querySelector(".dc-history-p").textContent = choice.history;
         result.hidden = false;

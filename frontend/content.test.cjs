@@ -956,6 +956,42 @@ test('decisions allow changing picks; seal, hint and completion follow current p
   assert.ok(choices2[1].className.includes('is-picked'), 'refresh keeps latest pick');
   assert.equal(walk(walk(app2, 'dc-scenario')[0], 'dc-consequence-p')[0].textContent, sc.choices[1].consequence);
 });
+test('BT-3 decision state filters saved picks by each scenario choice whitelist', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function decisionState()'), source.indexOf('  function renderDecisions()'));
+  const first = data.decisions[0];
+  const progress = { decisions: { done: [first.id], picks: {
+    [first.id]: 'not-a-choice', unknownScene: first.choices[0].key,
+  } } };
+  const ctx = vm.createContext({ data, loadProgress: () => progress });
+  vm.runInContext(code, ctx);
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.decisionState().picks)), {});
+  progress.decisions.picks[first.id] = first.choices[1].key;
+  assert.deepEqual(JSON.parse(JSON.stringify(ctx.decisionState().picks)), { [first.id]: first.choices[1].key });
+});
+
+test('BT-3 invalid saved decision picks render every scenario as unselected', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function decisionState()'), source.indexOf('  /* ---------- 亲历'));
+  const progress = { decisions: { done: [], picks: {} } };
+  data.decisions.forEach(sc => { progress.decisions.picks[sc.id] = 'invalid-key'; });
+  const app = new Node('main');
+  const ctx = vm.createContext({ data, app, currentModule: { title: '决策模式' },
+    loadProgress: () => progress, updateProgress: f => f(progress),
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
+    reducedMotion: { matches: true }, window: { addEventListener() {} },
+  });
+  vm.runInContext(code + '\nrenderDecisions();', ctx);
+  const scenarios = walk(app, 'dc-scenario');
+  assert.equal(scenarios.length, 3);
+  scenarios.forEach(node => {
+    assert.ok(!node.classList.contains('is-done'));
+    assert.ok(walk(node, 'dc-result')[0].hidden);
+    assert.ok(walk(node, 'dc-choice').every(btn => !btn.classList.contains('is-picked')));
+  });
+  assert.equal(walk(app, 'dc-count')[0].textContent, '0 / 3');
+});
+
 test('emperor entries carry exact fullNames; era label added; other relations data untouched', () => {
   const FULL = { 太祖: '朱元璋', 惠宗: '朱允炆', 成祖: '朱棣', 仁宗: '朱高炽', 宣宗: '朱瞻基', 英宗: '朱祁镇', 代宗: '朱祁钰', 宪宗: '朱见深', 孝宗: '朱祐樘', 武宗: '朱厚照', 世宗: '朱厚熜', 穆宗: '朱载坖', 神宗: '朱翊钧', 光宗: '朱常洛', 熹宗: '朱由校', 思宗: '朱由检' };
   const emperors = data.relations.emperors;
