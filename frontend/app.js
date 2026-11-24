@@ -2716,6 +2716,7 @@
           pending: false,
           error: "",
           baseUsers: restored.filter((m) => m.role === "user").length,
+          generation: 0,
         };
       }
       return sessions[current];
@@ -2849,6 +2850,8 @@
       }
       const sentId = current;
       const sentFig = figure();
+      const generation = s.generation;
+      const isCurrentRequest = () => sessions[sentId] === s && s.generation === generation;
       // 恢复的历史会一起进上下文，但后端单次上限为 20 条，故最多带 19 条历史。
       const history = s.messages.slice(-Math.max(2, ui.historyRounds * 2 - 1)).map((m) => ({
         role: m.role,
@@ -2896,7 +2899,9 @@
             body: JSON.stringify(payload),
             signal: ctrl.signal,
           });
+          if (!isCurrentRequest()) return;
           const body = await resp.json().catch(() => null);
+          if (!isCurrentRequest()) return;
           if (!resp.ok) {
             const message = resp.status === 429 ? "本时段提问次数已用尽，请稍后再试。"
               : [400, 404, 413, 422].includes(resp.status) ? "请求被拒绝，请检查人物及输入长度。" : "服务暂不可用";
@@ -2911,7 +2916,7 @@
           counted = true;
         }
       } catch (error) {
-        if (sessions[sentId] !== s) return;
+        if (!isCurrentRequest()) return;
         if ([400, 404, 413, 422, 429].includes(error.status)) {
           s.messages.pop();
           s.error = error.message + "（本次未计入对话回合）";
@@ -2926,11 +2931,13 @@
         clearTimeout(timer);
         clearTimeout(coldTimer);
         pending.remove();
-        s.pending = false;
-        s.pendingNode = null;
-        s.controller = null;
+        if (isCurrentRequest()) {
+          s.pending = false;
+          s.pendingNode = null;
+          s.controller = null;
+        }
       }
-      if (sessions[sentId] !== s) return;
+      if (!isCurrentRequest()) return;
       if (reply != null) {
         s.messages.push({ role: "assistant", content: reply, note });
         markChatStarted();
@@ -2956,9 +2963,15 @@
       saveChatMem(chatMem);
       const s = sessions[current];
       if (s) {
+        s.controller?.abort();
+        s.generation += 1;
         s.messages = [];
         s.baseUsers = 0;
         s.error = "";
+        s.pending = false;
+        s.pendingNode?.remove();
+        s.pendingNode = null;
+        s.controller = null;
       }
       paintMem();
       paintChips();

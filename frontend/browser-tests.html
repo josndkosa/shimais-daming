@@ -90,6 +90,29 @@ await test('T04 等待时重开，旧响应不得进入新会话',async()=>{
     t.d.querySelector('.ct-chip').click(); assert(t.requests.length===2,'重开后不能再次发送');
   } finally {t.close();}
 });
+await test('BT-4 等待中点忘记，中止请求且晚到回复与记忆不得复活',async()=>{
+ const t=await setup('chat',{ignoreAbort:true});
+ try {
+  t.w.confirm=()=>true;
+  const input=t.d.querySelector('textarea');input.value='已记住的问题';t.d.querySelector('.ct-send').click();
+  t.requests[0].resolve({reply:'第一答'});await tick();
+  const forget=t.d.querySelector('.ct-forget-btn');assert(forget.checkVisibility(),'已有记忆时忘记按钮不可见');
+  input.value='待忘记的问题';t.d.querySelector('.ct-send').click();
+  forget.click();
+  assert(t.requests[1].init.signal.aborted,'忘记没有中止在途请求');
+  assert(t.d.querySelectorAll('.ct-flow .ct-msg').length===0,'忘记后仍残留消息或等待节点');
+  assert(!t.d.querySelector('.ct-send').disabled,'忘记后无法开始新对话');
+  input.value='忘记后的新问题';t.d.querySelector('.ct-send').click();
+  t.requests[1].resolve({reply:'晚到回答'});await tick();
+  assert(!t.d.querySelector('.ct-flow').textContent.includes('晚到回答'),'晚到回复写入已忘记会话');
+  assert(!JSON.parse(t.store.get('shimais-daming:chatmem:v1')).zhuyuanzhang,'晚到回复复活记忆');
+  assert(t.d.querySelector('.ct-send').disabled && t.d.querySelector('.ct-pending'),'旧请求收尾清掉了新请求等待态');
+  t.requests[2].resolve({reply:'新回答'});await tick();
+  const mem=JSON.parse(t.store.get('shimais-daming:chatmem:v1')).zhuyuanzhang;
+  assert(mem && mem.history.length===2,'新对话记忆未正常建立');
+  assert(!mem.history.some(m=>m.content.includes('待忘记')||m.content.includes('晚到回答')),'旧请求污染新记忆');
+ }finally{t.close();}
+});
 await test('F02 输入边界错误不得伪装离线或消耗回合',async()=>{
   const t=await setup('chat');
   try {
