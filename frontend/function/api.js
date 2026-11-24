@@ -8,6 +8,11 @@ import { retrieve, clearCache } from "./bm25.js";
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const DEEPSEEK_MODEL = "deepseek-chat";
 const UPSTREAM_TIMEOUT_MS = 30000;
+const UPSTREAM_RESPONSE_MAX_BYTES = 1024 * 1024;
+const CHAT_REPLY_MAX_TOKENS = 512;
+const CHAT_CHECK_MAX_TOKENS = 128;
+const PRACTICE_GENERATE_MAX_TOKENS = 4096;
+const PRACTICE_REVIEW_MAX_TOKENS = 1024;
 
 const HISTORY_MAX_ENTRIES = 20;
 const MESSAGE_MAX_CHARS = 500;
@@ -115,46 +120,68 @@ export function createApi(deps = {}) {
     }
   }
 
-  async function callDeepseek(messages, temperature, allowEmpty = false) {
+  async function callDeepseek(messages, temperature, allowEmpty = false, maxTokens) {
     const key = getKey();
     if (!key) throw new UpstreamError("对话服务未配置密钥，请联系站长后再试。");
     const controller = new AbortController();
     let timedOut = false;
+    let reader;
     const timer = setTimeout(() => {
       timedOut = true;
       controller.abort();
+      if (reader) reader.cancel().catch(() => {});
     }, upstreamTimeoutMs);
-    let resp;
     try {
-      resp = await fetchImpl(DEEPSEEK_URL, {
+      const resp = await fetchImpl(DEEPSEEK_URL, {
         method: "POST",
         headers: { "content-type": "application/json", authorization: "Bearer " + key },
-        body: JSON.stringify({ model: DEEPSEEK_MODEL, messages, temperature }),
+        body: JSON.stringify({ model: DEEPSEEK_MODEL, messages, temperature, max_tokens: maxTokens }),
         signal: controller.signal,
       });
+      if (resp.status !== 200) throw new UpstreamError("对话服务暂时不可用（上游错误），请稍后再试。");
+      if (!resp.body) throw new UpstreamError("模型服务返回格式异常，请稍后再试。");
+      reader = resp.body.getReader();
+      const chunks = [];
+      let total = 0;
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        total += value.byteLength;
+        if (total > UPSTREAM_RESPONSE_MAX_BYTES) {
+          await reader.cancel().catch(() => {});
+          throw new UpstreamError("模型服务返回内容过大，请稍后再试。");
+        }
+        chunks.push(value);
+      }
+      const bytes = new Uint8Array(total);
+      let offset = 0;
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      let payload;
+      try {
+        payload = JSON.parse(new TextDecoder().decode(bytes));
+      } catch {
+        throw new UpstreamError("模型服务返回格式异常，请稍后再试。");
+      }
+      const choices = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.choices : null;
+      if (!Array.isArray(choices) || !choices.length || !choices[0] || typeof choices[0] !== "object" || Array.isArray(choices[0])) {
+        throw new UpstreamError("模型服务返回格式异常，请稍后再试。");
+      }
+      const message = choices[0].message;
+      const content = message && typeof message === "object" && !Array.isArray(message) ? message.content : null;
+      if (typeof content !== "string") throw new UpstreamError("模型服务返回格式异常，请稍后再试。");
+      const trimmed = content.trim();
+      if (!trimmed && !allowEmpty) throw new UpstreamError("模型服务返回空回复，请稍后再试。");
+      return trimmed;
     } catch (err) {
-      if (timedOut) throw new UpstreamTimeoutError("upstream timeout");
+      if (timedOut || err?.name === "AbortError") throw new UpstreamTimeoutError("upstream timeout");
+      if (err instanceof UpstreamError) throw err;
       throw new UpstreamError("无法连接模型服务，请稍后再试。");
     } finally {
       clearTimeout(timer);
     }
-    if (resp.status !== 200) throw new UpstreamError("对话服务暂时不可用（上游错误），请稍后再试。");
-    let payload;
-    try {
-      payload = await resp.json();
-    } catch {
-      throw new UpstreamError("模型服务返回格式异常，请稍后再试。");
-    }
-    const choices = payload && typeof payload === "object" && !Array.isArray(payload) ? payload.choices : null;
-    if (!Array.isArray(choices) || !choices.length || !choices[0] || typeof choices[0] !== "object" || Array.isArray(choices[0])) {
-      throw new UpstreamError("模型服务返回格式异常，请稍后再试。");
-    }
-    const message = choices[0].message;
-    const content = message && typeof message === "object" && !Array.isArray(message) ? message.content : null;
-    if (typeof content !== "string") throw new UpstreamError("模型服务返回格式异常，请稍后再试。");
-    const trimmed = content.trim();
-    if (!trimmed && !allowEmpty) throw new UpstreamError("模型服务返回空回复，请稍后再试。");
-    return trimmed;
   }
 
   function retrievalQuery(req) {
@@ -295,14 +322,14 @@ export function createApi(deps = {}) {
       }
     }
     const messages = [{ role: "system", content: system }, ...history.reverse(), { role: "user", content: parsed.message }];
-    const reply = await callDeepseek(messages, 0.7);
+    const reply = await callDeepseek(messages, 0.7, false, CHAT_REPLY_MAX_TOKENS);
 
     const evidence = chunks.map((c) => "- " + c.title + "：" + c.text).join("\n");
     const checkMessages = [
       { role: "system", content: CHECK_RULES },
       { role: "user", content: "用户问题：" + parsed.message + "\n史料依据：\n" + evidence + "\n待校验回复：\n" + reply },
     ];
-    const verdict = await callDeepseek(checkMessages, 0.0, true);
+    const verdict = await callDeepseek(checkMessages, 0.0, true, CHAT_CHECK_MAX_TOKENS);
     const note = verdict && !["无", "无误", "无。"].includes(verdict) ? cpSlice(verdict, 50) : null;
     return jsonResponse({ reply, note });
   }
@@ -346,7 +373,7 @@ export function createApi(deps = {}) {
       { role: "system", content: REVIEW_RULES },
       { role: "user", content: pyJsonDump(items) },
     ];
-    const raw = await callDeepseek(messages, 0.0);
+    const raw = await callDeepseek(messages, 0.0, false, PRACTICE_REVIEW_MAX_TOKENS);
     if (!correctOptionsLiteralsAreInts(raw)) return false;
     const verdicts = parseJson(raw);
     if (!Array.isArray(verdicts) || verdicts.length !== qs.length) return false;
@@ -372,7 +399,7 @@ export function createApi(deps = {}) {
     ];
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const raw = await callDeepseek(genMessages, 0.7);
+        const raw = await callDeepseek(genMessages, 0.7, false, PRACTICE_GENERATE_MAX_TOKENS);
         const qs = validatePractice(parseJson(raw), sources, raw);
         if (qs === null || !(await reviewPractice(qs, sources))) continue;
         return jsonResponse({ questions: qs });

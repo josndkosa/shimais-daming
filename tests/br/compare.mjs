@@ -57,6 +57,25 @@ function makeApi(opts = {}) {
           init.signal.addEventListener("abort", () => rej(new DOMException("aborted", "AbortError")));
         });
       }
+      if (r && r.__slowBody) {
+        const encoder = new TextEncoder();
+        let index = 0;
+        const chunks = [" ", " ", " ", " ", " ", JSON.stringify({ choices: [{ message: { content: "回复" } }] })];
+        return new Response(new ReadableStream({
+          start(controller) {
+            const push = () => {
+              if (index >= chunks.length) return controller.close();
+              controller.enqueue(encoder.encode(chunks[index++]));
+              timer = setTimeout(push, 15);
+            };
+            let timer = setTimeout(push, 15);
+            init.signal.addEventListener("abort", () => {
+              clearTimeout(timer);
+              controller.error(new DOMException("aborted", "AbortError"));
+            }, { once: true });
+          },
+        }), { status: 200 });
+      }
       return r;
     }
     const rules = payload.messages[0].content;
@@ -274,6 +293,33 @@ await test("超时/网络错误口径（含审题阶段）", async () => {
       }
     }
   }
+});
+
+await test("BT-2 慢响应体受总时限约束并中止读取", async () => {
+  const { state, chat } = makeApi({ upstreamTimeoutMs: 40 });
+  state.responses.push({ __slowBody: true });
+  const started = Date.now();
+  const result = await chat();
+  await assertError(result, 504, "upstream_timeout");
+  assert.ok(Date.now() - started < 1000, "慢 body 未在总时限内结束");
+  assert.equal(state.calls.length, 1);
+});
+
+await test("BT-2 上游响应体超限按 upstream_error 返回", async () => {
+  const { state, chat } = makeApi();
+  const valid = JSON.stringify({ choices: [{ message: { content: "回复" } }] });
+  state.responses.push(new Response(valid + " ".repeat(1024 * 1024 + 1), { status: 200 }));
+  await assertError(await chat(), 502, "upstream_error");
+  assert.equal(state.calls.length, 1);
+});
+
+await test("BT-2 四类模型请求分别携带 max_tokens 硬上限", async () => {
+  const { state, chat, send } = makeApi();
+  assert.equal((await chat()).status, 200);
+  assert.deepEqual(state.calls.map(c => c.max_tokens), [512, 128]);
+  state.calls = [];
+  assert.equal((await send("/api/quiz/practice")).status, 200);
+  assert.deepEqual(state.calls.map(c => c.max_tokens), [4096, 1024]);
 });
 
 /* ---------- memory / 提示词 ---------- */

@@ -1,5 +1,6 @@
 """史脉·大明「与历史人物对话」API：FastAPI + httpx + rank-bm25，无数据库。"""
 
+import asyncio
 import json
 import math
 import os
@@ -29,6 +30,11 @@ PERSONAS = json.loads((DATA_DIR / "personas.json").read_text(encoding="utf-8"))
 DEEPSEEK_URL = "https://api.deepseek.com/chat/completions"
 DEEPSEEK_MODEL = "deepseek-chat"
 UPSTREAM_TIMEOUT = 30.0
+UPSTREAM_RESPONSE_MAX_BYTES = 1024 * 1024
+CHAT_REPLY_MAX_TOKENS = 512
+CHAT_CHECK_MAX_TOKENS = 128
+PRACTICE_GENERATE_MAX_TOKENS = 4096
+PRACTICE_REVIEW_MAX_TOKENS = 1024
 
 HISTORY_MAX_ENTRIES = 20  # 10 轮（20 条）；history 已达 20 条即第 11 轮提问，直接 400
 MESSAGE_MAX_CHARS = 500
@@ -207,21 +213,32 @@ def build_system(figure: str, query: str):
     return "\n".join(parts), chunks
 
 
-async def call_deepseek(messages, temperature: float, *, allow_empty=False) -> str:
+async def call_deepseek(messages, temperature: float, *, allow_empty=False, max_tokens: int) -> str:
     key = os.environ.get("DEEPSEEK_API_KEY")
     if not key:
         raise UpstreamError("对话服务未配置密钥，请联系站长后再试。")
     # trust_env=False：直连固定上游，忽略主机代理环境变量（含畸形 NO_PROXY 条目）
-    async with httpx.AsyncClient(timeout=UPSTREAM_TIMEOUT, trust_env=False) as client:
-        resp = await client.post(
-            DEEPSEEK_URL,
-            headers={"Authorization": "Bearer " + key},
-            json={"model": DEEPSEEK_MODEL, "messages": messages, "temperature": temperature},
-        )
-    if resp.status_code != 200:
-        raise UpstreamError("对话服务暂时不可用（上游错误），请稍后再试。")
     try:
-        payload = resp.json()
+        async with asyncio.timeout(UPSTREAM_TIMEOUT):
+            async with httpx.AsyncClient(timeout=UPSTREAM_TIMEOUT, trust_env=False) as client:
+                async with client.stream(
+                    "POST",
+                    DEEPSEEK_URL,
+                    headers={"Authorization": "Bearer " + key},
+                    json={"model": DEEPSEEK_MODEL, "messages": messages, "temperature": temperature,
+                          "max_tokens": max_tokens},
+                ) as resp:
+                    if resp.status_code != 200:
+                        raise UpstreamError("对话服务暂时不可用（上游错误），请稍后再试。")
+                    body = bytearray()
+                    async for chunk in resp.aiter_bytes():
+                        body.extend(chunk)
+                        if len(body) > UPSTREAM_RESPONSE_MAX_BYTES:
+                            raise UpstreamError("模型服务返回内容过大，请稍后再试。")
+    except TimeoutError as exc:
+        raise httpx.ReadTimeout("upstream total timeout") from exc
+    try:
+        payload = json.loads(bytes(body).decode("utf-8"))
     except (ValueError, UnicodeError) as exc:
         raise UpstreamError("模型服务返回格式异常，请稍后再试。") from exc
     choices = payload.get("choices") if isinstance(payload, dict) else None
@@ -311,14 +328,14 @@ async def chat(req: ChatRequest, request: Request):
             history.append({"role": m.role, "content": content})
             budget -= len(content)
     messages = [{"role": "system", "content": system}, *reversed(history), {"role": "user", "content": req.message}]
-    reply = await call_deepseek(messages, 0.7)
+    reply = await call_deepseek(messages, 0.7, max_tokens=CHAT_REPLY_MAX_TOKENS)
 
     evidence = "\n".join("- " + c["title"] + "：" + c["text"] for c in chunks)
     check_messages = [
         {"role": "system", "content": CHECK_RULES},
         {"role": "user", "content": "用户问题：" + req.message + "\n史料依据：\n" + evidence + "\n待校验回复：\n" + reply},
     ]
-    verdict = await call_deepseek(check_messages, 0.0, allow_empty=True)
+    verdict = await call_deepseek(check_messages, 0.0, allow_empty=True, max_tokens=CHAT_CHECK_MAX_TOKENS)
     note = verdict[:50] if verdict and verdict not in ("无", "无误", "无。") else None
     return {"reply": reply, "note": note}
 
@@ -424,7 +441,7 @@ async def _review_practice(qs, sources):
         {"role": "system", "content": REVIEW_RULES},
         {"role": "user", "content": json.dumps(items, ensure_ascii=False)},
     ]
-    verdicts = _parse_json(await call_deepseek(messages, 0.0))
+    verdicts = _parse_json(await call_deepseek(messages, 0.0, max_tokens=PRACTICE_REVIEW_MAX_TOKENS))
     if not isinstance(verdicts, list) or len(verdicts) != len(qs):
         return False
     for q, verdict in zip(qs, verdicts):
@@ -452,7 +469,8 @@ async def quiz_practice(request: Request):
     ]
     for _attempt in range(2):
         try:
-            qs = _validate_practice(_parse_json(await call_deepseek(gen_messages, 0.7)), sources)
+            qs = _validate_practice(_parse_json(await call_deepseek(
+                gen_messages, 0.7, max_tokens=PRACTICE_GENERATE_MAX_TOKENS)), sources)
             if qs is None or not await _review_practice(qs, sources):
                 continue
             return {"questions": qs}

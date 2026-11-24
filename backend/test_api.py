@@ -4,6 +4,7 @@ import asyncio
 import importlib
 import json
 import os
+import time
 from collections import deque
 from contextlib import redirect_stdout
 from io import StringIO
@@ -194,6 +195,37 @@ class APITests(unittest.IsolatedAsyncioTestCase):
                     self.assert_error(result, 502, "upstream_error")
                     self.assertEqual(len(self.calls), count + 1)
                     self.assertNotIn("private upstream detail", result.text)
+
+    async def test_BT2_slow_response_body_obeys_total_timeout(self):
+        class SlowStream(httpx.AsyncByteStream):
+            def __init__(self):
+                self.sent = False
+
+            async def __aiter__(self):
+                for _ in range(4):
+                    await asyncio.sleep(0.02)
+                    yield b" "
+                yield json.dumps({"choices": [{"message": {"content": "回复"}}]}).encode()
+
+        with patch.object(api, "UPSTREAM_TIMEOUT", 0.05):
+            self.responses.append(httpx.Response(200, stream=SlowStream()))
+            started = time.monotonic()
+            result = await self.chat()
+            self.assert_error(result, 504, "upstream_timeout")
+            self.assertLess(time.monotonic() - started, 0.5)
+
+    async def test_BT2_oversized_upstream_body_is_an_upstream_error(self):
+        valid = json.dumps({"choices": [{"message": {"content": "回复"}}]}).encode()
+        self.responses.append(httpx.Response(200, content=valid + b" " * (1024 * 1024 + 1)))
+        self.assert_error(await self.chat(), 502, "upstream_error")
+        self.assertEqual(len(self.calls), 1)
+
+    async def test_BT2_model_requests_have_distinct_max_tokens_limits(self):
+        self.assertEqual((await self.chat()).status_code, 200)
+        self.assertEqual([call["max_tokens"] for call in self.calls], [512, 128])
+        self.calls.clear()
+        self.assertEqual((await self.client.post("/api/quiz/practice")).status_code, 200)
+        self.assertEqual([call["max_tokens"] for call in self.calls], [4096, 1024])
 
     async def test_memory_tier_and_topics_reach_the_system_prompt(self):
         response = await self.chat(memory={"tier": "相熟", "lastTopics": ["问过废相", "问过锦衣卫"]})
