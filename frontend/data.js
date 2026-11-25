@@ -656,7 +656,7 @@ const SITE_DATA = {
     switch: "切换线索",
     complete: "已形成第一轮判断",
     review: "回看证据链",
-    echo: "已为「{title}」线索取证 · 查看线索",
+    echo: "已为「{title}」线索取证 →",
     recorded: "已记录",
   },
 

@@ -5,7 +5,7 @@
 <h1>浏览器回归测试（仅使用模拟接口与隔离存储）</h1>
 <pre id="results">运行中</pre>
 <script type="module">
-const sources = await Promise.all(['data.js', 'territory-map.js', 'app.js'].map(p => fetch(p).then(r => r.text())));
+const sources = await Promise.all(['data.js', 'territory-map.js', 'app.js'].map(p => fetch(p, {cache: 'no-store'}).then(r => r.text())));
 const results = [];
 const assert = (value, message) => { if (!value) throw new Error(message); };
 const tick = () => new Promise(resolve => setTimeout(resolve, 30));
@@ -430,7 +430,18 @@ await test('研读线索：时间线事件取证、去重并显示轻量回声',
     event.querySelector('.tl-row, button, .tl-head').click();
     await tick();
     assert(researchEvidence(t, 'yitiaobian').includes('event:e1581'), '展开事件未取证');
-    assert(t.d.querySelector('.research-echo-text').textContent.includes('已为「一条鞭法」线索取证'), '新证据未显示回声');
+    const echo = t.d.querySelector('.research-echo');
+    const echoLabel = echo.querySelector('.research-echo-text');
+    const echoLink = echo.querySelector('a.research-echo-link');
+    const echoText = `${echoLabel.textContent.trim()} ${echoLink.textContent.trim()}`;
+    const rawEchoText = echo.textContent.trim();
+    assert(echoText === '已为「一条鞭法」线索取证 → 查看线索', '回声完整文案错误：' + echoText);
+    assert((rawEchoText.match(/查看线索/g) || []).length === 1, '回声中查看线索未恰好出现一次');
+    assert(echoLink?.textContent === '查看线索' && echoLink.getAttribute('href') === 'profile.html', '查看线索不是有效链接');
+    let echoLinkClicked = false;
+    echoLink.addEventListener('click', event => { event.preventDefault(); echoLinkClicked = true; }, {once: true});
+    echoLink.click();
+    assert(echoLinkClicked, '查看线索链接不可点击');
     const saved = t.store.get('shimais-daming:progress:v1');
     event.querySelector('.tl-row, button, .tl-head').click();
     await tick();

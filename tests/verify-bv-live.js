@@ -138,14 +138,37 @@ async function nav(pathname, extraExpression = "true") {
     const evidence = await evaluate(`(() => {
       const p = JSON.parse(localStorage.getItem('shimais-daming:progress:v1'));
       const echo = document.querySelector('.research-echo');
-      return {research:p.research, echo:echo?.textContent.trim()};
+      const link = echo?.querySelector('a.research-echo-link');
+      const label = echo?.querySelector('.research-echo-text');
+      return {
+        research: p.research,
+        echo: label && link ? label.textContent.trim() + ' ' + link.textContent.trim() : null,
+        rawEcho: echo?.textContent.trim(),
+        gap: echo ? parseFloat(getComputedStyle(echo).gap) : 0,
+        linkText: link?.textContent,
+        linkHref: link?.getAttribute('href'),
+        linkVisible: !!link?.checkVisibility(),
+      };
     })()`);
     check(
       "live timeline action records evidence once",
       evidence.research?.byId?.yitiaobian?.evidence?.filter(key => key === "event:e1581").length === 1,
       JSON.stringify(evidence),
     );
-    check("live evidence echo appears exactly once", evidence.echo === "已为「一条鞭法」线索取证 · 查看线索", String(evidence.echo));
+    check(
+      "live evidence echo text is exact and contains one link label",
+      evidence.echo === "已为「一条鞭法」线索取证 → 查看线索"
+        && (evidence.rawEcho.match(/查看线索/g) || []).length === 1
+        && evidence.gap > 0,
+      JSON.stringify(evidence),
+    );
+    check(
+      "live evidence echo link is visible and clickable",
+      evidence.linkText === "查看线索" && evidence.linkHref === "profile.html" && evidence.linkVisible,
+      JSON.stringify(evidence),
+    );
+    await evaluate("document.querySelector('.research-echo-link').click()");
+    await waitFor("location.pathname === '/profile.html' && document.readyState === 'complete' && !!document.querySelector('#app')", "回声链接打开画像页");
 
     await nav("decisions.html");
     const decisions = await evaluate("({title:document.title, text:document.querySelector('#app').innerText.slice(0,300), children:document.querySelector('#app').children.length})");

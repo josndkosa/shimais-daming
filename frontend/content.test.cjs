@@ -435,7 +435,7 @@ test('research threads define three canonical IDs, exact questions, three slots 
   assert.deepEqual(JSON.parse(JSON.stringify(data.researchUI)), {
     title: '研读线索', related: '相关足迹', start: '开始追索', continue: '继续研读线索',
     switch: '切换线索', complete: '已形成第一轮判断', review: '回看证据链',
-    echo: '已为「{title}」线索取证 · 查看线索', recorded: '已记录',
+    echo: '已为「{title}」线索取证 →', recorded: '已记录',
   });
 });
 
