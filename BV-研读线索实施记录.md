@@ -1,11 +1,11 @@
 # BV 个人研读线索实施记录
 
 - 日期：2026-11-25
-- 状态：已实施、已提交，待独立核验与站长另行批准后发布
+- 状态：已实施并完成本地验收；2026-11-25 发布后自检发现回声文案重复，已立即回滚，待修复后重新验收发布
 - 设计：`docs/superpowers/specs/2026-11-24-personal-research-thread-design.md`
 - 计划：`docs/superpowers/plans/2026-11-24-personal-research-thread.md`
 - 交付分支：`main`
-- 发布动作：无；未改变访问范围，未触碰线上函数或 Secret
+- 发布动作：2026-11-25 曾发布 BV 版本；发布后自检发现回声文案重复，已立即回滚到 BT 版，当前线上不含 BV 改动
 
 ## 1. 分项提交
 
@@ -77,7 +77,51 @@ Node VM 测试中的嵌套数组/对象使用 JSON 序列化或 `Array.from()` �
 
 - 未新增页面、顶级导航、后端接口、模型调用或 localStorage key。
 - 未修改 `backend/`、史料、题目、剧本或人物设定。
-- 未纳入并行工作修改的 `frontend/.史脉·大明.qoder.site`。
+- 未纳入并行工作修改的 `frontend/.史脉·大明.qoder.site`；发布工具随后写入的当前回滚绑定不视为 BV 源码改动。
 - 未纳入 `qoder截图/`。
-- 未发布，未改变访问范围，未触碰线上函数与 Secret。
-- 本记录与 BV-1 至 BV-5 在同一推送批次交付；发布仍须独立核验通过并获得站长另行点头。
+- 访问范围保持 public；未读取、回显或修改 Secret 值，未修改 Secret 设置；函数按原依赖重新发布。
+
+## 7. 2026-11-25 发布、自检与回滚
+
+### 7.1 发布版本
+
+| 项 | 值 |
+| --- | --- |
+| 发布源码 | `3290909bae53e029fff0681a8f4fc1e2bc4534ec` |
+| BV actionId | `ac412909-4bd5-445f-911f-cf5195cf79d7` |
+| BV deploymentId | `01a212c4-56e8-7edf-9ddc-6afe820eb330` |
+| **BV releaseId** | **`01a212c4-945b-740b-85f2-35d677b40533`** |
+| publishOperationId | `01a212c4-945b-746d-9398-d0e987ff4c22` |
+| 回滚源码基线 | `aa93ae8d5c94b09d83d030e59eaef929d9153415`（与上一版 BT 发布源码 `63777f8` 的生产文件一致） |
+| 回滚 actionId | `d0878218-fef6-4a3a-8262-45c771eeaac4` |
+| 回滚 deploymentId | `01a212ca-45c0-70b9-9eab-0b313e5ccc9d` |
+| **当前线上 releaseId** | **`01a212cb-8628-7272-9d41-9bdc38c10eea`** |
+| 回滚 publishOperationId | `01a212cb-8628-72b0-9911-f974d85156a8` |
+
+发布前重新核验 `aa93ae8..3290909` 仅含 BV 定义、实现、测试与记录；`frontend/dist` 的 35 个生产文件与源码逐字节一致，Functions 与 `backend/` 相对 `aa93ae8` 无改动。新鲜门禁为内容 52/52、浏览器 50/50、布局 11/11、API 对拍 36/36、Python 38 passed + 112 subtests passed。
+
+### 7.2 发布后自检
+
+`tests/verify-bv-live.js` 对 BV release 执行结果：
+
+- health 200，`status=ok`，六人物顺序正确：通过。
+- 线上 `app.js`、`data.js`、`styles.css` 与发布产物 SHA-256 一致：通过。
+- 画像页出现「研读线索」，三张卡标题与三条研究问题逐字正确：通过。
+- 未开始状态无进度写入，桌面无文档级横向溢出：通过。
+- 点击“开始追索”创建空的 `yitiaobian` 线索：通过。
+- 展开 `event:e1581` 后证据只记录一次：通过。
+- 决策页、对话页正常打开，无白屏、无 console/runtime error：通过。
+- **底部回声精确文本：失败。** 页面实际显示“已为「一条鞭法」线索取证 · 查看线索查看线索”。
+
+根因是 `showResearchEcho()` 已把完整模板放入 `.research-echo-text`，随后又追加文案同为“查看线索”的链接，导致可见文字重复。该问题未被原有只检查“提示出现”的浏览器用例发现。
+
+### 7.3 回滚与当前状态
+
+按“任何一项不过立即回滚”的要求，已用 `aa93ae8` 的生产文件与未改动的 Functions 新建回滚版本并发布。回滚后核验：
+
+- 当前 action `published=true`、operation `succeeded/committed=true`。
+- health 200，六人物正确。
+- 线上三个核心资产与 `aa93ae8` 对应文件 SHA-256 全部一致。
+- 访问范围保持 `public`；未读取、回显或修改 Secret 值，未改变函数依赖。
+
+BV release 已被替换，当前线上不含 BV 功能。后续须修正回声为单一可见文案，补精确文本回归，重新执行本地全套与线上自检后再发布；不得沿用本次 14/15 的失败结果。
