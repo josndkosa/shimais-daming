@@ -146,7 +146,7 @@ async function searchPage(sourceId, response) {
     location: { search: '?source=' + encodeURIComponent(sourceId) },
     document: { createTextNode: text => new Node('#text', '', text) },
     el: (tag, cls, text) => new Node(tag, cls, text),
-    renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section', 'topic-path'),
+    renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section', 'topic-path'), researchMarkerKey: () => null,
     fetch: async url => { requests.push(url); if (response instanceof Error) throw response; return { ok: true, json: async () => response }; },
   });
   vm.runInContext(code + '\nrenderSearch();', ctx);

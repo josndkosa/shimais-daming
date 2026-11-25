@@ -657,6 +657,34 @@ await test('研读线索：开始写入失败不显示假保存', async () => {
   } finally { t.close(); }
 });
 
+await test('研读线索：检索只标记能补当前线索且尚未点亮的材料', async () => {
+  const progress = researchFixture('yitiaobian', ['event:e1581']);
+  const t = await setup('search', { progress });
+  try {
+    const material = { id: 'zhangjuzheng/c4', figure: 'zhangjuzheng', title: '一条鞭法', text: '赋役合并', source: '测试出处', kind: '现代转述', locator: '', edition: '', verification: '' };
+    const unrelated = { id: 'chongzhen/c1', figure: 'chongzhen', title: '铜钱', text: '一条鞭法时期的铜钱', source: '测试出处', kind: '现代转述', locator: '', edition: '', verification: '' };
+    t.requests[0].resolve({ sources: [material, unrelated] });
+    await tick();
+    const input = t.d.querySelector('.sr-input');
+    input.value = '一条鞭法';
+    t.d.querySelector('.sr-form').dispatchEvent(new t.w.Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    const card = Array.from(t.d.querySelectorAll('.sr-card')).find(n => n.textContent.includes('一条鞭法'));
+    const unrelatedCard = Array.from(t.d.querySelectorAll('.sr-card')).find(n => n.textContent.includes('铜钱'));
+    assert(card && card.querySelector('.research-marker'), '可补槽材料缺少标记');
+    assert(unrelatedCard && !unrelatedCard.querySelector('.research-marker'), '无关材料出现标记或未进入结果');
+  } finally { t.close(); }
+  const filled = await setup('search', { progress: researchFixture('yitiaobian', ['event:e1581', 'card:i3']) });
+  try {
+    filled.requests[0].resolve({ sources: [{ id: 'zhangjuzheng/c4', figure: 'zhangjuzheng', title: '一条鞭法', text: '赋役合并', source: '测试出处', kind: '现代转述', locator: '', edition: '', verification: '' }] });
+    await tick();
+    filled.d.querySelector('.sr-input').value = '一条鞭法';
+    filled.d.querySelector('.sr-form').dispatchEvent(new filled.w.Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    assert(!filled.d.querySelector('.research-marker'), '已点亮槽仍出现补全标记');
+  } finally { filled.close(); }
+});
+
 window.testResults = results;
 document.title = results.some(r=>!r.pass)?'FAIL 浏览器回归':'PASS 浏览器回归';
 </script>

@@ -5286,6 +5286,16 @@ button.research-thread-choice {
   white-space: nowrap;
 }
 
+.research-marker {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+  background: var(--gold);
+  border-radius: 50%;
+}
+
 @media (max-width: 640px) {
   .research-cards,
   .research-chain {

@@ -202,6 +202,19 @@
     showResearchEcho.timer = setTimeout(() => { echo.hidden = true; }, 4000);
   }
 
+  function researchMarkerKey(entry) {
+    if (entry.kind === "timeline") return "event:" + entry.id;
+    if (entry.kind === "source") return "review:" + entry.id;
+    return null;
+  }
+
+  function canFillResearchSlot(key) {
+    const current = activeResearch();
+    if (!current) return false;
+    const slot = evidenceSlot(current.thread, key);
+    return slot >= 0 && !current.filled[slot];
+  }
+
   function recordThreadEvidence(key) {
     const current = activeResearch();
     if (!current || typeof key !== "string") return { ok: false };
@@ -3660,6 +3673,13 @@
           link.href = e.target;
           title.appendChild(link);
         } else title.textContent = e.title;
+        const markerKey = researchMarkerKey(e);
+        if (markerKey && canFillResearchSlot(markerKey)) {
+          const marker = el("span", "research-marker");
+          marker.setAttribute("aria-label", data.researchUI.title);
+          marker.setAttribute("role", "img");
+          title.appendChild(marker);
+        }
         card.appendChild(title);
         const sum = el("p", "sr-text");
         paintHit(sum, e.text, q);

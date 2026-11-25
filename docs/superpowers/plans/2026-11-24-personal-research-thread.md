@@ -10,6 +10,8 @@
 
 **执行基线：** `f423d06`（相对设计中的 `e732786` 只多了已获确认的设计文档）；本轮不发布。
 
+**执行状态：** 2026-11-25 已完成 Task 1–5 与本地全量验收；实际修正、偏差及提交号见 `BV-研读线索实施记录.md`。
+
 ---
 
 ## File Structure
@@ -20,6 +22,7 @@
 - Modify `frontend/content.test.cjs`：验证定义、深链、存储白名单、去重、损坏数据与只读渲染。
 - Modify `frontend/browser-tests.html`：验证真实 DOM 交互、写入失败、恢复与检索标记。
 - Create `tests/verify-research.js`：验证桌面与 390px 布局、无横向溢出和 reduced-motion。
+- Modify `docs/superpowers/specs/2026-11-24-personal-research-thread-design.md`：记录已实施状态、定版问题与验收结果。
 
 ## Task 1: 线索定义与证据映射
 
@@ -27,7 +30,7 @@
 - Modify: `frontend/data.js`
 - Test: `frontend/content.test.cjs`
 
-- [ ] **Step 1: 增加会失败的内容测试**
+- [x] **Step 1: 增加会失败的内容测试**
 
 在 `frontend/content.test.cjs` 的 `checkHref()` 中补两个既有目标类型：
 
@@ -106,12 +109,12 @@ test('research evidence keys resolve only to existing canonical objects', () => 
 const { territory, researchThreads, researchUI, ...existing } = data;
 ```
 
-- [ ] **Step 2: 运行测试确认红灯**
+- [x] **Step 2: 运行测试确认红灯**
 
 Run: `node --test --test-name-pattern='research' frontend/content.test.cjs`
 Expected: FAIL，提示 `data.researchThreads` 不存在。
 
-- [ ] **Step 3: 在 `frontend/data.js` 增加定义**
+- [x] **Step 3: 在 `frontend/data.js` 增加定义**
 
 在 `profileUI` 前插入：
 
@@ -164,12 +167,12 @@ researchUI: {
 },
 ```
 
-- [ ] **Step 4: 运行测试确认绿灯**
+- [x] **Step 4: 运行测试确认绿灯**
 
 Run: `node --test --test-name-pattern='research' frontend/content.test.cjs`
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add frontend/data.js frontend/content.test.cjs
@@ -182,7 +185,7 @@ git commit -m "个人研读线索（1/5）：定义三条线索与证据映射"
 - Modify: `frontend/app.js:61-113`
 - Test: `frontend/content.test.cjs`
 
-- [ ] **Step 1: 增加存储 helper 测试**
+- [x] **Step 1: 增加存储 helper 测试**
 
 在 `frontend/content.test.cjs` 增加：
 
@@ -249,12 +252,12 @@ test('research record does not claim success when localStorage write fails', () 
 });
 ```
 
-- [ ] **Step 2: 运行测试确认红灯**
+- [x] **Step 2: 运行测试确认红灯**
 
 Run: `node --test --test-name-pattern='research storage|research record' frontend/content.test.cjs`
 Expected: FAIL，研读线索 helper 尚不存在。
 
-- [ ] **Step 3: 实现写入口与研读线索 helper**
+- [x] **Step 3: 实现写入口与研读线索 helper**
 
 将 `updateProgress()` 中的写入抽为可返回结果的 `writeProgress()`，保持既有调用者行为：
 
@@ -387,12 +390,12 @@ function recordThreadEvidence(key) {
 }
 ```
 
-- [ ] **Step 4: 运行测试确认绿灯**
+- [x] **Step 4: 运行测试确认绿灯**
 
 Run: `node --test --test-name-pattern='research storage|research record' frontend/content.test.cjs`
 Expected: PASS。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add frontend/app.js frontend/content.test.cjs
@@ -405,7 +408,7 @@ git commit -m "个人研读线索（2/5）：统一存储校验与证据记录"
 - Modify: `frontend/app.js`
 - Test: `frontend/browser-tests.html`
 
-- [ ] **Step 1: 增加浏览器失败测试**
+- [x] **Step 1: 增加浏览器失败测试**
 
 在 `frontend/browser-tests.html` 末尾、结果汇总前加入以下完整测试。所有进度 fixture 都是用户已经明确开始过的线索，不测试自动启动。
 
@@ -427,14 +430,16 @@ await test('研读线索：时间线事件取证、去重并显示轻量回声',
     const saved = t.store.get('shimais-daming:progress:v1');
     event.querySelector('.tl-row, button, .tl-head').click();
     await tick();
-    assert.equal(t.d.querySelector('.research-echo-text').textContent, '已记录', '重复证据提示错误');
-    assert.equal(t.store.get('shimais-daming:progress:v1'), saved, '重复证据重复写入');
-    assert.equal(researchEvidence(t, 'yitiaobian').filter(k => k === 'event:e1581').length, 1, '证据未去重');
+    event.querySelector('.tl-row, button, .tl-head').click();
+    await tick();
+    assert(t.d.querySelector('.research-echo-text').textContent === '已记录', '重复证据提示错误');
+    assert(t.store.get('shimais-daming:progress:v1') === saved, '重复证据重复写入');
+    assert(researchEvidence(t, 'yitiaobian').filter(k => k === 'event:e1581').length === 1, '证据未去重');
   } finally { t.close(); }
 });
 
 await test('研读线索：决策选择取证', async () => {
-  const t = await setup('decisions', { progress: researchFixture('tumubao') });
+  const t = await setup('decision', { progress: researchFixture('tumubao') });
   try {
     t.d.querySelector('.dc-scenario[data-id="d1449"] .dc-choice').click();
     await tick();
@@ -474,7 +479,7 @@ await test('研读线索：制度卡打开取证', async () => {
 await test('研读线索：错题回看才取证，答错本身不取证', async () => {
   const progress = {
     ...researchFixture('yitiaobian'),
-    quiz: { picks: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0], score: 0, dims: {} },
+    quiz: { picks: [1, 1, 2, 1, 0, 1, 2, 0, 2, 2], score: 9, dims: {} },
     quizWrong: ['q10'],
   };
   const t = await setup('quiz', { progress });
@@ -544,12 +549,14 @@ await test('研读线索：专题题完整提交后取证，未提交不取证',
 });
 ```
 
-- [ ] **Step 2: 运行浏览器测试确认红灯**
+- [x] **Step 2: 运行浏览器测试确认红灯**
+
+实施校正：浏览器沙箱只提供 `assert(value, message)`，因此 Task 3–4 示例中的 `assert.equal(...)` 实际改为 `assert(actual === expected, message)`；亲历测试增加“下一场”推进与末场恢复 fixture；聊天测试在重开后建立新请求，再验证被取消请求不取证；另增“离线剧本回退不取证”测试。最终真实测试以 `frontend/browser-tests.html` 为准。
 
 Run: `node tests/dbg-bt.js`
 Expected: 新增研读线索测试失败，原 34 项保持通过。
 
-- [ ] **Step 3: 接入记录函数**
+- [x] **Step 3: 接入记录函数**
 
 在现有动作完成后追加调用，不改变原动作返回值与界面流程：
 
@@ -590,15 +597,15 @@ card.addEventListener("focusin", () => {
 recordThreadEvidence("card:" + wanted);
 ```
 
-在 `renderQuiz()` 的 `appendReview(node, q)` 中，`node.appendChild(link);` 前追加。这里只接 `qz-review-link`，不接下方提交后错题区的重复链接：
+正式小测的错题回看位于 `buildResult()`，将 `review.href = q.reviewHref;` 后的监听器接为：
 
 ```js
-link.addEventListener("click", () => {
-  if (q.sourceId) recordThreadEvidence("review:" + q.sourceId);
-});
+if (q.sourceId) {
+  review.addEventListener("click", () => recordThreadEvidence("review:" + q.sourceId));
+}
 ```
 
-`renderProfile()` 的错题回看链接没有统一的来源映射，且第十题之外的链接也不属于本功能。仅在 `link.href === "search.html?source=zhangjuzheng%2Fc4"` 时追加：
+`renderProfile()` 的错题回看链接没有统一的来源映射，且第十题之外的链接也不属于本功能。仅在 `link.getAttribute("href") === "search.html?source=zhangjuzheng%2Fc4"` 时追加：
 
 ```js
 link.addEventListener("click", () => recordThreadEvidence("review:zhangjuzheng/c4"));
@@ -609,8 +616,10 @@ link.addEventListener("click", () => recordThreadEvidence("review:zhangjuzheng/c
 在 `renderChat()` 请求收尾处，`if (!isCurrentRequest()) return;` 之后、`if (reply != null)` 之前追加。离线剧本不算在线成功回复：
 
 ```js
-if (reply != null && sentId === "chongzhen") recordThreadEvidence("chat:chongzhen");
+if (counted && reply != null && sentId === "chongzhen") recordThreadEvidence("chat:chongzhen");
 ```
+
+`counted` 只在线成功响应分支设为 `true`；离线剧本和在线失败回退均不取证。
 
 在 `renderChapter()` 已通过 `selectedChapter()` 得到合法章节后，于 `const idx = data.chapters.indexOf(ch);` 后追加：
 
@@ -624,12 +633,12 @@ recordThreadEvidence("chapter:" + ch.id);
 if (topicQuestions) recordThreadEvidence("topic:yitiaobian");
 ```
 
-- [ ] **Step 4: 运行浏览器测试确认绿灯**
+- [x] **Step 4: 运行浏览器测试确认绿灯**
 
 Run: `node tests/dbg-bt.js`
 Expected: 全部通过，新增断言确认证据 key 已去重写入。
 
-- [ ] **Step 5: 提交**
+- [x] **Step 5: 提交**
 
 ```bash
 git add frontend/app.js frontend/browser-tests.html
@@ -643,7 +652,7 @@ git commit -m "个人研读线索（3/5）：接入现有研读行为入口"
 - Modify: `frontend/styles.css`
 - Test: `frontend/browser-tests.html`
 
-- [ ] **Step 1: 扩展测试沙箱并增加画像与首页失败测试**
+- [x] **Step 1: 扩展测试沙箱并增加画像与首页失败测试**
 
 先在 `setup()` 的 localStorage mock 中支持写入失败，其他 key 不受影响：
 
@@ -729,12 +738,12 @@ await test('研读线索：开始写入失败不显示假保存', async () => {
 });
 ```
 
-- [ ] **Step 2: 运行测试确认红灯**
+- [x] **Step 2: 运行测试确认红灯**
 
 Run: `node tests/dbg-bt.js`
 Expected: 画像研读线索测试失败。
 
-- [ ] **Step 3: 实现画像渲染**
+- [x] **Step 3: 实现画像渲染**
 
 在 `renderProfile()` 的研读足迹 section 前插入：
 
@@ -754,7 +763,7 @@ function renderResearchSection() {
       const start = el('button', 'cta-button research-start', ui.start);
       start.type = 'button';
       start.addEventListener('click', () => {
-        if (startResearchThread(thread.id)) renderProfile();
+        if (startResearchThread(thread.id)) wrap.replaceChildren(buildContent());
       });
       card.appendChild(start);
       cards.appendChild(card);
@@ -796,7 +805,7 @@ function renderResearchSection() {
   data.researchThreads.filter((thread) => thread.id !== current.thread.id).forEach((thread) => {
     const button = el('button', 'pf-link research-thread-choice', thread.title);
     button.type = 'button';
-    button.addEventListener('click', () => { if (startResearchThread(thread.id)) renderProfile(); });
+    button.addEventListener('click', () => { if (startResearchThread(thread.id)) wrap.replaceChildren(buildContent()); });
     switcher.appendChild(button);
   });
   section.appendChild(switcher);
@@ -817,7 +826,7 @@ if (currentResearch && !currentResearch.complete) {
 }
 ```
 
-- [ ] **Step 4: 增加样式**
+- [x] **Step 4: 增加样式**
 
 在 `frontend/styles.css` 末尾追加：
 
@@ -845,12 +854,12 @@ button.research-thread-choice { border: 0; background: none; cursor: pointer; }
 }
 ```
 
-- [ ] **Step 5: 运行浏览器测试确认绿灯**
+- [x] **Step 5: 运行浏览器测试确认绿灯**
 
 Run: `node tests/dbg-bt.js`
 Expected: 全部通过。
 
-- [ ] **Step 6: 提交**
+- [x] **Step 6: 提交**
 
 ```bash
 git add frontend/app.js frontend/styles.css frontend/browser-tests.html
@@ -860,11 +869,13 @@ git commit -m "个人研读线索（4/5）：画像证据链与全站轻量回�
 ## Task 5: 检索标记与最终验收
 
 **Files:**
-- Modify: `frontend/app.js:3447-3457`
+- Modify: `frontend/app.js`
+- Modify: `frontend/content.test.cjs`
 - Test: `frontend/browser-tests.html`
 - Create: `tests/verify-research.js`
+- Modify: `docs/superpowers/specs/2026-11-24-personal-research-thread-design.md`
 
-- [ ] **Step 1: 增加检索标记测试**
+- [x] **Step 1: 增加检索标记测试**
 
 先在 `frontend/content.test.cjs` 的 `searchPage()` VM 上下文中加入 `researchMarkerKey: () => null`，让原有纯检索测试继续独立于研读线索状态；标记行为由下方真实浏览器测试验证。
 
@@ -876,7 +887,7 @@ await test('研读线索：检索只标记能补当前线索且尚未点亮的�
   const t = await setup('search', { progress });
   try {
     const material = { id: 'zhangjuzheng/c4', figure: 'zhangjuzheng', title: '一条鞭法', text: '赋役合并', source: '测试出处', kind: '现代转述', locator: '', edition: '', verification: '' };
-    const unrelated = { id: 'chongzhen/c1', figure: 'chongzhen', title: '铜钱', text: '无关材料', source: '测试出处', kind: '现代转述', locator: '', edition: '', verification: '' };
+    const unrelated = { id: 'chongzhen/c1', figure: 'chongzhen', title: '铜钱', text: '一条鞭法时期的铜钱', source: '测试出处', kind: '现代转述', locator: '', edition: '', verification: '' };
     t.requests[0].resolve({ sources: [material, unrelated] });
     await tick();
     const input = t.d.querySelector('.sr-input');
@@ -885,7 +896,7 @@ await test('研读线索：检索只标记能补当前线索且尚未点亮的�
     await tick();
     const card = Array.from(t.d.querySelectorAll('.sr-card')).find(n => n.textContent.includes('一条鞭法'));
     assert(card && card.querySelector('.research-marker'), '可补槽材料缺少标记');
-    assert(!Array.from(t.d.querySelectorAll('.sr-card')).some(n => n.textContent.includes('铜钱') && n.querySelector('.research-marker')), '无关材料出现标记');
+    assert(unrelatedCard && !unrelatedCard.querySelector('.research-marker'), '无关材料出现标记或未进入结果');
   } finally { t.close(); }
   const filled = await setup('search', { progress: researchFixture('yitiaobian', ['event:e1581', 'card:i3']) });
   try {
@@ -899,12 +910,12 @@ await test('研读线索：检索只标记能补当前线索且尚未点亮的�
 });
 ```
 
-- [ ] **Step 2: 运行测试确认红灯**
+- [x] **Step 2: 运行测试确认红灯**
 
 Run: `node tests/dbg-bt.js`
 Expected: 检索标记测试失败。
 
-- [ ] **Step 3: 实现标记 helper**
+- [x] **Step 3: 实现标记 helper**
 
 在研读线索 helper 区增加：
 
@@ -935,13 +946,13 @@ if (markerKey && canFillResearchSlot(markerKey)) {
 }
 ```
 
-- [ ] **Step 4: 增加标记样式**
+- [x] **Step 4: 增加标记样式**
 
 ```css
 .research-marker { display: inline-block; width: 6px; height: 6px; margin-left: 8px; vertical-align: middle; background: var(--gold); border-radius: 50%; }
 ```
 
-- [ ] **Step 5: 创建布局验收脚本**
+- [x] **Step 5: 创建布局验收脚本**
 
 先在一个独立终端启动静态服务器（只服务 `frontend/`，不启动或停止真实后端）：
 
@@ -953,13 +964,15 @@ python -m http.server 4173 --directory frontend
 
 ```js
 const { spawn } = require("child_process");
+const path = require("path");
+const os = require("os");
 const CHROME = process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
 const PORT = 9250;
 const BASE = "http://127.0.0.1:4173/";
 const chrome = spawn(CHROME, [
   "--headless=new", "--no-first-run", "--disable-gpu",
   `--remote-debugging-port=${PORT}`,
-  `--user-data-dir=${__dirname}/ud-research`,
+  `--user-data-dir=${path.join(os.tmpdir(), `shimais-research-${process.pid}`)}`,
   "--window-size=1280,900", "about:blank",
 ], { stdio: "ignore" });
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -989,9 +1002,9 @@ async function waitFor(expression, label) {
   }
   throw new Error("等待超时：" + label);
 }
-async function nav(path) {
-  await send("Page.navigate", { url: BASE + path });
-  await waitFor(`document.readyState === 'complete' && !!document.querySelector('#app') && document.querySelector('#app').children.length > 0`, path);
+async function nav(pathname) {
+  await send("Page.navigate", { url: BASE + pathname });
+  await waitFor(`location.pathname === '/${pathname}' && document.readyState === 'complete' && !!document.querySelector('#app') && document.querySelector('#app').children.length > 0`, pathname);
 }
 (async () => {
   let target;
@@ -1089,7 +1102,7 @@ async function nav(path) {
 });
 ```
 
-- [ ] **Step 6: 运行功能与布局验收**
+- [x] **Step 6: 运行功能与布局验收**
 
 ```bash
 node tests/dbg-bt.js
@@ -1097,18 +1110,18 @@ node tests/verify-research.js
 node tests/verify9.js
 node --test frontend/content.test.cjs
 node tests/br/compare.mjs
-python -m pytest -q
+(cd backend && PYTHONIOENCODING=utf-8 python -m pytest -q)
 ```
 
-Expected: 全部通过；Python 保持 `38 passed, 112 subtests passed`，轮播保持 `13/13`。任何失败先修复再提交，不以旧结果代替本轮验收。
+Expected: 全部通过；Python 在 `backend/` 工作目录运行，保持 `38 passed, 112 subtests passed`，轮播保持 `13/13`。根目录 `pytest` 会误收集 `tests/` 下导入时执行旧脚本，不是 CI 门禁。任何失败先修复再提交，不以旧结果代替本轮验收。
 
-- [ ] **Step 7: 更新设计状态并提交**
+- [x] **Step 7: 更新设计状态并提交**
 
-将设计文档状态从“尚未实施”改为“已实施”，补充本计划文件链接与验收结果；不写研究问题文案。
+将设计文档状态从“尚未实施”改为“已实施”，补充本计划文件链接与验收结果；三条研究问题已逐字录入站长 2026-11-25 定版文案。
 
 ```bash
-git add frontend/app.js frontend/browser-tests.html frontend/styles.css tests/verify-research.js frontend/content.test.cjs docs/superpowers/specs/2026-11-24-personal-research-thread-design.md
-git commit -m "个人研读线索（5/5）：检索标记与全量验收"
+git add frontend/app.js frontend/browser-tests.html frontend/styles.css tests/verify-research.js frontend/content.test.cjs docs/superpowers/specs/2026-11-24-personal-research-thread-design.md docs/superpowers/plans/2026-11-24-personal-research-thread.md
+git commit -m "个人研读线索（BV-5）：检索标记与全量验收"
 git push origin main
 ```
 
@@ -1119,4 +1132,5 @@ git push origin main
 - 事件、决策、亲历、错题回看、人物卡、聊天、章节、专题完成：Task 3。
 - 画像、首页入口、回声、完成态、切换、恢复：Task 4。
 - 检索标记、390px、reduced-motion、三套强制测试：Task 5。
-- 不新增页面、后端、localStorage key、研究问题文案或发布动作：贯穿全部任务。
+- 不新增页面、后端、localStorage key 或发布动作：贯穿全部任务。
+- 研究问题使用站长 2026-11-25 逐字定版文案，不新增自拟史实叙述。
