@@ -101,15 +101,127 @@
     return "深谈";
   }
 
+  function writeProgress(p) {
+    try {
+      localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   function updateProgress(mutate) {
     const p = loadProgress();
     mutate(p);
-    try {
-      localStorage.setItem(PROGRESS_KEY, JSON.stringify(p));
-    } catch {
-      /* 隐私模式等写入失败时保持只读体验 */
-    }
+    writeProgress(p);
     return p;
+  }
+
+  /* ---------- 个人研读线索：统一校验与记录，沿用 progress 单 key ---------- */
+
+  function normalizeResearch(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+    const activeId = data.researchThreads.some((thread) => thread.id === value.activeId) ? value.activeId : null;
+    const byId = {};
+    if (value.byId && typeof value.byId === "object" && !Array.isArray(value.byId)) {
+      data.researchThreads.forEach((thread) => {
+        const entry = value.byId[thread.id];
+        if (!entry || typeof entry !== "object" || Array.isArray(entry)) return;
+        const valid = new Set(thread.slots.flatMap((slot) => slot.keys));
+        const evidence = Array.isArray(entry.evidence)
+          ? [...new Set(entry.evidence.filter((key) => typeof key === "string" && valid.has(key)))]
+          : [];
+        byId[thread.id] = { evidence, updatedAt: Number.isFinite(entry.updatedAt) ? entry.updatedAt : 0 };
+      });
+    }
+    return activeId && byId[activeId] ? { activeId, byId } : null;
+  }
+
+  function researchThread(id) {
+    return data.researchThreads.find((thread) => thread.id === id) || null;
+  }
+
+  function evidenceSlot(thread, key) {
+    return thread ? thread.slots.findIndex((slot) => slot.keys.includes(key)) : -1;
+  }
+
+  function startResearchThread(id) {
+    const thread = researchThread(id);
+    if (!thread) return false;
+    const p = loadProgress();
+    const state = normalizeResearch(p.research) || { byId: {} };
+    if (!state.byId[id]) state.byId[id] = { evidence: [], updatedAt: 0 };
+    state.activeId = id;
+    state.byId[id].updatedAt = Date.now();
+    p.research = state;
+    return writeProgress(p);
+  }
+
+  function researchFootprintCount(thread) {
+    const p = loadProgress();
+    const read = p.timeline && Array.isArray(p.timeline.read) ? p.timeline.read : [];
+    const decisions = p.decisions && Array.isArray(p.decisions.done) ? p.decisions.done : [];
+    const stories = p.qinli && Array.isArray(p.qinli.done) ? p.qinli.done : [];
+    const cards = p.cards && Array.isArray(p.cards.opened) ? p.cards.opened : [];
+    const known = new Set([
+      ...read.map((id) => "event:" + id),
+      ...decisions.map((id) => "decision:" + id),
+      ...stories.map((id) => "story:" + id),
+      ...cards.map((id) => "card:" + id),
+    ]);
+    return thread.slots.filter((slot) => slot.keys.some((key) => known.has(key))).length;
+  }
+
+  function activeResearch() {
+    const state = normalizeResearch(loadProgress().research);
+    if (!state) return null;
+    const thread = researchThread(state.activeId);
+    const entry = state.byId[state.activeId];
+    if (!thread || !entry) return null;
+    const filled = thread.slots.map((slot) => slot.keys.some((key) => entry.evidence.includes(key)));
+    return { thread, entry, filled, complete: filled.every(Boolean) };
+  }
+
+  function showResearchEcho(thread, repeated) {
+    let echo = document.querySelector(".research-echo");
+    if (!echo) {
+      echo = el("div", "research-echo");
+      echo.setAttribute("role", "status");
+      echo.setAttribute("aria-live", "polite");
+      document.body.appendChild(echo);
+    }
+    echo.replaceChildren();
+    echo.appendChild(el("span", "research-echo-text", repeated ? data.researchUI.recorded : data.researchUI.echo.replace("{title}", thread.shortTitle)));
+    if (!repeated) {
+      const link = el("a", "research-echo-link", "查看线索");
+      link.href = "profile.html";
+      echo.appendChild(link);
+    }
+    echo.hidden = false;
+    clearTimeout(showResearchEcho.timer);
+    showResearchEcho.timer = setTimeout(() => { echo.hidden = true; }, 4000);
+  }
+
+  function recordThreadEvidence(key) {
+    const current = activeResearch();
+    if (!current || typeof key !== "string") return { ok: false };
+    const slot = evidenceSlot(current.thread, key);
+    if (slot < 0) return { ok: false };
+    const repeated = current.entry.evidence.includes(key);
+    if (repeated) {
+      showResearchEcho(current.thread, true);
+      return { ok: true, repeated: true, slot };
+    }
+    const p = loadProgress();
+    const state = normalizeResearch(p.research);
+    if (!state) return { ok: false };
+    const entry = state.byId[state.activeId];
+    entry.evidence.push(key);
+    entry.updatedAt = Date.now();
+    p.research = state;
+    if (!writeProgress(p)) return { ok: false };
+    showResearchEcho(current.thread, false);
+    return { ok: true, repeated: false, slot };
   }
 
   /* ---------- 结局图鉴：抵达即登记，沿用 progress 单 key ---------- */

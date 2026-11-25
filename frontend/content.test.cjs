@@ -455,6 +455,67 @@ test('research evidence keys resolve only to existing canonical objects', () => 
   }
 });
 
+test('research storage starts explicitly, filters evidence and survives corrupt state', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function loadProgress()'), source.indexOf('  function chatState()'))
+    + source.slice(source.indexOf('  /* ---------- 个人研读线索'), source.indexOf('  /* ---------- 结局图鉴'));
+  const saved = {};
+  const ctx = vm.createContext({
+    data,
+    PROGRESS_KEY: 'shimais-daming:progress:v1',
+    localStorage: {
+      getItem: () => saved.raw || null,
+      setItem: (_, value) => { saved.raw = value; },
+    },
+    Date,
+    document: { createElement: () => new Node('div'), querySelector: () => null, body: new Node('body') },
+    el: (tag, cls, text) => new Node(tag, cls, text),
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+  });
+  vm.runInContext(code, ctx);
+  assert.equal(ctx.startResearchThread('yitiaobian'), true);
+  assert.deepEqual(JSON.parse(saved.raw).research, {
+    activeId: 'yitiaobian',
+    byId: { yitiaobian: { evidence: [], updatedAt: JSON.parse(saved.raw).research.byId.yitiaobian.updatedAt } },
+  });
+  assert.equal(ctx.recordThreadEvidence('event:e1581').ok, true);
+  assert.equal(ctx.recordThreadEvidence('event:e1581').repeated, true);
+  assert.equal(ctx.recordThreadEvidence('event:missing').ok, false);
+  assert.deepEqual(JSON.parse(saved.raw).research.byId.yitiaobian.evidence, ['event:e1581']);
+  saved.raw = JSON.stringify({ research: { activeId: 'yitiaobian', byId: {
+    yitiaobian: { evidence: ['event:e1581', 'event:e1581', 'event:missing', 42], updatedAt: 2 },
+    tumubao: { evidence: ['event:e1449'], updatedAt: 3 },
+  } } });
+  assert.deepEqual(Array.from(ctx.activeResearch().entry.evidence), ['event:e1581']);
+  assert.equal(ctx.startResearchThread('tumubao'), true);
+  const switched = JSON.parse(saved.raw).research;
+  assert.equal(switched.activeId, 'tumubao');
+  assert.deepEqual(switched.byId.yitiaobian.evidence, ['event:e1581']);
+  assert.deepEqual(switched.byId.tumubao.evidence, ['event:e1449']);
+  saved.raw = JSON.stringify({ research: { activeId: 'missing', byId: 'broken' } });
+  assert.equal(ctx.activeResearch(), null);
+});
+
+test('research record does not claim success when localStorage write fails', () => {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const code = source.slice(source.indexOf('  function loadProgress()'), source.indexOf('  function chatState()'))
+    + source.slice(source.indexOf('  /* ---------- 个人研读线索'), source.indexOf('  /* ---------- 结局图鉴'));
+  let raw = JSON.stringify({ research: { activeId: 'yitiaobian', byId: { yitiaobian: { evidence: [], updatedAt: 1 } } } });
+  const ctx = vm.createContext({
+    data,
+    PROGRESS_KEY: 'shimais-daming:progress:v1',
+    localStorage: { getItem: () => raw, setItem: () => { throw new Error('quota'); } },
+    Date,
+    document: { createElement: () => new Node('div'), querySelector: () => null, body: new Node('body') },
+    el: (tag, cls, text) => new Node(tag, cls, text),
+    setTimeout: () => 1,
+    clearTimeout: () => {},
+  });
+  vm.runInContext(code, ctx);
+  assert.equal(ctx.recordThreadEvidence('event:e1581').ok, false);
+});
+
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
   const { territory, researchThreads, researchUI, ...existing } = data;
   assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'ffcf4ef985fe51175b035bc24ef8467812392509cacf229591ddb50f52fecc59');
