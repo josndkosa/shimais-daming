@@ -266,6 +266,7 @@
       if (!p.timeline.read.includes(id)) p.timeline.read.push(id);
     });
     markLastRead("timeline", id);
+    recordThreadEvidence("event:" + id);
   }
 
   function resolveLastRead(record) {
@@ -1226,6 +1227,7 @@
             p.decisions.picks = p.decisions.picks || {};
             p.decisions.picks[sc.id] = c.key;
           });
+          recordThreadEvidence("decision:" + sc.id);
           applyState(sc, article);
           refreshStrip();
           const result = article.querySelector(".dc-result");
@@ -1453,6 +1455,7 @@
         if (!p.qinli.done.includes(id)) p.qinli.done.push(id);
         p.qinli.current = null;
       });
+      recordThreadEvidence("story:" + id);
     }
 
     const cardNodes = new Map();
@@ -1771,8 +1774,14 @@
         card.id = "card-" + c.id;
         card.dataset.card = c.id;
         card.style.setProperty("--d", (i % 3) * 70 + "ms");
-        card.addEventListener("click", () => markLastRead("card", c.id));
-        card.addEventListener("focusin", () => markLastRead("card", c.id));
+        card.addEventListener("click", () => {
+          markLastRead("card", c.id);
+          recordThreadEvidence("card:" + c.id);
+        });
+        card.addEventListener("focusin", () => {
+          markLastRead("card", c.id);
+          recordThreadEvidence("card:" + c.id);
+        });
 
         if (g.kind === "person") {
           const photo = el("figure", "cw-photo");
@@ -1903,6 +1912,7 @@
     if (hit) {
       hit.classList.add("is-in", "is-deep-hit");
       markLastRead("card", wanted);
+      recordThreadEvidence("card:" + wanted);
       hit.tabIndex = -1;
       requestAnimationFrame(() => {
         hit.scrollIntoView({ block: "start", behavior: "instant" });
@@ -1971,6 +1981,9 @@
       if (href && /^(search|timeline|cards)\.html\?/.test(href)) {
         const link = el("a", "pf-link qz-review-link", "回看依据材料");
         link.href = href;
+        link.addEventListener("click", () => {
+          if (q.sourceId) recordThreadEvidence("review:" + q.sourceId);
+        });
         node.appendChild(link);
       }
     }
@@ -2086,6 +2099,9 @@
             review.href = q.reviewHref;
             review.target = "_blank";
             review.rel = "noopener";
+            if (q.sourceId) {
+              review.addEventListener("click", () => recordThreadEvidence("review:" + q.sourceId));
+            }
             item.appendChild(review);
             list.appendChild(item);
           });
@@ -2413,6 +2429,7 @@
       submitBtn.addEventListener("click", () => {
         if (!questions || submitted || picks.filter((x) => x != null).length < questions.length) return;
         submitted = true;
+        if (topicQuestions) recordThreadEvidence("topic:yitiaobian");
         const dims = {};
         let score = 0;
         questions.forEach((q, i) => {
@@ -2640,6 +2657,9 @@
           link.href = q.reviewHref;
           link.target = "_blank";
           link.rel = "noopener";
+          if (link.getAttribute("href") === "search.html?source=zhangjuzheng%2Fc4") {
+            link.addEventListener("click", () => recordThreadEvidence("review:zhangjuzheng/c4"));
+          }
           row.appendChild(link);
           wrongList.appendChild(row);
         });
@@ -3056,6 +3076,7 @@
         }
       }
       if (!isCurrentRequest()) return;
+      if (counted && reply != null && sentId === "chongzhen") recordThreadEvidence("chat:chongzhen");
       if (reply != null) {
         s.messages.push({ role: "assistant", content: reply, note });
         markChatStarted();
@@ -3596,6 +3617,7 @@
     const ui = data.chapterUI;
     const ch = selectedChapter();
     const idx = data.chapters.indexOf(ch);
+    recordThreadEvidence("chapter:" + ch.id);
     app.appendChild(renderPageHead(ui.series + " · " + ch.title, null));
 
     const wrap = el("div", "container ch-wrap");

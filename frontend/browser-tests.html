@@ -414,6 +414,175 @@ await test('BT-3 非法决策存档按未选渲染且可正常重新选择',asyn
   assert(nodes[0].classList.contains('is-done'),'非法存档无法重新选择');
  }finally{probe.close();}
 });
+const researchFixture = (activeId, evidence = []) => ({
+  research: { activeId, byId: { [activeId]: { evidence, updatedAt: 1 } } },
+});
+const researchEvidence = (t, activeId) => JSON.parse(t.store.get('shimais-daming:progress:v1')).research.byId[activeId].evidence;
+
+await test('研读线索：时间线事件取证、去重并显示轻量回声', async () => {
+  const t = await setup('timeline', { progress: researchFixture('yitiaobian') });
+  try {
+    const event = t.d.querySelector('.tl-event[data-id="e1581"]');
+    assert(event, '缺少一条鞭法时间线事件');
+    event.querySelector('.tl-row, button, .tl-head').click();
+    await tick();
+    assert(researchEvidence(t, 'yitiaobian').includes('event:e1581'), '展开事件未取证');
+    assert(t.d.querySelector('.research-echo-text').textContent.includes('已为「一条鞭法」线索取证'), '新证据未显示回声');
+    const saved = t.store.get('shimais-daming:progress:v1');
+    event.querySelector('.tl-row, button, .tl-head').click();
+    await tick();
+    event.querySelector('.tl-row, button, .tl-head').click();
+    await tick();
+    assert(t.d.querySelector('.research-echo-text').textContent === '已记录', '重复证据提示错误');
+    assert(t.store.get('shimais-daming:progress:v1') === saved, '重复证据重复写入');
+    assert(researchEvidence(t, 'yitiaobian').filter(k => k === 'event:e1581').length === 1, '证据未去重');
+  } finally { t.close(); }
+});
+
+await test('研读线索：决策选择取证', async () => {
+  const t = await setup('decision', { progress: researchFixture('tumubao') });
+  try {
+    t.d.querySelector('.dc-scenario[data-id="d1449"] .dc-choice').click();
+    await tick();
+    assert(researchEvidence(t, 'tumubao').includes('decision:d1449'), '决策未取证');
+  } finally { t.close(); }
+});
+
+await test('研读线索：亲历完成取证且重复末场不重复写入', async () => {
+  const t = await setup('qinli-play', { search: '?story=q1581', progress: researchFixture('yitiaobian') });
+  try {
+    for (let i = 0; i < 30 && !t.d.querySelector('.ql-ending'); i++) {
+      const choice = t.d.querySelector('.ql-choice:not(:disabled)');
+      if (choice) choice.click();
+      else t.d.querySelector('.ql-next:not([hidden])').click();
+      await tick();
+    }
+    assert(t.d.querySelector('.ql-ending'), '亲历未通关');
+    assert(researchEvidence(t, 'yitiaobian').includes('story:q1581'), '亲历完成未取证');
+    const saved = t.store.get('shimais-daming:progress:v1');
+    const replayProgress = JSON.parse(saved);
+    const story = t.w.fixtureData.qinli.find(s => s.id === 'q1581');
+    replayProgress.qinli = { done: ['q1581'], current: { storyId: 'q1581', sceneIndex: story.scenes.length, prestige: 50, morale: 50 } };
+    const replay = await setup('qinli-play', { search: '?story=q1581', progress: replayProgress });
+    try {
+      await tick();
+      assert(replay.store.get('shimais-daming:progress:v1') === saved, '末场重算重复记录证据');
+    } finally { replay.close(); }
+  } finally { t.close(); }
+});
+
+await test('研读线索：制度卡打开取证', async () => {
+  const t = await setup('cards', { progress: researchFixture('yitiaobian') });
+  try {
+    t.d.querySelector('.cw-card[data-card="i3"]').click();
+    await tick();
+    assert(researchEvidence(t, 'yitiaobian').includes('card:i3'), '制度卡打开未取证');
+  } finally { t.close(); }
+});
+
+await test('研读线索：错题回看才取证，答错本身不取证', async () => {
+  const picks = [1, 1, 2, 1, 0, 1, 2, 0, 2, 2];
+  const progress = {
+    ...researchFixture('yitiaobian'),
+    quiz: { picks, score: 9, dims: {} },
+    quizWrong: ['q10'],
+  };
+  const t = await setup('quiz', { progress });
+  try {
+    const rawProgress = t.store.get('shimais-daming:progress:v1');
+    assert(rawProgress, '小测存档不存在');
+    assert(JSON.parse(rawProgress).research, '小测存档缺少 research：' + rawProgress);
+    assert(!JSON.parse(rawProgress).research.byId.yitiaobian.evidence.includes('review:zhangjuzheng/c4'), '答错直接取证');
+    const review = t.d.querySelector('.qz-wrong-review');
+    assert(review, '缺少错题回看链接');
+    review.addEventListener('click', e => e.preventDefault());
+    review.click();
+    await tick();
+    assert(researchEvidence(t, 'yitiaobian').includes('review:zhangjuzheng/c4'), '错题回看未取证');
+  } finally { t.close(); }
+});
+
+await test('研读线索：画像错题回看取证', async () => {
+  const t = await setup('profile', { progress: { ...researchFixture('yitiaobian'), quizWrong: ['q10'] } });
+  try {
+    const review = t.d.querySelector('.pf-wrong-link');
+    assert(review, '画像缺少错题回看链接');
+    review.addEventListener('click', e => e.preventDefault());
+    review.click();
+    await tick();
+    assert(researchEvidence(t, 'yitiaobian').includes('review:zhangjuzheng/c4'), '画像错题回看未取证');
+  } finally { t.close(); }
+});
+
+await test('研读线索：聊天成功回复取证且非当前响应不取证', async () => {
+  const t = await setup('chat', { search: '?figure=chongzhen', progress: researchFixture('chongzhen') });
+  try {
+    const input = t.d.querySelector('textarea');
+    input.value = '测试问题';
+    const send = t.d.querySelector('.ct-send');
+    assert(!send.disabled, '聊天发送按钮不可用');
+    send.click();
+    assert(t.requests.length > 0, '聊天未发出请求');
+    t.requests[0].resolve({ reply: '测试回答' });
+    await tick();
+    assert(researchEvidence(t, 'chongzhen').includes('chat:chongzhen'), '成功回复未取证');
+    const saved = t.store.get('shimais-daming:progress:v1');
+    const stale = await setup('chat', { search: '?figure=chongzhen', progress: JSON.parse(saved), ignoreAbort: true });
+    try {
+      const staleInput = stale.d.querySelector('textarea');
+      staleInput.value = '旧会话问题';
+      stale.d.querySelector('.ct-send').click();
+      const restart = Array.from(stale.d.querySelectorAll('button')).find(b => b.textContent === '重开一轮');
+      restart.click();
+      staleInput.value = '新会话问题';
+      stale.d.querySelector('.ct-send').click();
+      assert(stale.requests.length === 2, '重开后未建立新请求');
+      stale.requests[1].resolve({ reply: '新会话回答' });
+      await tick();
+      const savedAfterRestart = stale.store.get('shimais-daming:progress:v1');
+      staleInput.value = '被取消问题';
+      stale.d.querySelector('.ct-send').click();
+      const restartAgain = Array.from(stale.d.querySelectorAll('button')).find(b => b.textContent === '重开一轮');
+      restartAgain.click();
+      stale.requests[2].resolve({ reply: '过期回答' });
+      await tick();
+      assert(stale.store.get('shimais-daming:progress:v1') === savedAfterRestart, '过期回复写入了证据');
+    } finally { stale.close(); }
+  } finally { t.close(); }
+});
+
+await test('研读线索：聊天离线剧本回退不取证', async () => {
+  const t = await setup('chat', { search: '?figure=chongzhen', progress: researchFixture('chongzhen') });
+  try {
+    const savedResearch = JSON.stringify(JSON.parse(t.store.get('shimais-daming:progress:v1')).research);
+    t.d.querySelector('textarea').value = '测试问题';
+    t.d.querySelector('.ct-send').click();
+    assert(t.requests.length === 1, '聊天未发出在线请求');
+    t.requests[0].reject(new TypeError('network'));
+    await tick();
+    assert(t.d.querySelector('.ct-flow').textContent.includes('离线') || t.d.querySelector('.ct-offline').checkVisibility(), '未进入离线回退');
+    assert(JSON.stringify(JSON.parse(t.store.get('shimais-daming:progress:v1')).research) === savedResearch, '离线剧本回退写入了研读证据');
+    assert(!researchEvidence(t, 'chongzhen').includes('chat:chongzhen'), '离线剧本被误记为成功回复');
+  } finally { t.close(); }
+});
+
+await test('研读线索：进入章节取证', async () => {
+  const t = await setup('chapter', { search: '?ch=tumubao', progress: researchFixture('tumubao') });
+  try {
+    assert(researchEvidence(t, 'tumubao').includes('chapter:tumubao'), '进入章节未取证');
+  } finally { t.close(); }
+});
+
+await test('研读线索：专题题完整提交后取证，未提交不取证', async () => {
+  const t = await setup('quiz', { search: '?topic=yitiaobian', progress: researchFixture('yitiaobian') });
+  try {
+    assert(!researchEvidence(t, 'yitiaobian').includes('topic:yitiaobian'), '进入专题未取证');
+    t.d.querySelectorAll('.qz-topic-root .qz-item').forEach(item => item.querySelector('.qz-choice').click());
+    t.d.querySelector('.qz-topic-root .qz-submit-btn').click();
+    await tick();
+    assert(researchEvidence(t, 'yitiaobian').includes('topic:yitiaobian'), '专题提交未取证');
+  } finally { t.close(); }
+});
 window.testResults = results;
 document.title = results.some(r=>!r.pass)?'FAIL 浏览器回归':'PASS 浏览器回归';
 </script>

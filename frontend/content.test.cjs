@@ -92,7 +92,7 @@ test('lastRead accepts only known kind/id, never an arbitrary URL or score mutat
   assert.match(code, /function markLastRead\(/, 'lastRead writer missing');
   assert.match(code, /function resolveLastRead\(/, 'lastRead whitelist missing');
   const progress = { quiz: { score: 9 }, qinli: { current: { prestige: 75, morale: 40 } } };
-  const ctx = vm.createContext({ data, updateProgress: mutate => mutate(progress) });
+  const ctx = vm.createContext({ data, updateProgress: mutate => mutate(progress), recordThreadEvidence() {} });
   vm.runInContext(code, ctx);
   ctx.markLastRead('card', 'i3');
   assert.deepEqual(JSON.parse(JSON.stringify(progress.lastRead)), { kind: 'card', id: 'i3' });
@@ -244,7 +244,7 @@ test('all story final-scene resumes preserve numbers and finish without applying
     const app = new Node('main');
     const progress = { qinli: { done: [], current: { storyId: story.id, sceneIndex: story.scenes.length, prestige: 80, morale: 45 } }, quiz: { score: 9 } };
     const ctx = vm.createContext({ data, app, URLSearchParams, location: { search: '?story=' + story.id }, reducedMotion: { matches: true },
-      loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {},
+      loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {}, recordThreadEvidence() {},
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'), window: { addEventListener() {} },
     });
     vm.runInContext(CODEX_HELPERS + code + '\nrenderQinliPlay();', ctx);
@@ -271,7 +271,7 @@ function renderEnding(story, qinliUI = data.qinliUI) {
   const app = new Node('main');
   const progress = { qinli: { done: [], current: { storyId: story.id, sceneIndex: story.scenes.length, prestige: 80, morale: 45 } } };
   const ctx = vm.createContext({ data: { ...data, qinli: [story], qinliUI }, app, URLSearchParams, location: { search: '?story=' + story.id }, reducedMotion: { matches: true },
-    loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {},
+    loadProgress: () => progress, updateProgress: f => f(progress), markLastRead() {}, recordThreadEvidence() {},
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'), window: { addEventListener() {} },
   });
   vm.runInContext(CODEX_HELPERS + code + '\nrenderQinliPlay();', ctx);
@@ -311,7 +311,7 @@ test('CBDB links render beside person details with safe new-window attributes', 
   const app = new Node('main');
   const body = new Node('body');
   const ctx = vm.createContext({ data, app, currentModule: { title: '人物' }, URLSearchParams, location: { search: '' }, reducedMotion: { matches: true },
-    loadProgress: () => ({}), updateProgress: f => f({}), markLastRead() {}, requestAnimationFrame: f => f(),
+    loadProgress: () => ({}), updateProgress: f => f({}), markLastRead() {}, recordThreadEvidence() {}, requestAnimationFrame: f => f(),
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'),
     document: { body, createElementNS: (ns, tag) => new Node(tag), addEventListener() {} }, window: { addEventListener() {} },
   });
@@ -868,7 +868,7 @@ test('chapter sections carry verbatim backend sources and render collapsed slips
   const code = source.slice(start, source.indexOf('  /* ----------', start + 10));
   const app = new Node('main');
   const ctx = vm.createContext({ data, app, currentModule: { title: '白话明史 · 洪武朝' },
-    loadProgress: () => ({}), updateProgress: () => assert.fail('chapter sources must not write progress'), markLastRead() {},
+    loadProgress: () => ({}), updateProgress: () => assert.fail('chapter sources must not write progress'), markLastRead() {}, recordThreadEvidence() {},
     location: { search: '' }, URLSearchParams, selectedChapter: () => data.chapters[0], chapterNum,
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
     window: { addEventListener() {} },
@@ -929,7 +929,7 @@ test('qinli content-area anchors open in a new tab; nav and in-page anchors do n
   const app = new Node('main');
   const chCtx = vm.createContext({ data, app, currentModule: { title: '白话明史 · 洪武朝' },
     location: { search: '' }, URLSearchParams, selectedChapter: () => data.chapters[0], chapterNum,
-    loadProgress: () => ({}), updateProgress: () => assert.fail('no writes'), markLastRead() {},
+    loadProgress: () => ({}), updateProgress: () => assert.fail('no writes'), markLastRead() {}, recordThreadEvidence() {},
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
     window: { addEventListener() {} },
   });
@@ -974,7 +974,7 @@ test('formal quiz allows re-picks before submit, locks after, and retakes', () =
   const progress = {};
   const app = new Node('main');
   const ctx = vm.createContext({ data, app, currentModule: { title: '小测' },
-    loadProgress: () => progress, updateProgress: f => f(progress),
+    loadProgress: () => progress, updateProgress: f => f(progress), recordThreadEvidence() {},
     quizState: () => { const q = progress.quiz && typeof progress.quiz === 'object' ? progress.quiz : {}; return { picks: Array.isArray(q.picks) ? q.picks : [], submitted: typeof q.score === 'number' }; },
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
     buildTopicPath: () => new Node('section'), CHAT_API_BASE: null,
@@ -1043,7 +1043,7 @@ test('decisions allow changing picks; seal, hint and completion follow current p
   const progress = {};
   const render = (app) => {
     const ctx = vm.createContext({ data, app, currentModule: { title: '决策模式' },
-      loadProgress: () => progress, updateProgress: f => f(progress),
+      loadProgress: () => progress, updateProgress: f => f(progress), recordThreadEvidence() {},
       decisionState: () => { const d = progress.decisions && typeof progress.decisions === 'object' ? progress.decisions : {}; return { done: Array.isArray(d.done) ? d.done : [], picks: d.picks && typeof d.picks === 'object' ? d.picks : {} }; },
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
       reducedMotion: { matches: true }, window: { addEventListener() {} },
@@ -1099,7 +1099,7 @@ test('BT-3 invalid saved decision picks render every scenario as unselected', ()
   data.decisions.forEach(sc => { progress.decisions.picks[sc.id] = 'invalid-key'; });
   const app = new Node('main');
   const ctx = vm.createContext({ data, app, currentModule: { title: '决策模式' },
-    loadProgress: () => progress, updateProgress: f => f(progress),
+    loadProgress: () => progress, updateProgress: f => f(progress), recordThreadEvidence() {},
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
     reducedMotion: { matches: true }, window: { addEventListener() {} },
   });
@@ -1254,7 +1254,7 @@ test('chapter renders intro, sections, source prefixes and next links without wr
   const app = new Node('main');
   let writes = 0;
   const ctx = vm.createContext({ data, app, currentModule: { title: '白话明史 · 洪武朝' },
-    loadProgress: () => ({}), updateProgress: () => { writes += 1; }, markLastRead() {},
+    loadProgress: () => ({}), updateProgress: () => { writes += 1; }, markLastRead() {}, recordThreadEvidence() {},
     location: { search: '' }, URLSearchParams, selectedChapter: () => data.chapters[0], chapterNum,
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
     window: { addEventListener() {} },
@@ -1284,7 +1284,7 @@ test('chapter page selects by ?ch= with tabs, chapter nav and unknown fallback',
     const ctx = vm.createContext({ data, app, currentModule: { title: '白话明史' },
       location: { search }, URLSearchParams,
       selectedChapter: () => chapterById(new URLSearchParams(search).get('ch')), chapterNum,
-      loadProgress: () => ({}), updateProgress: () => assert.fail('chapter must not write progress'), markLastRead() {},
+      loadProgress: () => ({}), updateProgress: () => assert.fail('chapter must not write progress'), markLastRead() {}, recordThreadEvidence() {},
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'),
       window: { addEventListener() {} },
     });
@@ -1446,7 +1446,7 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   const indexCode = source.slice(source.indexOf('  function renderIndex()'), source.indexOf('  /* ---------- 时间线'));
   const app = new Node('main');
   const ctx = vm.createContext({ data, app, currentModule: { title: '首页' },
-    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, resolveLastRead: () => null,
+    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, recordThreadEvidence() {}, resolveLastRead: () => null,
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildCarousel: () => new Node('section'), buildTopicPath: () => new Node('section'),
     window: { addEventListener() {} },
   });
@@ -1498,7 +1498,7 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   const cardsCode = source.slice(source.indexOf('  function renderCards()'), source.indexOf('  function quizState()'));
   const capp = new Node('main');
   const cctx = vm.createContext({ data, app: capp, currentModule: { title: '人物' }, URLSearchParams, location: { search: '' }, reducedMotion: { matches: true },
-    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, requestAnimationFrame: f => f(),
+    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, recordThreadEvidence() {}, requestAnimationFrame: f => f(),
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildTopicPath: () => new Node('section'),
     document: { body: new Node('body'), createElementNS: (ns, tag) => new Node(tag), addEventListener() {} }, window: { addEventListener() {} },
   });
