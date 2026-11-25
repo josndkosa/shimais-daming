@@ -28,6 +28,9 @@ function checkHref(href) {
   else if (url.pathname === '/qinli-play.html') assert.ok(data.qinli.some(s => s.playable && s.id === id.get('story')));
   else if (url.pathname === '/quiz.html') assert.equal(id.get('topic'), 'yitiaobian');
   else if (url.pathname === '/search.html') assert.ok(sources.has(id.get('source')), href);
+  else if (url.pathname === '/chapter.html') assert.ok(data.chapters.some(c => c.id === id.get('ch')));
+  else if (url.pathname === '/chat.html') assert.ok(data.chatFigures.some(f => f.id === id.get('figure')));
+  else if (url.pathname === '/decisions.html') assert.ok(data.decisions.some(d => '#' + d.id === url.hash));
   else assert.fail('Unexpected destination: ' + href);
 }
 test('formal quiz preserves ten IDs, indexes and answer meanings', () => {
@@ -394,8 +397,66 @@ test('territory states cover every year exactly once with the specified overlays
   assert.equal(data.territory.disclaimer, '本图为疆域大势示意，非精确疆界；具体疆界以《中国历史地图集》为准。');
   assert.equal(data.territory.legend, '实色为布政司实控，斜线为羁縻名义统辖。');
 });
+test('research threads define three canonical IDs, exact questions, three slots and valid destinations', () => {
+  assert.deepEqual(Array.from(data.researchThreads, t => t.id), ['yitiaobian', 'tumubao', 'chongzhen']);
+  assert.deepEqual(Array.from(data.researchThreads, t => t.title), ['一条鞭法：从赋役合并到农户成本', '土木堡与北京保卫战', '崇祯']);
+  assert.deepEqual(Array.from(data.researchThreads, t => t.question), [
+    '一条鞭法把赋役并成白银，为什么农户的实际负担反而可能更重？',
+    '大军在土木堡覆没之后，北京凭什么守住了？',
+    '崇祯勤政十七年，为什么还是没能挽回大明的颓势？',
+  ]);
+  for (const thread of data.researchThreads) {
+    assert.equal(thread.slots.length, 3);
+    for (const slot of thread.slots) {
+      assert.ok(slot.title && slot.keys.length && slot.href);
+      checkHref(slot.href);
+    }
+  }
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchThreads[0].slots.map(s => s.keys))), [
+    ['event:e1581'],
+    ['card:i3', 'review:zhangjuzheng/c4', 'topic:yitiaobian'],
+    ['story:q1581'],
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchThreads[1].slots.map(s => s.keys))), [
+    ['event:e1449'],
+    ['decision:d1449', 'card:p3', 'chapter:tumubao'],
+    ['story:q1449'],
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchThreads[2].slots.map(s => s.keys))), [
+    ['event:e1644'],
+    ['story:q1644'],
+    ['chat:chongzhen', 'card:p6', 'chapter:chongzhen'],
+  ]);
+  assert.deepEqual(Array.from(data.researchThreads.flatMap(t => t.slots.map(s => s.title))), [
+    '一条鞭法推行全国', '一条鞭法与白银财政', '万历九年 · 清丈',
+    '土木之变', '守不守北京', '正统十四年 · 京师',
+    '甲申之变，煤山', '崇祯十七年 · 煤山前夜', '崇祯',
+  ]);
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchUI)), {
+    title: '研读线索', related: '相关足迹', start: '开始追索', continue: '继续研读线索',
+    switch: '切换线索', complete: '已形成第一轮判断', review: '回看证据链',
+    echo: '已为「{title}」线索取证 · 查看线索', recorded: '已记录',
+  });
+});
+
+test('research evidence keys resolve only to existing canonical objects', () => {
+  const keys = data.researchThreads.flatMap(t => t.slots.flatMap(s => s.keys));
+  for (const key of keys) {
+    const [kind, id] = key.split(':');
+    if (kind === 'event') assert.ok(data.timeline.events.some(e => e.id === id), key);
+    else if (kind === 'card') assert.ok(data.cards.some(c => c.id === id), key);
+    else if (kind === 'decision') assert.ok(data.decisions.some(d => d.id === id), key);
+    else if (kind === 'story') assert.ok(data.qinli.some(s => s.id === id && s.playable), key);
+    else if (kind === 'chapter') assert.ok(data.chapters.some(c => c.id === id), key);
+    else if (kind === 'chat') assert.ok(data.chatFigures.some(f => f.id === id), key);
+    else if (kind === 'review') assert.ok(sources.has(id), key);
+    else if (kind === 'topic') assert.equal(id, data.topic.id);
+    else assert.fail('unknown research evidence kind: ' + key);
+  }
+});
+
 test('territory addition leaves all existing site data and the 107 search entries unchanged', () => {
-  const { territory, ...existing } = data;
+  const { territory, researchThreads, researchUI, ...existing } = data;
   assert.equal(createHash('sha256').update(JSON.stringify(existing)).digest('hex'), 'ffcf4ef985fe51175b035bc24ef8467812392509cacf229591ddb50f52fecc59');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index.slice(0, 99))).digest('hex'), 'e04a192923861f187ae95708feda6ee369a39d579018df6c43c941ff2c79311c');
   assert.equal(createHash('sha256').update(JSON.stringify(context.index)).digest('hex'), '6ea9a537b23c5c3207f8959aad15d00181d6ee827f524cfdb25ade9dcc047db5');

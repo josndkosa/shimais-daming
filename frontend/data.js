@@ -613,6 +613,53 @@ const SITE_DATA = {
     },
   ],
 
+  researchThreads: [
+    {
+      id: "yitiaobian",
+      title: "一条鞭法：从赋役合并到农户成本",
+      question: "一条鞭法把赋役并成白银，为什么农户的实际负担反而可能更重？",
+      shortTitle: "一条鞭法",
+      slots: [
+        { title: "一条鞭法推行全国", keys: ["event:e1581"], href: "timeline.html?event=e1581" },
+        { title: "一条鞭法与白银财政", keys: ["card:i3", "review:zhangjuzheng/c4", "topic:yitiaobian"], href: "cards.html?card=i3" },
+        { title: "万历九年 · 清丈", keys: ["story:q1581"], href: "qinli-play.html?story=q1581" },
+      ],
+    },
+    {
+      id: "tumubao",
+      title: "土木堡与北京保卫战",
+      question: "大军在土木堡覆没之后，北京凭什么守住了？",
+      shortTitle: "土木堡",
+      slots: [
+        { title: "土木之变", keys: ["event:e1449"], href: "timeline.html?event=e1449" },
+        { title: "守不守北京", keys: ["decision:d1449", "card:p3", "chapter:tumubao"], href: "decisions.html#d1449" },
+        { title: "正统十四年 · 京师", keys: ["story:q1449"], href: "qinli-play.html?story=q1449" },
+      ],
+    },
+    {
+      id: "chongzhen",
+      title: "崇祯",
+      question: "崇祯勤政十七年，为什么还是没能挽回大明的颓势？",
+      shortTitle: "崇祯",
+      slots: [
+        { title: "甲申之变，煤山", keys: ["event:e1644"], href: "timeline.html?event=e1644" },
+        { title: "崇祯十七年 · 煤山前夜", keys: ["story:q1644"], href: "qinli-play.html?story=q1644" },
+        { title: "崇祯", keys: ["chat:chongzhen", "card:p6", "chapter:chongzhen"], href: "chat.html?figure=chongzhen" },
+      ],
+    },
+  ],
+  researchUI: {
+    title: "研读线索",
+    related: "相关足迹",
+    start: "开始追索",
+    continue: "继续研读线索",
+    switch: "切换线索",
+    complete: "已形成第一轮判断",
+    review: "回看证据链",
+    echo: "已为「{title}」线索取证 · 查看线索",
+    recorded: "已记录",
+  },
+
   /* 研读画像：只读 localStorage 汇总，不上传任何数据。 */
   profileUI: {
     footprintTitle: "研读足迹",

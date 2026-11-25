@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在现有页面与 `shimais-daming:progress:v1` 内实现三条可开始、可取证、可切换、可恢复的个人研读线索，不新增页面、后端或未经确认的研究问题文案。
+**Goal:** 在现有页面与 `shimais-daming:progress:v1` 内实现三条可开始、可取证、可切换、可恢复的个人研读线索，不新增页面、后端；研究问题逐字采用站长 2026-11-25 定版文案。
 
 **Architecture:** 线索定义与证据映射集中在 `frontend/data.js`；`frontend/app.js` 提供统一存储、校验、记录和只读渲染 helper。现有事件、决策、人物卡、亲历结局、错题回看、聊天成功回复与章节入口调用同一记录函数；画像页读取状态，首页与全站底部提供轻量入口和回声。
 
@@ -43,35 +43,40 @@ else if (url.pathname === '/decisions.html') assert.ok(data.decisions.some(d => 
 test('research threads define three canonical IDs, three slots and valid destinations', () => {
   assert.deepEqual(Array.from(data.researchThreads, t => t.id), ['yitiaobian', 'tumubao', 'chongzhen']);
   assert.deepEqual(Array.from(data.researchThreads, t => t.title), ['一条鞭法：从赋役合并到农户成本', '土木堡与北京保卫战', '崇祯']);
+  assert.deepEqual(Array.from(data.researchThreads, t => t.question), [
+    '一条鞭法把赋役并成白银，为什么农户的实际负担反而可能更重？',
+    '大军在土木堡覆没之后，北京凭什么守住了？',
+    '崇祯勤政十七年，为什么还是没能挽回大明的颓势？',
+  ]);
   for (const thread of data.researchThreads) {
     assert.equal(thread.slots.length, 3);
-    assert.equal(thread.question, undefined, '研究问题文案尚未定版，不得自拟');
+    assert.ok(thread.question, '研究问题必须采用站长定版文案');
     for (const slot of thread.slots) {
       assert.ok(slot.title && slot.keys.length && slot.href);
       checkHref(slot.href);
     }
   }
-  assert.deepEqual(data.researchThreads[0].slots.map(s => s.keys), [
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchThreads[0].slots.map(s => s.keys))), [
     ['event:e1581'],
     ['card:i3', 'review:zhangjuzheng/c4', 'topic:yitiaobian'],
     ['story:q1581'],
   ]);
-  assert.deepEqual(data.researchThreads[1].slots.map(s => s.keys), [
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchThreads[1].slots.map(s => s.keys))), [
     ['event:e1449'],
     ['decision:d1449', 'card:p3', 'chapter:tumubao'],
     ['story:q1449'],
   ]);
-  assert.deepEqual(data.researchThreads[2].slots.map(s => s.keys), [
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchThreads[2].slots.map(s => s.keys))), [
     ['event:e1644'],
     ['story:q1644'],
     ['chat:chongzhen', 'card:p6', 'chapter:chongzhen'],
   ]);
-  assert.deepEqual(data.researchThreads.flatMap(t => t.slots.map(s => s.title)), [
+  assert.deepEqual(Array.from(data.researchThreads.flatMap(t => t.slots.map(s => s.title))), [
     '一条鞭法推行全国', '一条鞭法与白银财政', '万历九年 · 清丈',
     '土木之变', '守不守北京', '正统十四年 · 京师',
     '甲申之变，煤山', '崇祯十七年 · 煤山前夜', '崇祯',
   ]);
-  assert.deepEqual(data.researchUI, {
+  assert.deepEqual(JSON.parse(JSON.stringify(data.researchUI)), {
     title: '研读线索', related: '相关足迹', start: '开始追索', continue: '继续研读线索',
     switch: '切换线索', complete: '已形成第一轮判断', review: '回看证据链',
     echo: '已为「{title}」线索取证 · 查看线索', recorded: '已记录',
@@ -115,6 +120,7 @@ researchThreads: [
   {
     id: 'yitiaobian',
     title: '一条鞭法：从赋役合并到农户成本',
+    question: '一条鞭法把赋役并成白银，为什么农户的实际负担反而可能更重？',
     shortTitle: '一条鞭法',
     slots: [
       { title: '一条鞭法推行全国', keys: ['event:e1581'], href: 'timeline.html?event=e1581' },
@@ -125,6 +131,7 @@ researchThreads: [
   {
     id: 'tumubao',
     title: '土木堡与北京保卫战',
+    question: '大军在土木堡覆没之后，北京凭什么守住了？',
     shortTitle: '土木堡',
     slots: [
       { title: '土木之变', keys: ['event:e1449'], href: 'timeline.html?event=e1449' },
@@ -135,6 +142,7 @@ researchThreads: [
   {
     id: 'chongzhen',
     title: '崇祯',
+    question: '崇祯勤政十七年，为什么还是没能挽回大明的颓势？',
     shortTitle: '崇祯',
     slots: [
       { title: '甲申之变，煤山', keys: ['event:e1644'], href: 'timeline.html?event=e1644' },
@@ -741,6 +749,7 @@ function renderResearchSection() {
     data.researchThreads.forEach((thread) => {
       const card = el('article', 'research-card');
       card.appendChild(el('h3', 'research-card-title', thread.title));
+      card.appendChild(el('p', 'research-question', thread.question));
       card.appendChild(el('p', 'research-footprint', ui.related + ' ' + researchFootprintCount(thread) + '/3'));
       const start = el('button', 'cta-button research-start', ui.start);
       start.type = 'button';
@@ -756,6 +765,7 @@ function renderResearchSection() {
   section.id = 'research-' + current.thread.id;
   const head = el('div', 'research-head');
   head.appendChild(el('h3', 'research-current-title', current.thread.title));
+  head.appendChild(el('p', 'research-question', current.thread.question));
   if (current.complete) head.appendChild(el('p', 'research-complete', ui.complete));
   section.appendChild(head);
   const chain = el('ol', 'research-chain');
@@ -815,6 +825,7 @@ if (currentResearch && !currentResearch.complete) {
 .research-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .research-card { padding: 18px; border: 1px solid var(--line); background: var(--site-surface); }
 .research-card-title { margin: 0 0 16px; font-family: var(--site-font); font-weight: 700; }
+.research-question { margin: 0 0 16px; color: var(--site-fg); line-height: 1.8; }
 .research-chain { list-style: none; margin: 20px 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
 .research-slot { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; }
 .research-slot:not(:last-child)::after { content: ''; position: absolute; left: 18px; right: -18px; top: 5px; height: 1px; background: var(--line); }
