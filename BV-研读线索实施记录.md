@@ -1,11 +1,11 @@
 # BV 个人研读线索实施记录
 
 - 日期：2026-11-25
-- 状态：已实施并完成本地验收；2026-11-25 发布后自检发现回声文案重复，已立即回滚，待修复后重新验收发布
+- 状态：BV＋BX 已发布并通过线上严格自检 16/16；回声文案与唯一可点击链接均正确
 - 设计：`docs/superpowers/specs/2026-11-24-personal-research-thread-design.md`
 - 计划：`docs/superpowers/plans/2026-11-24-personal-research-thread.md`
 - 交付分支：`main`
-- 发布动作：2026-11-25 曾发布 BV 版本；发布后自检发现回声文案重复，已立即回滚到 BT 版，当前线上不含 BV 改动
+- 发布动作：首次 BV 发布因回声重复立即回滚；BX 修复后重新发布 BV＋BX，当前线上 releaseId 为 `01a212f8-ae6b-7b84-a5b3-3ae220d5d835`
 
 ## 1. 分项提交
 
@@ -16,8 +16,9 @@
 | BV-3 | `d58404f4c6f9b6cad4f7094b2a54b85b2a5bc111` | 个人研读线索（BV-3）：接入现有研读行为入口 |
 | BV-4 | `1c166df707233ffbef19f18eeb5031bfe4bc0493` | 个人研读线索（BV-4）：画像证据链与响应式样式 |
 | BV-5 | `e0072aa1c198c55e3bc64be67f3368cf1cf93bdc` | 个人研读线索（BV-5）：检索标记与全量验收 |
+| BX | `72382f0` | 修复研读线索回声重复文案（BX） |
 
-BV-1 至 BV-5 按 Task 1 → Task 5 顺序提交。每项均先写失败测试、确认有效红灯，再实现并确认绿灯。
+BV-1 至 BV-5 按 Task 1 → Task 5 顺序提交。每项均先写失败测试、确认有效红灯，再实现并确认绿灯。BX 先补充精确文案、唯一链接与可点击回归并确认红灯，再只修改 `researchUI.echo` 的一处生产字符串。
 
 ## 2. 定版内容
 
@@ -77,7 +78,7 @@ Node VM 测试中的嵌套数组/对象使用 JSON 序列化或 `Array.from()` �
 
 - 未新增页面、顶级导航、后端接口、模型调用或 localStorage key。
 - 未修改 `backend/`、史料、题目、剧本或人物设定。
-- 未纳入并行工作修改的 `frontend/.史脉·大明.qoder.site`；发布工具随后写入的当前回滚绑定不视为 BV 源码改动。
+- 未纳入并行工作修改的 `frontend/.史脉·大明.qoder.site`；BX 重新发布后，仅纳入发布工具写入的 BV＋BX 当前绑定。
 - 未纳入 `qoder截图/`。
 - 访问范围保持 public；未读取、回显或修改 Secret 值，未修改 Secret 设置；函数按原依赖重新发布。
 
@@ -125,3 +126,54 @@ Node VM 测试中的嵌套数组/对象使用 JSON 序列化或 `Array.from()` �
 - 访问范围保持 `public`；未读取、回显或修改 Secret 值，未改变函数依赖。
 
 BV release 已被替换，当前线上不含 BV 功能。后续须修正回声为单一可见文案，补精确文本回归，重新执行本地全套与线上自检后再发布；不得沿用本次 14/15 的失败结果。
+
+## 8. 2026-11-25 BX 修复与重新发布
+
+### 8.1 修复范围与本地门禁
+
+BX 只把 `frontend/data.js` 的 `researchUI.echo` 从 `已为「{title}」线索取证 · 查看线索` 改为 `已为「{title}」线索取证 →`。`app.js` 的回声逻辑不变，继续由原有链接唯一呈现“查看线索”；未改其他生产文案、样式或数据。
+
+补充的回归同时检查完整可见文案、原始文本中“查看线索”仅出现一次、链接文案与目标、真实点击事件。隔离 iframe 不加载站点样式，因此完整可见文案由两个文本节点组合验证；真实 CSS 间距与线上点击跳转由严格线上脚本验证。浏览器测试资源请求增加 `cache: 'no-store'`，避免静态服务缓存复用旧 `data.js`。
+
+BX 提交 `72382f0` 前的新鲜门禁：
+
+| 验收 | 结果 |
+| --- | --- |
+| `node --test frontend/content.test.cjs` | 52/52 |
+| `node tests/dbg-bt.js` | 50/50 |
+| `node tests/verify-research.js` | 11/11 |
+| `node tests/verify9.js` | 13/13 |
+| `node tests/br/compare.mjs` | 36/36 |
+| `backend/` 正式 pytest | 38 passed，112 subtests passed |
+| 语法与 `git diff --check` | 通过 |
+
+生产差异只有 `frontend/data.js` 的一行；BX 提交未夹带 descriptor 或 `qoder截图/`。
+
+### 8.2 重新发布版本
+
+| 项 | 值 |
+| --- | --- |
+| 发布源码 | `72382f0` |
+| BV＋BX actionId | `8f8ede6d-9f20-414d-b32c-a2d21f67d2aa` |
+| BV＋BX deploymentId | `01a212f8-4da6-7092-b923-41a359dde8df` |
+| **当前线上 releaseId** | **`01a212f8-ae6b-7b84-a5b3-3ae220d5d835`** |
+| publishOperationId | `01a212f8-ae6b-7bcf-922a-ec56e4c23614` |
+| artifactSha256 | `22f2e083474f3296fbc5fae7ffc89c2edd6d1a5cdaec99114b97d62d1665f674` |
+
+发布前同步并验证 `frontend/dist` 的 19 个生产入口/资源文件与源码逐字节一致，图片目录同步；`frontend/function` 与 `backend/` 相对已验收源码无改动。发布清单仅 BV＋BX，完整包含未改动的 Functions，依赖名仍为 `DEEPSEEK_API_KEY`。发布后 action `published=true`，publish operation `succeeded/committed=true`，访问范围保持 `public`；未读取、回显或修改 Secret 值，未触碰 Secret 设置。
+
+### 8.3 发布后严格自检
+
+`tests/verify-bv-live.js` 对当前 release 执行结果：**16/16 passed**。
+
+- health 200、`status=ok`、六人物顺序正确：通过。
+- 线上 `app.js`、`data.js`、`styles.css` 与发布产物 SHA-256 一致：通过。
+- 画像页「研读线索」、三张卡标题与三条研究问题逐字正确：通过。
+- 未开始只读、桌面无文档级横向溢出：通过。
+- 显式开始创建空 `yitiaobian` 线索，事件证据只记录一次：通过。
+- **回声精确文案为 `已为「一条鞭法」线索取证 → 查看线索`：通过。**
+- **整条回声中“查看线索”恰出现一次，且为可见、可点击的链接：通过。**
+- 实际点击回声链接进入画像页：通过。
+- 决策页、对话页正常打开，无白屏，零 console/runtime error：通过。
+
+BX 重新发布后无需回滚；当前线上为 BV＋BX 版本。
