@@ -716,21 +716,21 @@ const SITE_DATA = {
       {
         id: "1368", year: 1368, label: "立国", range: [1368, 1406],
         note: "北伐克大都，元廷北遁；云南尚在元梁王之手，疆域仍在整合。",
-        show: ["liaodong-full", "north-early", "jimi", "nuergan", "yunnan-contested"],
+        show: ["liaodong-full", "north-early", "jimi", "guanxi", "nuergan", "yunnan-contested"],
       },
       {
         id: "1420", year: 1420, label: "交趾在版图", range: [1407, 1448],
         note: "永乐经营四方：交趾设布政司（1407–1427），奴儿干设都司，明之疆域名义上达到最广。",
-        show: ["jiaozhi", "liaodong-full", "north-early", "jimi", "nuergan"],
+        show: ["jiaozhi", "liaodong-full", "north-early", "jimi", "guanxi", "nuergan"],
       },
       {
         id: "1450", year: 1450, label: "土木堡之后", range: [1449, 1580],
-        note: "交趾已弃守，北边防线内移，九边重镇成型——扩张期结束，转入守势。",
-        show: ["liaodong-full", "north-late", "jimi", "nuergan"],
+        note: "交趾已弃守，北边防线内移，九边重镇成型——扩张期结束，转入守势。关西七卫此时尚在关外，1524 年内迁关内。",
+        show: ["liaodong-full", "north-late", "jimi", "guanxi", "nuergan"],
       },
       {
         id: "1581", year: 1581, label: "晚明格局", range: [1581, 1618],
-        note: "张居正执政末年：两京十三省稳固，边墙体系完备，辽东尚全。",
+        note: "张居正执政末年：两京十三省稳固，边墙体系完备，辽东尚全。关西七卫已于 1524 年内迁关内，嘉峪关外不再置卫。",
         show: ["liaodong-full", "north-late", "jimi", "nuergan"],
       },
       {

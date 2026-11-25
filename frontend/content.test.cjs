@@ -7,7 +7,9 @@ const { createHash } = require('node:crypto');
 const root = __dirname;
 const context = vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(root, 'data.js'), 'utf8') + '\nthis.data = SITE_DATA; this.index = SEARCH_INDEX;', context);
+vm.runInContext(fs.readFileSync(path.join(root, 'territory-map.js'), 'utf8') + '\nthis.territoryGeometry = TERRITORY_GEOMETRY;', context);
 const data = context.data;
+const territoryGeometry = context.territoryGeometry;
 const chatTier = (rounds) => (rounds < 5 ? '初见' : rounds < 15 ? '相熟' : '深谈');
 const chapterNum = (n) => {
   const d = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
@@ -379,9 +381,9 @@ test('topic c4 has explicit kind, location, edition and verification limits', ()
   assert.equal(data.timeline.events.find(e => e.id === 'e1581').sourceId, 'zhangjuzheng/c4');
 });
 const territoryExpected = [
-  { id: '1368', year: 1368, label: '立国', range: [1368, 1406], show: ['liaodong-full', 'north-early', 'jimi', 'nuergan', 'yunnan-contested'] },
-  { id: '1420', year: 1420, label: '交趾在版图', range: [1407, 1448], show: ['jiaozhi', 'liaodong-full', 'north-early', 'jimi', 'nuergan'] },
-  { id: '1450', year: 1450, label: '土木堡之后', range: [1449, 1580], show: ['liaodong-full', 'north-late', 'jimi', 'nuergan'] },
+  { id: '1368', year: 1368, label: '立国', range: [1368, 1406], show: ['liaodong-full', 'north-early', 'jimi', 'guanxi', 'nuergan', 'yunnan-contested'] },
+  { id: '1420', year: 1420, label: '交趾在版图', range: [1407, 1448], show: ['jiaozhi', 'liaodong-full', 'north-early', 'jimi', 'guanxi', 'nuergan'] },
+  { id: '1450', year: 1450, label: '土木堡之后', range: [1449, 1580], show: ['liaodong-full', 'north-late', 'jimi', 'guanxi', 'nuergan'] },
   { id: '1581', year: 1581, label: '晚明格局', range: [1581, 1618], show: ['liaodong-full', 'north-late', 'jimi', 'nuergan'] },
   { id: '1620', year: 1620, label: '萨尔浒之后', range: [1619, 1643], show: ['liaodong-shrunk', 'north-late', 'jimi'] },
   { id: '1644', year: 1644, label: '落幕', range: [1644, 1644], show: ['north-late'] },
@@ -396,6 +398,18 @@ test('territory states cover every year exactly once with the specified overlays
   }
   assert.equal(data.territory.disclaimer, '本图为疆域大势示意，非精确疆界；具体疆界以《中国历史地图集》为准。');
   assert.equal(data.territory.legend, '实色为布政司实控，斜线为羁縻名义统辖。');
+});
+test('guanxi is a separate hatch shown only in 1368, 1420 and 1450', () => {
+  const guanxi = territoryGeometry.overlays.find(overlay => overlay.id === 'guanxi');
+  assert.ok(guanxi, 'guanxi overlay missing');
+  assert.equal(guanxi.kind, 'hatch');
+  assert.match(guanxi.d, /^M309\.19,286\.29/);
+  assert.deepEqual(Array.from(data.territory.states.filter(s => s.show.includes('guanxi')), s => s.id), ['1368', '1420', '1450']);
+});
+test('territory labels contain exactly one Hami garrison label bound to guanxi', () => {
+  const labels = territoryGeometry.labels.filter(place => place.text === '哈密卫');
+  assert.equal(labels.length, 1);
+  assert.equal(labels[0].overlay, 'guanxi');
 });
 test('research threads define three canonical IDs, exact questions, three slots and valid destinations', () => {
   assert.deepEqual(Array.from(data.researchThreads, t => t.id), ['yitiaobian', 'tumubao', 'chongzhen']);
@@ -745,10 +759,10 @@ test('territory geometry has independent geographic paths, labels and source att
   const { section, geometry } = territoryFixture();
   assert.equal(geometry.viewBox, '0 0 1000 820');
   assert.ok(geometry.base.length > 500, 'coastline must retain detail');
-  assert.deepEqual(Array.from(geometry.overlays, o => o.id).sort(), ['jiaozhi', 'jimi', 'liaodong-full', 'liaodong-shrunk', 'north-early', 'north-late', 'nuergan', 'yunnan-contested'].sort());
+  assert.deepEqual(Array.from(geometry.overlays, o => o.id).sort(), ['guanxi', 'jiaozhi', 'jimi', 'liaodong-full', 'liaodong-shrunk', 'north-early', 'north-late', 'nuergan', 'yunnan-contested'].sort());
   assert.ok(geometry.sources.length > 0);
   geometry.overlays.forEach(o => { assert.match(o.d, /^M/); assert.ok(o.d.length > 40); });
-  for (const name of ['北京', '南京', '辽东', '山海关', '嘉峪关', '交趾', '乌斯藏', '奴儿干', '云南']) assert.ok(geometry.labels.some(l => l.text === name), name);
+  for (const name of ['北京', '南京', '辽东', '山海关', '嘉峪关', '哈密卫', '交趾', '乌斯藏', '奴儿干', '云南']) assert.ok(geometry.labels.some(l => l.text === name), name);
   geometry.labels.forEach(l => assert.ok(l.x >= 0 && l.x <= 1000 && l.y >= 0 && l.y <= 820));
   assert.equal(walk(section, 'tm-hatch-pattern').length, 1);
   const html = fs.readFileSync(path.join(root, 'timeline.html'), 'utf8');
