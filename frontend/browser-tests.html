@@ -19,7 +19,10 @@ async function setup(page, options = {}) {
   const d = w.document;
   d.open(); d.write('<!doctype html><html><head><meta name="api-base" content="http://localhost:8000"></head><body data-page="'+page+'"><div id="app"></div></body></html>'); d.close();
   const store = new Map();
-  Object.defineProperty(w, 'localStorage', {value: {getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}});
+  Object.defineProperty(w, 'localStorage', {value: {getItem:k=>store.get(k)||null,setItem:(k,v)=>{
+    if (options.failProgressWrites && k === 'shimais-daming:progress:v1') throw new Error('quota');
+    store.set(k,v);
+  },removeItem:k=>store.delete(k)}});
   const requests = [];
   const timeouts = [];
   const nativeTimeout = w.setTimeout.bind(w);
@@ -583,6 +586,77 @@ await test('研读线索：专题题完整提交后取证，未提交不取证',
     assert(researchEvidence(t, 'yitiaobian').includes('topic:yitiaobian'), '专题提交未取证');
   } finally { t.close(); }
 });
+await test('研读线索：画像未开始只读，显式开始后创建空证据链', async () => {
+  const t = await setup('profile');
+  try {
+    assert(t.d.querySelectorAll('.research-card').length === 3, '未开始应显示三张卡');
+    assert(t.store.size === 0, '未开始线索写入了存储');
+    assert(t.d.querySelector('.research-footprint').textContent.includes('相关足迹'), '线索卡缺少相关足迹');
+    assert(t.d.querySelector('.research-question').textContent === '一条鞭法把赋役并成白银，为什么农户的实际负担反而可能更重？', '线索卡缺少定版问题');
+    t.d.querySelector('.research-start').click();
+    await tick();
+    const saved = JSON.parse(t.store.get('shimais-daming:progress:v1'));
+    assert(saved.research.activeId === 'yitiaobian', '开始未激活线索');
+    assert(JSON.stringify(saved.research.byId.yitiaobian.evidence) === '[]', '开始自动写入了证据');
+    assert(t.d.querySelectorAll('.research-slot').length === 3, '证据链不是三槽');
+    assert(t.d.querySelectorAll('.research-slot.is-filled').length === 0, '开始自动点亮了证据');
+  } finally { t.close(); }
+});
+
+await test('研读线索：完成态、恢复与切换保留各自证据', async () => {
+  const initial = researchFixture('yitiaobian', ['event:e1581', 'card:i3', 'story:q1581']);
+  const t = await setup('profile', { progress: initial });
+  try {
+    assert(t.d.querySelector('.research-complete').textContent === '已形成第一轮判断', '三槽未进入完成态');
+    assert(t.d.querySelector('a[href="#research-yitiaobian"]'), '完成态缺少回看锚点');
+    t.d.querySelector('.research-thread-choice').click();
+    await tick();
+    const saved = JSON.parse(t.store.get('shimais-daming:progress:v1'));
+    assert(saved.research.activeId === 'tumubao', '切换未激活目标线索');
+    assert(JSON.stringify(saved.research.byId.yitiaobian.evidence) === JSON.stringify(initial.research.byId.yitiaobian.evidence), '切换丢失原线索证据');
+    assert(JSON.stringify(saved.research.byId.tumubao.evidence) === '[]', '切换自动写入证据');
+    const restored = await setup('profile', { progress: saved });
+    try {
+      assert(restored.d.querySelector('.research-current-title').textContent === '土木堡与北京保卫战', '刷新未恢复当前线索');
+      assert(restored.d.querySelectorAll('.research-slot').length === 3, '恢复后证据链不完整');
+    } finally { restored.close(); }
+  } finally { t.close(); }
+});
+
+await test('研读线索：损坏数据按未开始渲染且不白屏不写入', async () => {
+  for (const research of [null, [], { activeId: 'missing', byId: 'broken' }, { activeId: 'yitiaobian', byId: { yitiaobian: 'broken' } }]) {
+    const t = await setup('profile', { progress: { research } });
+    try {
+      assert(t.d.querySelectorAll('.research-card').length === 3, '损坏数据未按未开始渲染');
+      assert(t.d.querySelector('.pf-content'), '损坏数据导致画像白屏');
+      assert(t.store.get('shimais-daming:progress:v1') === JSON.stringify({ research }), '只读渲染改写了损坏数据');
+    } finally { t.close(); }
+  }
+});
+
+await test('研读线索：首页仅在进行中线索下增加继续入口', async () => {
+  const lastRead = { kind: 'timeline', id: 'e1581' };
+  const active = await setup('index', { progress: { lastRead, ...researchFixture('yitiaobian') } });
+  try {
+    const resume = active.d.querySelector('.research-resume');
+    assert(resume && resume.textContent === '继续研读线索' && resume.getAttribute('href') === 'profile.html', '进行中线索缺少首页入口');
+    assert(active.d.querySelector('a[href="timeline.html?event=e1581"]'), '原继续上次入口被改变');
+  } finally { active.close(); }
+  const complete = await setup('index', { progress: { lastRead, ...researchFixture('yitiaobian', ['event:e1581', 'card:i3', 'story:q1581']) } });
+  try { assert(!complete.d.querySelector('.research-resume'), '完成态仍显示继续入口'); } finally { complete.close(); }
+});
+
+await test('研读线索：开始写入失败不显示假保存', async () => {
+  const t = await setup('profile', { failProgressWrites: true });
+  try {
+    t.d.querySelector('.research-start').click();
+    await tick();
+    assert(t.store.size === 0, '写入失败仍留下假存档');
+    assert(t.d.querySelectorAll('.research-card').length === 3, '写入失败仍伪装成已开始');
+    assert(!t.d.querySelector('.research-echo'), '写入失败显示已记录回声');
+  } finally { t.close(); }
+});
+
 window.testResults = results;
 document.title = results.some(r=>!r.pass)?'FAIL 浏览器回归':'PASS 浏览器回归';
 </script>

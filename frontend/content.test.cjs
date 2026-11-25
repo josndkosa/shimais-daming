@@ -197,7 +197,7 @@ test('profile recommends actual wrong-answer material and a deeper path for full
     const picks = Array.from(data.quiz, q => q.answer);
     if (!perfect) picks[9] = 0;
     const progress = { quiz: { score: perfect ? 10 : 9, picks }, qinli: { done: ['q1581', 'q1581', 'invalid'] } };
-    const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
+    const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier, activeResearch: () => null, researchFootprintCount: () => 0,
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} },
     });
     vm.runInContext(CODEX_HELPERS + code + '\nrenderProfile();', ctx);
@@ -213,7 +213,7 @@ test('profile lists wrong-answer material from the latest submission and hides w
   const code = source.slice(source.indexOf('  function renderProfile()'), source.indexOf('  /* ---------- 人物对话'));
   const render = (progress) => {
     const app = new Node('main');
-    const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
+    const ctx = vm.createContext({ data, app, currentModule: { title: '画像' }, loadProgress: () => progress, readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier, activeResearch: () => null, researchFootprintCount: () => 0,
       el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} },
     });
     vm.runInContext(CODEX_HELPERS + code + '\nrenderProfile();', ctx);
@@ -718,7 +718,7 @@ test('BE list codex row lit/unknown/old-save and top total; profile collected li
   assert.equal(litEvt.pd, undefined, 'lit cell rides the card link to replay');
   const pcode = source.slice(source.indexOf('  function renderProfile()'), source.indexOf('  /* ---------- 人物对话'));
   const papp = new Node('main');
-  const pctx = vm.createContext({ data, app: papp, currentModule: { title: '画像' }, loadProgress: () => ({ qinliEndings: { q1581: [e0.id] }, qinli: { done: ['q1581'] } }), readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier,
+  const pctx = vm.createContext({ data, app: papp, currentModule: { title: '画像' }, loadProgress: () => ({ qinliEndings: { q1581: [e0.id] }, qinli: { done: ['q1581'] } }), readIds: () => [], resolveLastRead: () => null, loadChatMem: () => ({}), chatTier, activeResearch: () => null, researchFootprintCount: () => 0,
     el: (t, c, x) => new Node(t, c, x), renderPageHead: () => new Node('header'), requestAnimationFrame: f => f(), window: { addEventListener() {} } });
   vm.runInContext(CODEX_HELPERS + pcode + '\nrenderProfile();', pctx);
   assert.equal(textOf(walk(papp, 'pf-endings-line')[0]), '已收集结局 1/20');
@@ -1446,7 +1446,7 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   const indexCode = source.slice(source.indexOf('  function renderIndex()'), source.indexOf('  /* ---------- 时间线'));
   const app = new Node('main');
   const ctx = vm.createContext({ data, app, currentModule: { title: '首页' },
-    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, recordThreadEvidence() {}, resolveLastRead: () => null,
+    loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, recordThreadEvidence() {}, resolveLastRead: () => null, activeResearch: () => null,
     el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildCarousel: () => new Node('section'), buildTopicPath: () => new Node('section'),
     window: { addEventListener() {} },
   });

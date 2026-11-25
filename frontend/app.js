@@ -612,6 +612,12 @@
       if (/^qinli(-play)?\.html/.test(resume.getAttribute("href"))) { resume.target = "_blank"; resume.rel = "noopener"; }
       start.appendChild(resume);
     }
+    const currentResearch = activeResearch();
+    if (currentResearch && !currentResearch.complete) {
+      const threadLink = el("a", "topic-next research-resume", data.researchUI.continue);
+      threadLink.href = "profile.html";
+      start.appendChild(threadLink);
+    }
     app.appendChild(start);
     app.appendChild(buildCarousel());
 
@@ -2513,6 +2519,72 @@
     app.appendChild(renderPageHead(currentModule.title, currentModule.tagline));
     const wrap = el("div", "container pf-wrap");
 
+    function renderResearchSection() {
+      const ui = data.researchUI;
+      const section = el("section", "pf-section research-section");
+      section.appendChild(el("h2", "section-title", ui.title));
+      const current = activeResearch();
+      if (!current) {
+        const cards = el("div", "research-cards");
+        data.researchThreads.forEach((thread) => {
+          const card = el("article", "research-card");
+          card.appendChild(el("h3", "research-card-title", thread.title));
+          card.appendChild(el("p", "research-question", thread.question));
+          card.appendChild(el("p", "research-footprint", ui.related + " " + researchFootprintCount(thread) + "/3"));
+          const start = el("button", "cta-button research-start", ui.start);
+          start.type = "button";
+          start.addEventListener("click", () => {
+            if (startResearchThread(thread.id)) wrap.replaceChildren(buildContent());
+          });
+          card.appendChild(start);
+          cards.appendChild(card);
+        });
+        section.appendChild(cards);
+        return section;
+      }
+      section.id = "research-" + current.thread.id;
+      const head = el("div", "research-head");
+      head.appendChild(el("h3", "research-current-title", current.thread.title));
+      head.appendChild(el("p", "research-question", current.thread.question));
+      if (current.complete) head.appendChild(el("p", "research-complete", ui.complete));
+      section.appendChild(head);
+      const chain = el("ol", "research-chain");
+      current.thread.slots.forEach((slot, i) => {
+        const item = el("li", "research-slot" + (current.filled[i] ? " is-filled" : ""));
+        item.appendChild(el("span", "research-dot"));
+        const link = el("a", "research-slot-link", slot.title);
+        link.href = slot.href;
+        if (/^qinli(-play)?\.html/.test(slot.href)) { link.target = "_blank"; link.rel = "noopener"; }
+        item.appendChild(link);
+        chain.appendChild(item);
+      });
+      section.appendChild(chain);
+      if (current.complete) {
+        const review = el("a", "pf-link", ui.review);
+        review.href = "#research-" + current.thread.id;
+        section.appendChild(review);
+      } else {
+        const nextIndex = current.filled.findIndex((filled) => !filled);
+        const next = current.thread.slots[nextIndex];
+        const link = el("a", "cta-button cta-gold", next.title);
+        link.href = next.href;
+        if (/^qinli(-play)?\.html/.test(next.href)) { link.target = "_blank"; link.rel = "noopener"; }
+        section.appendChild(link);
+      }
+      const switcher = el("div", "research-switcher");
+      switcher.appendChild(el("span", "research-switch", ui.switch));
+      data.researchThreads.filter((thread) => thread.id !== current.thread.id).forEach((thread) => {
+        const button = el("button", "pf-link research-thread-choice", thread.title);
+        button.type = "button";
+        button.addEventListener("click", () => {
+          if (startResearchThread(thread.id)) wrap.replaceChildren(buildContent());
+        });
+        switcher.appendChild(button);
+      });
+      section.appendChild(switcher);
+      return section;
+    }
+
     function buildContent() {
       const box = el("div", "pf-content");
       const read = readIds();
@@ -2532,6 +2604,7 @@
         resumeSection.appendChild(el("p", "content-note", ui.resumeEmpty));
       }
       box.appendChild(resumeSection);
+      box.appendChild(renderResearchSection());
 
       const foot = el("section", "pf-section");
       foot.appendChild(el("h2", "section-title", ui.footprintTitle));
