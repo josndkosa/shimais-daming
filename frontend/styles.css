@@ -460,6 +460,87 @@ body[data-page="index"] {
   background: var(--site-fg);
 }
 
+.daily-material-slot:not([hidden]) {
+  padding-block: calc(var(--gap) * 0.8);
+}
+
+.daily-material {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 28px;
+  padding: calc(22px * var(--site-space, 1)) calc(24px * var(--site-space, 1));
+  border: 1px solid var(--line-strong);
+  background: color-mix(in srgb, var(--site-fg) 3%, var(--site-bg));
+  color: var(--site-fg);
+  text-decoration: none;
+  transition: border-color var(--dur) ease, background-color var(--dur) ease;
+}
+
+.daily-material:hover {
+  border-color: var(--gold);
+  background: color-mix(in srgb, var(--site-fg) 5%, var(--site-bg));
+}
+
+.daily-material:focus-visible {
+  outline: 2px solid var(--vermilion-bright);
+  outline-offset: 3px;
+}
+
+.daily-copy {
+  min-width: 0;
+}
+
+.daily-label {
+  margin: 0;
+  font-size: calc(13px * var(--site-type, 1));
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+  color: var(--gold);
+}
+
+.daily-title {
+  margin: 7px 0 0;
+  font-family: var(--site-font);
+  font-size: calc(23px * var(--site-type, 1));
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+}
+
+.daily-excerpt {
+  display: -webkit-box;
+  margin: 9px 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: calc(15px * var(--site-type, 1));
+  line-height: 1.9;
+  color: var(--body-fg);
+  overflow-wrap: anywhere;
+}
+
+.daily-meta {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding-left: calc(24px * var(--site-space, 1));
+  border-left: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.daily-person {
+  font-size: calc(14px * var(--site-type, 1));
+  color: var(--site-muted);
+}
+
+.daily-arrow {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--gold);
+}
+
 /* ---------- 主线问题 ---------- */
 
 .question-section {

@@ -177,6 +177,118 @@ test('search distinguishes missing IDs from material fetch failure', async () =>
   assert.match(textOf(failed.app), /材料载入失败/);
   assert.ok(walk(failed.app, 'sr-retry').length);
 });
+const DAILY_START = '  /* ---------- 首页每日一史料 ---------- */';
+const DAILY_END = '  /* ---------- 首页 ---------- */';
+function dailyCode() {
+  const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const start = source.indexOf(DAILY_START);
+  const end = source.indexOf(DAILY_END);
+  assert.ok(start >= 0 && end > start, 'daily material section missing');
+  return source.slice(start, end);
+}
+async function dailyPage(response, now, ok = true) {
+  const app = new Node('main');
+  const slot = new Node('div', 'daily-material-slot');
+  slot.hidden = true;
+  app.appendChild(slot);
+  const requests = [];
+  const ctx = vm.createContext({ data, SEARCH_INDEX: context.index, app, slot, now, Intl, Date, URLSearchParams,
+    el: (tag, cls, text) => new Node(tag, cls, text),
+    fetch: async url => {
+      requests.push(url);
+      if (response instanceof Error) throw response;
+      return { ok, json: async () => response };
+    },
+  });
+  vm.runInContext(dailyCode() + '\nrenderDailyMaterial(slot, now);', ctx);
+  await new Promise(resolve => setImmediate(resolve));
+  return { app, slot, requests, ctx };
+}
+test('daily material uses Beijing calendar day across UTC and leap-year boundaries', () => {
+  const ctx = vm.createContext({ Intl, Date });
+  vm.runInContext(dailyCode(), ctx);
+  const cases = [
+    ['2025-01-01T15:59:59Z', 2025, 1, 1, 1],
+    ['2025-01-01T16:00:00Z', 2025, 1, 2, 2],
+    ['2024-12-31T16:00:00Z', 2025, 1, 1, 1],
+    ['2024-12-31T12:00:00Z', 2024, 12, 31, 366],
+    ['2024-02-29T12:00:00Z', 2024, 2, 29, 60],
+    ['2024-03-01T12:00:00Z', 2024, 3, 1, 61],
+  ];
+  for (const [iso, year, month, day, dayOfYear] of cases) {
+    assert.deepEqual(JSON.parse(JSON.stringify(ctx.beijingDay(new Date(iso)))), { year, month, day, dayOfYear });
+  }
+});
+test('daily material selects the id-sorted 48-item pool and advances exactly one per day', () => {
+  const ctx = vm.createContext({ Intl, Date });
+  vm.runInContext(dailyCode(), ctx);
+  const materials = JSON.parse(fs.readFileSync(path.join(root, 'materials.json'), 'utf8')).sources;
+  assert.equal(materials.length, 48);
+  const ordered = materials.slice().sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const first = ctx.selectDailyMaterial(ordered, new Date('2025-01-01T12:00:00Z'));
+  const second = ctx.selectDailyMaterial(ordered, new Date('2025-01-02T12:00:00Z'));
+  const wrapped = ctx.selectDailyMaterial(ordered, new Date('2025-02-18T12:00:00Z'));
+  assert.equal(first.material.id, 'chongzhen/c1');
+  assert.equal(second.material.id, 'chongzhen/c2');
+  assert.equal(wrapped.material.id, 'chongzhen/c1');
+  assert.deepEqual(JSON.parse(JSON.stringify(first.day)), { year: 2025, month: 1, day: 1, dayOfYear: 1 });
+  for (let day = 1; day <= 366; day++) {
+    const now = new Date(Date.UTC(2024, 0, day, 12));
+    const selected = ctx.selectDailyMaterial(ordered, now);
+    assert.equal(selected.material.id, ordered[(selected.day.dayOfYear - 1) % 48].id);
+  }
+});
+test('daily excerpt preserves a substantial first sentence and caps long text at about 60 characters', () => {
+  const ctx = vm.createContext({ Intl, Date });
+  vm.runInContext(dailyCode(), ctx);
+  const materials = JSON.parse(fs.readFileSync(path.join(root, 'materials.json'), 'utf8')).sources;
+  const original = materials.find(m => m.id === 'zhangjuzheng/c4');
+  const quotedExcerpt = '【原文摘录·经网页转引】「一條鞭法者，總括一州縣之賦役，量地計丁，丁糧畢輸於官。一歲之役，官為僉募。」';
+  assert.equal(ctx.materialExcerpt(original.text), quotedExcerpt);
+  assert.match(ctx.materialExcerpt(original.text), /一條鞭法者/);
+  const shortFirst = '短句。' + '甲乙丙丁戊己庚辛壬癸'.repeat(8);
+  assert.equal(ctx.materialExcerpt(shortFirst), Array.from(shortFirst).slice(0, 60).join('') + '…');
+  const longSentence = '甲'.repeat(80) + '。第二句。';
+  assert.equal(ctx.materialExcerpt(longSentence), '甲'.repeat(60) + '…');
+});
+test('daily homepage card shows date, canonical title, excerpt and person with the encoded new-tab deep link', async () => {
+  const materials = JSON.parse(fs.readFileSync(path.join(root, 'materials.json'), 'utf8')).sources;
+  const { app, slot, requests } = await dailyPage({ sources: materials.slice().reverse() }, new Date('2025-01-01T12:00:00Z'));
+  assert.deepEqual(requests, ['materials.json']);
+  assert.equal(slot.hidden, false);
+  const card = walk(app, 'daily-material')[0];
+  assert.ok(card);
+  assert.equal(card.tag, 'a');
+  assert.equal(textOf(walk(card, 'daily-label')[0]), '每日一史料 · 1月1日');
+  assert.equal(textOf(walk(card, 'daily-title')[0]), '即位除奸');
+  assert.equal(textOf(walk(card, 'daily-excerpt')[0]), materials.find(m => m.id === 'chongzhen/c1').text);
+  assert.equal(textOf(walk(card, 'daily-person')[0]), '崇祯');
+  assert.equal(card.href, 'search.html?source=chongzhen%2Fc1');
+  assert.equal(card.target, '_blank');
+  assert.equal(card.rel, 'noopener');
+});
+test('daily homepage card removes its slot without error UI when materials fail validation or loading', async () => {
+  const materials = JSON.parse(fs.readFileSync(path.join(root, 'materials.json'), 'utf8')).sources;
+  const cases = [
+    [new Error('offline'), true],
+    [{ sources: materials }, false],
+    [{ sources: materials.slice(1) }, true],
+    [{ sources: [{ id: 'bad', title: '坏材料', text: '正文', source: '出处' }] }, true],
+    [{ sources: materials.map((m, i) => i === 1 ? { ...m, id: materials[0].id } : m) }, true],
+    [{ sources: materials.map((m, i) => i === 0 ? { ...m, id: 'unknown/c1' } : m) }, true],
+    [{ sources: materials.map((m, i) => i === 0 ? { ...m, title: '   ' } : m) }, true],
+    [{ sources: materials.map((m, i) => i === 0 ? { ...m, text: '' } : m) }, true],
+    [{ sources: materials.map((m, i) => i === 0 ? { ...m, source: '   ' } : m) }, true],
+    [{ sources: materials.map((m, i) => i === 0 ? { ...m, figure: 'unknown' } : m) }, true],
+  ];
+  for (const [response, ok] of cases) {
+    const { app, slot, requests } = await dailyPage(response, new Date('2025-01-01T12:00:00Z'), ok);
+    assert.deepEqual(requests, ['materials.json']);
+    assert.equal(app.children.includes(slot), false);
+    assert.equal(walk(app, 'daily-material').length, 0);
+    assert.doesNotMatch(textOf(app), /失败|错误|载入/);
+  }
+});
 test('topic path renders each current goal and next exact destination', () => {
   const source = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
   const code = source.slice(source.indexOf('  function buildTopicPath('), source.indexOf('  function chatState('));
@@ -1461,10 +1573,12 @@ test('index entry and full-width cards banner open the chapter in a new tab', ()
   const app = new Node('main');
   const ctx = vm.createContext({ data, app, currentModule: { title: '首页' },
     loadProgress: () => ({}), updateProgress() {}, markLastRead() {}, recordThreadEvidence() {}, resolveLastRead: () => null, activeResearch: () => null,
-    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildCarousel: () => new Node('section'), buildTopicPath: () => new Node('section'),
+    el: (tag, cls, text) => new Node(tag, cls, text), renderPageHead: () => new Node('header'), buildCarousel: () => new Node('section', 'carousel'), buildTopicPath: () => new Node('section'),
+    renderDailyMaterial() {},
     window: { addEventListener() {} },
   });
   vm.runInContext(indexCode + '\nrenderIndex();', ctx);
+  assert.deepEqual(app.children.slice(0, 4).map(n => n.className), ['topic-start container', 'carousel', 'daily-material-slot container', 'question-section container']);
   const entry = walk(app, 'ch-entry')[0];
   assert.ok(entry, 'index chapter entry missing');
   assert.equal(textOf(walk(entry, 'ch-entry-title')[0]), data.chapterUI.entryTitle);

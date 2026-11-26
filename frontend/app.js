@@ -607,6 +607,84 @@
     return region;
   }
 
+  /* ---------- 首页每日一史料 ---------- */
+
+  function beijingDay(now = new Date()) {
+    const parts = new Intl.DateTimeFormat("zh-CN", {
+      timeZone: "Asia/Shanghai",
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const year = Number(values.year);
+    const month = Number(values.month);
+    const day = Number(values.day);
+    const dayOfYear = Math.round((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86400000) + 1;
+    return { year, month, day, dayOfYear };
+  }
+
+  function selectDailyMaterial(materials, now = new Date()) {
+    const day = beijingDay(now);
+    return { day, material: materials[(day.dayOfYear - 1) % 48] };
+  }
+
+  function materialExcerpt(text) {
+    let firstSentence = text.match(/^.*?[。！？]/u)?.[0] || text;
+    const openQuote = firstSentence.indexOf("「");
+    if (openQuote >= 0 && !firstSentence.includes("」", openQuote + 1)) {
+      const closeQuote = text.indexOf("」", openQuote + 1);
+      const quoted = closeQuote >= 0 ? text.slice(0, closeQuote + 1) : "";
+      if (quoted && Array.from(quoted).length <= 60) firstSentence = quoted;
+    }
+    const candidate = Array.from(firstSentence).length >= 40 ? firstSentence : text;
+    const chars = Array.from(candidate);
+    return chars.length > 60 ? chars.slice(0, 60).join("").trimEnd() + "…" : candidate;
+  }
+
+  async function renderDailyMaterial(slot, now = new Date()) {
+    try {
+      const response = await fetch("materials.json");
+      if (!response.ok) throw new Error("materials unavailable");
+      const payload = await response.json();
+      const canonicalIds = new Set(SEARCH_INDEX.filter((entry) => entry.kind === "source").map((entry) => {
+        const figure = new URLSearchParams(entry.target.split("?")[1]).get("figure");
+        return figure + "/" + entry.id;
+      }));
+      if (!payload || !Array.isArray(payload.sources) || payload.sources.length !== 48 || canonicalIds.size !== 48 ||
+          !payload.sources.every((s) => s && typeof s.id === "string" && canonicalIds.has(s.id) &&
+            typeof s.title === "string" && s.title.trim().length > 0 &&
+            typeof s.text === "string" && s.text.trim().length > 0 &&
+            typeof s.source === "string" && s.source.trim().length > 0 &&
+            typeof s.figure === "string" && data.chatFigures.some((f) => f.id === s.figure))) {
+        throw new Error("invalid materials");
+      }
+      if (new Set(payload.sources.map((s) => s.id)).size !== payload.sources.length) throw new Error("duplicate materials");
+      const materials = payload.sources.slice().sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+      const { day, material } = selectDailyMaterial(materials, now);
+      const person = data.chatFigures.find((f) => f.id === material.figure);
+      const card = el("a", "daily-material");
+      card.href = "search.html?source=" + encodeURIComponent(material.id);
+      card.target = "_blank";
+      card.rel = "noopener";
+      card.setAttribute("aria-label", "每日一史料：" + material.title + "，" + person.name);
+      const copy = el("div", "daily-copy");
+      copy.appendChild(el("p", "daily-label", "每日一史料 · " + day.month + "月" + day.day + "日"));
+      copy.appendChild(el("h2", "daily-title", material.title));
+      copy.appendChild(el("p", "daily-excerpt", materialExcerpt(material.text)));
+      const meta = el("div", "daily-meta");
+      meta.appendChild(el("span", "daily-person", person.name));
+      const arrow = el("span", "daily-arrow", "→");
+      arrow.setAttribute("aria-hidden", "true");
+      meta.appendChild(arrow);
+      card.append(copy, meta);
+      slot.replaceChildren(card);
+      slot.hidden = false;
+    } catch {
+      slot.remove();
+    }
+  }
+
   /* ---------- 首页 ---------- */
 
   function renderIndex() {
@@ -633,6 +711,10 @@
     }
     app.appendChild(start);
     app.appendChild(buildCarousel());
+    const dailySlot = el("div", "daily-material-slot container");
+    dailySlot.hidden = true;
+    app.appendChild(dailySlot);
+    renderDailyMaterial(dailySlot);
 
     const question = el("section", "question-section container");
     const block = el("div", "question-block");
